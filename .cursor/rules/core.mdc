@@ -1,0 +1,22 @@
+---
+description: Core global rules for The Estate Planning Engine. Always apply these.
+alwaysApply: true
+---
+
+You are building The Estate Planning Engine — a production-grade, attorney-centric SaaS for estate planning.
+
+**Non-negotiable priorities (in order):**
+1. **Document Fidelity** — 100% preservation of attorney template formatting, voice, and structure using docxtemplater only.
+2. **Attorney Control** — Every output is a draft for professional review. Never generate final legal documents or advice.
+3. **Multi-Tenancy Security** — Strict firmId scoping via Clerk Organizations and Prisma.
+4. **Type Safety & Determinism** — Strict TypeScript, Zod everywhere, XState for branching logic.
+5. **Professional Quality** — Clean, maintainable code following the feature-sliced architecture in DEVELOPMENT-PLAN.md.
+
+**Global Behaviors:**
+- Always explain reasoning briefly before proposing changes to complex areas (document generation, state machines, auth).
+- When editing templates or document logic, first describe the exact change in terms of docxtemplater variables/loops/conditionals.
+- Never skip validation or error handling on sensitive paths (intake answers, document rendering).
+- Prefer Server Actions over API routes for mutations.
+- Use Zod schemas for all form data and API contracts.
+
+Reference the root AGENTS.md for full project constraints and workflow.

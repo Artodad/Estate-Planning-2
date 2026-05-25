@@ -1,0 +1,34 @@
+---
+description: Rules for the adaptive questionnaire, XState machine, conversational AI mode, and intake data handling. Apply to features/intake/** and related components.
+globs: ["features/intake/**", "**/*questionnaire*", "**/*intake*", "lib/intake*"]
+---
+
+**Questionnaire & Intake Rules:**
+
+**Core Architecture:**
+- Use **XState v5** for the deterministic adaptive questionnaire state machine.
+- Branching logic must be explicit and auditable (guards for `hasMinorChildren`, `isMarriedAndCA`, `hasSpouse`, etc.).
+- All answers stored in `IntakeSession.answers` as JSONB + normalized relational tables for children/assets/beneficiaries where queryability is needed.
+- Progress tracking (0-100%) and resume functionality are mandatory.
+
+**Conversational AI Mode (Optional Enhancement):**
+- When using Vercel AI SDK + Grok API, the model **must** be strictly constrained.
+- System prompt must include: "You are a structured data collection assistant only. Output ONLY valid JSON matching the provided Zod schema. Never generate legal text or advice."
+- Always fall back to the structured wizard if confidence is low or output fails validation.
+- Never let the conversational mode produce document content.
+
+**Data Validation & Safety:**
+- Every section uses Zod schemas for validation.
+- Sensitive fields (SSN, full DOB, financial details) must be handled with extra care — minimize storage and never log raw values.
+- California-specific questions (community property, guardians for minors) must surface automatically based on answers.
+
+**User Experience:**
+- Beautiful multi-step wizard with progress bar, section navigation, auto-save, and mobile-first design.
+- Clear "Save & Resume Later" functionality.
+- On completion, the session status changes to "completed" and triggers document generation eligibility.
+
+**When Adding New Questions:**
+- Update the XState machine, Zod schema, and data mapper in lockstep.
+- Ensure the new field has a corresponding docxtemplater variable or loop in the relevant templates.
+
+Reference root AGENTS.md and document-fidelity rules.

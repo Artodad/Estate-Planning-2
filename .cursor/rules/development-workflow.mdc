@@ -1,0 +1,41 @@
+---
+description: Development process, code style, testing, and collaboration rules between human, Grok, and Cursor.
+globs: ["**/*"]
+---
+
+**Development Workflow & Collaboration Rules:**
+
+**Human + AI Division of Labor:**
+- **Grok**: Architecture decisions, complex reasoning, code reviews, prompt engineering, and high-level planning.
+- **Cursor**: Rapid implementation, editing, refactoring, and following detailed instructions.
+- Always start significant features by discussing with Grok first, then use Cursor for execution.
+
+**Code Style Preferences:**
+- Strict TypeScript + Zod for everything.
+- Small, single-purpose functions and components.
+- Clear, descriptive variable and function names.
+- JSDoc / TSDoc comments on public APIs and complex logic.
+- Consistent formatting via Prettier + ESLint (run before committing).
+
+**Git & Commit Discipline:**
+- Commit after every working, tested slice (even small ones).
+- Use Conventional Commits: `feat(intake): add XState guard for minor children`
+- Never commit generated documents, real client data, or large template binaries.
+
+**Testing Expectations:**
+- Manual happy-path + one edge case for every new feature.
+- Critical path (intake completion → full document package generation) must be manually verified with real templates.
+- Add or update Playwright E2E tests for core flows before considering a phase complete.
+- Type checking (`tsc --noEmit`) and lint must pass before major commits.
+
+**When Using AI Assistants:**
+- Always include context from AGENTS.md and the relevant .cursor/rules/*.mdc files in your prompt.
+- For document-related work: "Follow document-fidelity.mdc strictly."
+- For intake work: "Follow intake-questionnaire.mdc and use XState."
+- Review all AI-generated code, especially around security, data mapping, and template rendering.
+
+**Project Documentation:**
+- Keep DEVELOPMENT-PLAN.md and phase files up to date as you progress.
+- Update this AGENTS.md / rules when new patterns or constraints emerge.
+
+Follow the phased plan in DEVELOPMENT-PLAN.md. Quality and fidelity over speed.

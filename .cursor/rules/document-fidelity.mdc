@@ -1,0 +1,29 @@
+---
+description: Strict rules for all document generation, template handling, and docxtemplater work. Apply to features/documents/** and any template-related code.
+globs: ["features/documents/**", "**/*template*", "**/*.docx", "lib/document*", "agents/document*"]
+---
+
+**Document Generation Rules (Highest Priority):**
+
+- Use **docxtemplater** + pizzip exclusively for rendering .docx files.
+- Preserve **every** aspect of the original template: fonts, styles, headers, footers, page numbers, numbering, tables, spacing, and California-specific language.
+- Support repeating sections with `{#children}`, `{#assets}`, `{#beneficiaries}` etc. and conditionals (`{^hasSpouse}`, `{#hasMinorChildren}`).
+- Always inject a visible **"DRAFT – For Attorney Review Only"** header or watermark on every generated page.
+- File naming convention: `{LastName}-{FirstName}-{DocumentType}-DRAFT-{YYYY-MM-DD}.docx`
+- Generated packages must include: Revocable Living Trust, Pour-over Will, Durable POA, Advance Healthcare Directive (with POLST-ready language), HIPAA Authorization, Certificate of Trust, Personal Property Memorandum, and Trust Funding Instructions.
+
+**What You Must Never Do:**
+- Rewrite or "modernize" any template language.
+- Generate new legal clauses or text outside of templates.
+- Use PDF libraries or other converters as primary output (Word fidelity is mandatory).
+- Skip error handling when a template variable is missing — surface the exact missing field.
+
+**Data Mapping:**
+- Build a clean, well-documented mapper from `IntakeSession.answers` (JSONB) to docxtemplater variables.
+- Normalize children, assets, and beneficiaries into arrays suitable for loops.
+- Handle optional spouse, guardians, and specific gifts gracefully.
+
+**Testing Requirement:**
+- After any change to document logic, generate a full package against at least one real (anonymized) attorney template and visually confirm fidelity before considering the task complete.
+
+Reference root AGENTS.md for overall fidelity philosophy.

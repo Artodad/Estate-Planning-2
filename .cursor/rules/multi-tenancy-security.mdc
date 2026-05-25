@@ -1,0 +1,37 @@
+---
+description: Multi-tenancy, authentication, authorization, and security rules. Apply to features/auth/**, lib/auth*, prisma schema, and any firm/client data handling.
+globs: ["features/auth/**", "app/**/layout*", "middleware.ts", "lib/clerk*", "prisma/schema.prisma", "**/*firm*", "**/*client*"]
+---
+
+**Multi-Tenancy & Security Rules:**
+
+**Clerk Organizations (Firm = Tenant):**
+- Every user belongs to exactly one primary Clerk Organization (the law firm).
+- Roles: `owner` (full control), `staff` (most operations), `client` (limited to their own intake sessions and documents).
+- Use Clerk Organizations + custom claims or Prisma `User` model for role enforcement.
+
+**Data Scoping (Mandatory):**
+- All Prisma queries for `Client`, `IntakeSession`, `GeneratedDocument`, `Template` **must** filter by `firmId`.
+- Use Prisma middleware or query extensions to automatically inject `firmId` from the current session.
+- Row Level Security (RLS) policies in Postgres are strongly recommended as defense-in-depth.
+
+**Authentication Flow:**
+- Magic link + email invitations for clients (via Resend).
+- Firm onboarding creates both Clerk Organization and Prisma `Firm` record.
+- Client invitation creates limited `User` record + starts an `IntakeSession`.
+
+**Audit & Compliance:**
+- Log all sensitive actions (document generation, template upload, client data changes, invitations) to an `AuditLog` table.
+- Never log full client answers or generated document content.
+- PII handling: minimize storage of highly sensitive fields; consider encryption at rest for financial/medical details.
+
+**Error & Security Hygiene:**
+- All Server Actions and API routes must re-validate organization membership and role.
+- Rate limiting on invitation and document generation endpoints.
+- Clear error messages to users; detailed errors only in Sentry/logs (never expose internals to clients).
+
+**When Working on Auth:**
+- Always test with at least two different firms to verify isolation.
+- A user from Firm A must never be able to see or affect data from Firm B, even via direct URL manipulation or API calls.
+
+Reference root AGENTS.md for overall security philosophy.
