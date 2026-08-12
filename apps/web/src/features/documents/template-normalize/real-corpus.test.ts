@@ -27,25 +27,25 @@ const CORPUS = [
     id: "mprg7y50",
     rel: ".local-document-storage/templates/aaa-1780034544721732674/revocable_trust/Trust-_Family-changed-mprg7y50.docx",
     expectOk: true,
-    sha256Prefix: "77206515",
+    sha256Prefix: "5a04f290",
   },
   {
     id: "mprnxupt",
     rel: ".local-document-storage/templates/aaa-1780034544721732674/revocable_trust/Trust-_Family-changed-mprnxupt.docx",
     expectOk: true,
-    sha256Prefix: "3a01b7b2",
+    sha256Prefix: "eba34174",
   },
   {
     id: "mprpud8a",
     rel: ".local-document-storage/templates/aaa-1780034544721732674/revocable_trust/Trust-_Family-changed-mprpud8a.docx",
     expectOk: true,
-    sha256Prefix: "92d4cca2",
+    sha256Prefix: "f517a39c",
   },
   {
     id: "mprg6n30-dup",
     rel: ".local-document-storage/templates/firm-12-1779936733274746364/revocable_trust/Trust-_Family-changed-mprg6n30.docx",
     expectOk: true,
-    sha256Prefix: "77206515", // duplicate of mprg7y50
+    sha256Prefix: "5a04f290", // duplicate of mprg7y50
   },
   {
     id: "verify",
@@ -120,4 +120,52 @@ test("real corpus mprg7y50: orphan notary braces healed and trust_name tagged", 
   assert.ok(report.repairs.some((r) => r.code === "ORPHAN_CLOSER_REMOVED"));
   assert.ok(report.repairs.some((r) => r.code === "SAMPLE_VALUE_TAGGED"));
   assert.ok(report.detections.some((d) => d.code === "SAMPLE_VALUE_SUGGESTION"));
+});
+
+test("real Trust Family corpus: settlor spouse uses positive {#has_spouse} polarity", (t) => {
+  /**
+   * Regression for Tester PR #3: Trust Family settlor clause had inverted
+   * `{^has_spouse} and {spouse_full_name}{/has_spouse}` so married spouse names
+   * never appeared. Source templates + normalizer must keep positive polarity.
+   */
+  const trustFamily = CORPUS.filter((e) => e.id !== "verify");
+  let checked = 0;
+
+  for (const entry of trustFamily) {
+    const abs = path.join(WEB_ROOT, entry.rel);
+    if (!existsSync(abs)) continue;
+
+    const rawJoined = new PizZip(readFileSync(abs))
+      .file("word/document.xml")!
+      .asText()
+      .replace(/<[^>]+>/g, "");
+    assert.ok(
+      !/\{\^has_spouse\}\s+and\s+\{spouse_full_name\}/.test(rawJoined),
+      `${entry.id} source template must not wrap settlor spouse in {^has_spouse}`,
+    );
+    assert.match(
+      rawJoined,
+      /\{#has_spouse\}\s+and\s+\{spouse_full_name\}\{\/has_spouse\}/,
+      `${entry.id} source settlor clause must use {#has_spouse}`,
+    );
+
+    const { buffer } = normalizeTemplateBuffer(readFileSync(abs));
+    const normalizedJoined = new PizZip(buffer)
+      .file("word/document.xml")!
+      .asText()
+      .replace(/<[^>]+>/g, "");
+    assert.ok(
+      !/\{\^has_spouse\}\s+and\s+\{spouse_full_name\}/.test(normalizedJoined),
+      `${entry.id} normalized template must not reintroduce inverted settlor polarity`,
+    );
+    assert.match(
+      normalizedJoined,
+      /\{#has_spouse\}\s+and\s+\{spouse_full_name\}\{\/has_spouse\}/,
+    );
+    checked += 1;
+  }
+
+  if (checked === 0) {
+    t.skip("no Trust Family corpus files present");
+  }
 });
