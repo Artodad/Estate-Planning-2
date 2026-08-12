@@ -209,7 +209,47 @@ export function renameTagsInXml(
 }
 
 /**
- * Rename aliased tags across document + header/footer parts of a .docx buffer.
+ * Trust Family settlor clause bug: spouse name was wrapped in inverted
+ * `{^has_spouse}` (show when false). Spouse name must use positive polarity.
+ *
+ * Only rewrites the specific pattern
+ *   `{^has_spouse} and {spouse_full_name}{/has_spouse}`
+ * → `{#has_spouse} and {spouse_full_name}{/has_spouse}`
+ *
+ * Intentional `{^has_spouse}` "no spouse" sections elsewhere are untouched.
+ */
+const INVERTED_SETTLOR_SPOUSE_RE =
+  /\{\^has_spouse\}(\s+and\s+)\{spouse_full_name\}(\{\/has_spouse\})/g;
+
+export function fixSettlorSpousePolarityInXml(
+  xml: string,
+  partName?: string,
+): { xml: string; items: NormalizeReportItem[] } {
+  const items: NormalizeReportItem[] = [];
+  const next = xml.replace(
+    INVERTED_SETTLOR_SPOUSE_RE,
+    (_full, andGap: string, closer: string) => {
+      const before = `{^has_spouse}${andGap}{spouse_full_name}${closer}`;
+      const after = `{#has_spouse}${andGap}{spouse_full_name}${closer}`;
+      items.push({
+        kind: "repair",
+        code: "SETTLOR_SPOUSE_POLARITY_FIXED",
+        message:
+          "Corrected inverted settlor spouse polarity: {^has_spouse} → {#has_spouse} around spouse_full_name",
+        before,
+        after,
+        part: partName,
+        details: { fromPrefix: "^", toPrefix: "#", tag: "has_spouse" },
+      });
+      return after;
+    },
+  );
+  return { xml: next, items };
+}
+
+/**
+ * Rename aliased tags across document + header/footer parts of a .docx buffer,
+ * then correct known inverted settlor spouse polarity.
  */
 export function normalizeTagsInDocx(buffer: Buffer): { buffer: Buffer; items: NormalizeReportItem[] } {
   const zip = new PizZip(buffer);
@@ -221,11 +261,12 @@ export function normalizeTagsInDocx(buffer: Buffer): { buffer: Buffer; items: No
     if (!XML_PART_RE.test(relativePath)) continue;
 
     const xml = file.asText();
-    const result = renameTagsInXml(xml, relativePath);
-    if (result.xml !== xml) {
-      zip.file(relativePath, result.xml);
+    const renamed = renameTagsInXml(xml, relativePath);
+    const polarity = fixSettlorSpousePolarityInXml(renamed.xml, relativePath);
+    if (polarity.xml !== xml) {
+      zip.file(relativePath, polarity.xml);
     }
-    items.push(...result.items);
+    items.push(...renamed.items, ...polarity.items);
   }
 
   items.push({

@@ -1,6 +1,6 @@
 /**
  * Template normalization: repair split/orphan braces → sample/blank detect →
- * alias rename → docxtemplater validate.
+ * alias rename + settlor spouse polarity → docxtemplater validate.
  */
 
 export type {
@@ -32,6 +32,7 @@ export {
   splitTag,
   resolveAlias,
   renameTagsInXml,
+  fixSettlorSpousePolarityInXml,
   normalizeTagsInDocx,
   buildFixtureVariables,
 } from "./normalize-tags";

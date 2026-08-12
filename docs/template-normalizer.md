@@ -16,7 +16,7 @@ This is **not** legal drafting. The engine never invents clauses. It only repair
 input.docx
   → repair-runs          (merge split `{tags}`; orphan `}` removal; heal safe tag shape)
   → detect-sample-values (underscore blanks / filled venue samples → tags when high-confidence)
-  → normalize-tags       (rename common aliases → mapper keys)
+  → normalize-tags       (rename common aliases → mapper keys; fix inverted settlor `{^has_spouse}`)
   → validate             (docxtemplater compile + fixture render, paragraphLoop: true)
   → output.normalized.docx + report JSON
 ```
@@ -161,17 +161,19 @@ Uses Node’s built-in test runner + `tsx` (same as `machine.test.ts`):
 
 ```bash
 cd apps/web && pnpm test:unit:normalize
+cd apps/web && pnpm test:unit:fidelity-smoke
 ```
 
 Includes synthetic split-run / bold-split fixtures, notary orphan zero-length-run fixtures, sample/blank detection, and integration tests against the real corpus paths.
+
+**Phase 7 fidelity smoke** (`template-fidelity-smoke.test.ts`): loads a real Trust Family `.docx` from `.local-document-storage` (skips with a clear message if absent), runs `normalizeTemplateBuffer` → `mapIntakeToDocVariables` → docxtemplater render (same options as `generator.ts`), then asserts the filled text/XML contains the spouse name inside the `{#has_spouse}` settlor region, the second successor name, at least two Educational Trust age strings (fixture uses 21/25/30), and marriage date or city when those tags exist after normalize.
 
 ---
 
 ## Remaining limitations
 
 - Cross-paragraph loop open/close still warns per-paragraph (`UNMATCHED_LOOP_OPEN`) even when valid under `paragraphLoop: true`
-- Some promoted age / deemed-survivor keys are empty-safe in the mapper until structured intake collects them
-- Educational Trust bare `[age]` blanks stay suggestions (three different ages; one tag would force equality)
+- Optional soft-blank keys stay empty-safe strings in the mapper when intake omits them
 - `[do/do not]` and free-text distribution descriptions stay suggestions (would invent conditionals / legal text)
 - Filled personal names buried in prose (without labels) are not auto-detected
 - Does not rewrite citizenship OPTION wrappers or invent conditional legal language

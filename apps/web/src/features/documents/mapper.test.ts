@@ -103,16 +103,16 @@ test("married CA rich intake → Trust Family soft-blank tags from intake", () =
   assert.equal(v.marriage_city_state, "San Francisco, California");
   assert.equal(v.marriage_date, "September 1, 2000");
   assert.equal(v.deemed_survivor_full_name, "Diego Vargas");
-  assert.equal(v.second_successor_trustee_full_name, "Marco Vargas");
+  assert.equal(v.second_successor_trustee_full_name, "Carmen Vargas");
 
-  assert.equal(v.young_person_retention_age, "21");
-  assert.equal(v.first_distribution_age, "25");
-  assert.equal(v.second_distribution_age, "30");
-  assert.equal(v.third_distribution_age, "35");
-  assert.equal(v.outright_distribution_age, "30");
-  assert.equal(v.educational_trust_eligibility_age, "22");
+  assert.equal(v.young_person_retention_age, "18");
+  assert.equal(v.first_distribution_age, "23");
+  assert.equal(v.second_distribution_age, "28");
+  assert.equal(v.third_distribution_age, "33");
+  assert.equal(v.outright_distribution_age, "40");
+  assert.equal(v.educational_trust_eligibility_age, "21");
   assert.equal(v.educational_trust_remainder_age, "25");
-  assert.equal(v.educational_trust_termination_age, "26");
+  assert.equal(v.educational_trust_termination_age, "30");
 });
 
 test("missing optional Trust Family fields stay empty-safe strings", () => {

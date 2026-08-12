@@ -146,13 +146,13 @@ test("intake → fill (synthetic): married CA rich answers populate party names,
   assert.ok(text.includes("- Sofia Vargas @ 50%"));
   assert.ok(text.includes("- Leo Vargas @ 50%"));
   assert.match(text, /Successor Trustee: Isabella Vargas/);
-  assert.match(text, /Second Successor: Marco Vargas/);
+  assert.match(text, /Second Successor: Carmen Vargas/);
   assert.match(text, /Executor: Elena Vargas/);
   assert.match(text, /Healthcare Agent: Marco Vargas/);
   assert.match(text, /Marriage: San Francisco, California on September 1, 2000/);
   assert.match(text, /Deemed Survivor: Diego Vargas/);
-  assert.match(text, /First Distribution Age: 25/);
-  assert.match(text, /Educational Eligibility Age: 22/);
+  assert.match(text, /First Distribution Age: 23/);
+  assert.match(text, /Educational Eligibility Age: 21/);
   assert.ok(text.includes("[Community property assets present]"));
 
   assertNoUnresolvedMapperTags(text, [
@@ -280,6 +280,11 @@ for (const entry of TRUST_FAMILY) {
 
     // Core settlor / trust / residency / trustee substitutions
     assert.ok(text.includes("Elena Vargas"), "client_full_name must appear in filled Trust Family doc");
+    assert.match(
+      text,
+      /Elena Vargas\s+and\s+Diego Vargas/,
+      "settlor clause must include spouse_full_name for married intake ({#has_spouse} polarity)",
+    );
     assert.ok(
       text.includes("Vargas Revocable Living Trust"),
       "trust_name must appear in filled Trust Family doc",
@@ -290,7 +295,7 @@ for (const entry of TRUST_FAMILY) {
       "successor_trustee_full_name must appear",
     );
     assert.ok(
-      text.includes("Marco Vargas"),
+      text.includes("Carmen Vargas"),
       "second_successor_trustee_full_name must appear",
     );
     assert.ok(
@@ -298,8 +303,8 @@ for (const entry of TRUST_FAMILY) {
       "marriage_date must appear after normalize→fill",
     );
     assert.ok(
-      text.includes("25"),
-      "first_distribution_age (and related ages) must appear after normalize→fill",
+      text.includes("21") && text.includes("25"),
+      "educational trust ages must appear after normalize→fill",
     );
 
     // Children + residuary loops (tags present on normalized Trust Family docs)
@@ -308,6 +313,7 @@ for (const entry of TRUST_FAMILY) {
 
     assertNoUnresolvedMapperTags(text, [
       "client_full_name",
+      "spouse_full_name",
       "trust_name",
       "county_of_residence",
       "successor_trustee_full_name",
@@ -320,12 +326,11 @@ for (const entry of TRUST_FAMILY) {
   });
 }
 
-test("intake → fill (Trust Family mprg7y50): single intake leaves spouse inverted-block edge documented", (t) => {
+test("intake → fill (Trust Family mprg7y50): settlor spouse polarity — married includes spouse, single omits and-clause", (t) => {
   /**
-   * Gap note: normalized Trust Family uses `{^has_spouse} and {spouse_full_name}{/has_spouse}`
-   * (inverted polarity). Married fills therefore omit the spouse name in that clause;
-   * single fills insert " and " with an empty spouse name. This test locks current behavior
-   * so a future polarity fix is intentional, not accidental.
+   * Regression: Trust Family settlor clause previously wrapped spouse_full_name in
+   * inverted `{^has_spouse}`. After the polarity repair in normalize-tags, married
+   * fills show both names; single fills omit the `and {spouse}` segment.
    */
   const abs = path.join(WEB_ROOT, TRUST_FAMILY[0].rel);
   if (!existsSync(abs)) {
@@ -341,11 +346,11 @@ test("intake → fill (Trust Family mprg7y50): single intake leaves spouse inver
       mapIntakeToDocVariables(marriedCaRichIntake, "revocable_trust"),
     ),
   );
-  // Current (incorrect polarity): spouse name does NOT appear next to settlor for married
   assert.ok(marriedText.includes("Elena Vargas"));
-  assert.ok(
-    !/Elena Vargas\s+and\s+Diego Vargas/.test(marriedText),
-    "known gap: inverted ^has_spouse prevents married spouse substitution in settlor clause",
+  assert.match(
+    marriedText,
+    /Elena Vargas\s+and\s+Diego Vargas/,
+    "married settlor clause must substitute spouse_full_name after polarity fix",
   );
 
   const singleText = plainTextFromDocx(
@@ -355,6 +360,10 @@ test("intake → fill (Trust Family mprg7y50): single intake leaves spouse inver
     ),
   );
   assert.ok(singleText.includes("Alex Nguyen"));
-  // Inverted block renders for single → "and" appears with empty spouse
-  assert.match(singleText, /Alex Nguyen\s+and\s+,/);
+  // Positive {#has_spouse} omits the and-spouse segment for single intakes
+  assert.ok(
+    !/Alex Nguyen\s+and\s*,/.test(singleText),
+    "single settlor clause must not render empty and-spouse segment",
+  );
+  assert.match(singleText, /Alex Nguyen\s*,\s*sometimes hereafter called/);
 });
