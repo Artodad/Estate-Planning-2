@@ -1,0 +1,480 @@
+{
+  "ok": false,
+  "items": [
+    {
+      "kind": "repair",
+      "code": "SPLIT_RUN_MERGED",
+      "message": "Merged placeholder split across 3 runs into one contiguous tag: {county_of_residence}",
+      "before": "{county_of_residence}",
+      "after": "{county_of_residence}",
+      "details": {
+        "spannedRuns": 3,
+        "inheritedRPrFrom": "first_fragment_run",
+        "droppedMidTagFormatting": false
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SPLIT_RUN_MERGED",
+      "message": "Merged placeholder split across 4 runs into one contiguous tag: {/has_spouse}",
+      "before": "{/has_spouse}",
+      "after": "{/has_spouse}",
+      "details": {
+        "spannedRuns": 4,
+        "inheritedRPrFrom": "first_fragment_run",
+        "droppedMidTagFormatting": false
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SPLIT_RUN_MERGED",
+      "message": "Merged placeholder split across 4 runs into one contiguous tag: {spouse_full_name}",
+      "before": "{spouse_full_name}",
+      "after": "{spouse_full_name}",
+      "details": {
+        "spannedRuns": 4,
+        "inheritedRPrFrom": "first_fragment_run",
+        "droppedMidTagFormatting": false
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SPLIT_RUN_MERGED",
+      "message": "Merged placeholder split across 3 runs into one contiguous tag: {^has_spouse}",
+      "before": "{^has_spouse}",
+      "after": "{^has_spouse}",
+      "details": {
+        "spannedRuns": 3,
+        "inheritedRPrFrom": "first_fragment_run",
+        "droppedMidTagFormatting": false
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "warning",
+      "code": "SPLIT_RUN_COMPLEX",
+      "message": "Placeholder {client_full_name} spans 3 runs that include non-text content; attempted conservative coalesce using first-run formatting",
+      "before": "{client_full_name}",
+      "after": "{client_full_name}",
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SPLIT_RUN_MERGED",
+      "message": "Merged placeholder split across 3 runs into one contiguous tag: {client_full_name}",
+      "before": "{client_full_name}",
+      "after": "{client_full_name}",
+      "details": {
+        "spannedRuns": 3,
+        "inheritedRPrFrom": "first_fragment_run",
+        "droppedMidTagFormatting": false
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SPLIT_RUN_MERGED",
+      "message": "Merged placeholder split across 3 runs into one contiguous tag: {successor_trustee_full_name}",
+      "before": "{successor_trustee_full_name}",
+      "after": "{successor_trustee_full_name}",
+      "details": {
+        "spannedRuns": 3,
+        "inheritedRPrFrom": "first_fragment_run",
+        "droppedMidTagFormatting": false
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "warning",
+      "code": "UNMATCHED_LOOP_OPEN",
+      "message": "Loop opener {#children} has no matching {/children} or {/} in this paragraph; left unchanged",
+      "before": "{#children}",
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "warning",
+      "code": "SPLIT_RUN_COMPLEX",
+      "message": "Placeholder {full_name} spans 4 runs that include non-text content; attempted conservative coalesce using first-run formatting",
+      "before": "{full_name}",
+      "after": "{full_name}",
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SPLIT_RUN_MERGED",
+      "message": "Merged placeholder split across 4 runs into one contiguous tag: {full_name}",
+      "before": "{full_name}",
+      "after": "{full_name}",
+      "details": {
+        "spannedRuns": 4,
+        "inheritedRPrFrom": "first_fragment_run",
+        "droppedMidTagFormatting": false
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SPLIT_RUN_MERGED",
+      "message": "Merged placeholder split across 4 runs into one contiguous tag: {client_full_name}",
+      "before": "{client_full_name}",
+      "after": "{client_full_name}",
+      "details": {
+        "spannedRuns": 4,
+        "inheritedRPrFrom": "first_fragment_run",
+        "droppedMidTagFormatting": false
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "warning",
+      "code": "UNMATCHED_LOOP_OPEN",
+      "message": "Loop opener {#distribution_residuary} has no matching {/distribution_residuary} or {/} in this paragraph; left unchanged",
+      "before": "{#distribution_residuary}",
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SPLIT_RUN_MERGED",
+      "message": "Merged placeholder split across 3 runs into one contiguous tag: {contingent_on}",
+      "before": "{contingent_on}",
+      "after": "{contingent_on}",
+      "details": {
+        "spannedRuns": 3,
+        "inheritedRPrFrom": "first_fragment_run",
+        "droppedMidTagFormatting": false
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "warning",
+      "code": "SPLIT_RUN_COMPLEX",
+      "message": "Placeholder {share_percent} spans 3 runs that include non-text content; attempted conservative coalesce using first-run formatting",
+      "before": "{share_percent}",
+      "after": "{share_percent}",
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SPLIT_RUN_MERGED",
+      "message": "Merged placeholder split across 3 runs into one contiguous tag: {share_percent}",
+      "before": "{share_percent}",
+      "after": "{share_percent}",
+      "details": {
+        "spannedRuns": 3,
+        "inheritedRPrFrom": "first_fragment_run",
+        "droppedMidTagFormatting": false
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "warning",
+      "code": "SPLIT_RUN_COMPLEX",
+      "message": "Placeholder {/distribution_residuary} spans 3 runs that include non-text content; attempted conservative coalesce using first-run formatting",
+      "before": "{/distribution_residuary}",
+      "after": "{/distribution_residuary}",
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SPLIT_RUN_MERGED",
+      "message": "Merged placeholder split across 3 runs into one contiguous tag: {/distribution_residuary}",
+      "before": "{/distribution_residuary}",
+      "after": "{/distribution_residuary}",
+      "details": {
+        "spannedRuns": 3,
+        "inheritedRPrFrom": "first_fragment_run",
+        "droppedMidTagFormatting": false
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "detection",
+      "code": "REPAIR_PASS_COMPLETE",
+      "message": "Split-run repair applied 11 repair(s)"
+    },
+    {
+      "kind": "detection",
+      "code": "ALIAS_PASS_COMPLETE",
+      "message": "Alias rename applied 0 rename(s)"
+    },
+    {
+      "kind": "detection",
+      "code": "VALIDATION_COMPLETE",
+      "message": "Validation dry-run failed (3 syntax error(s))",
+      "details": {
+        "missingTags": [],
+        "syntaxErrors": [
+          "The tag beginning with \"}1. _ _[Description of distrib\" is unopened (tag: California)",
+          "The tag ending with \"rnia}}\" has duplicate close tags (tag: rnia}})",
+          "The tag beginning with \"}County of San Diego\" is unopened (tag: Diego)"
+        ]
+      }
+    },
+    {
+      "kind": "error",
+      "code": "VALIDATION_SYNTAX",
+      "message": "The tag beginning with \"}1. _ _[Description of distrib\" is unopened (tag: California)"
+    },
+    {
+      "kind": "error",
+      "code": "VALIDATION_SYNTAX",
+      "message": "The tag ending with \"rnia}}\" has duplicate close tags (tag: rnia}})"
+    },
+    {
+      "kind": "error",
+      "code": "VALIDATION_SYNTAX",
+      "message": "The tag beginning with \"}County of San Diego\" is unopened (tag: Diego)"
+    }
+  ],
+  "repairs": [
+    {
+      "kind": "repair",
+      "code": "SPLIT_RUN_MERGED",
+      "message": "Merged placeholder split across 3 runs into one contiguous tag: {county_of_residence}",
+      "before": "{county_of_residence}",
+      "after": "{county_of_residence}",
+      "details": {
+        "spannedRuns": 3,
+        "inheritedRPrFrom": "first_fragment_run",
+        "droppedMidTagFormatting": false
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SPLIT_RUN_MERGED",
+      "message": "Merged placeholder split across 4 runs into one contiguous tag: {/has_spouse}",
+      "before": "{/has_spouse}",
+      "after": "{/has_spouse}",
+      "details": {
+        "spannedRuns": 4,
+        "inheritedRPrFrom": "first_fragment_run",
+        "droppedMidTagFormatting": false
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SPLIT_RUN_MERGED",
+      "message": "Merged placeholder split across 4 runs into one contiguous tag: {spouse_full_name}",
+      "before": "{spouse_full_name}",
+      "after": "{spouse_full_name}",
+      "details": {
+        "spannedRuns": 4,
+        "inheritedRPrFrom": "first_fragment_run",
+        "droppedMidTagFormatting": false
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SPLIT_RUN_MERGED",
+      "message": "Merged placeholder split across 3 runs into one contiguous tag: {^has_spouse}",
+      "before": "{^has_spouse}",
+      "after": "{^has_spouse}",
+      "details": {
+        "spannedRuns": 3,
+        "inheritedRPrFrom": "first_fragment_run",
+        "droppedMidTagFormatting": false
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SPLIT_RUN_MERGED",
+      "message": "Merged placeholder split across 3 runs into one contiguous tag: {client_full_name}",
+      "before": "{client_full_name}",
+      "after": "{client_full_name}",
+      "details": {
+        "spannedRuns": 3,
+        "inheritedRPrFrom": "first_fragment_run",
+        "droppedMidTagFormatting": false
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SPLIT_RUN_MERGED",
+      "message": "Merged placeholder split across 3 runs into one contiguous tag: {successor_trustee_full_name}",
+      "before": "{successor_trustee_full_name}",
+      "after": "{successor_trustee_full_name}",
+      "details": {
+        "spannedRuns": 3,
+        "inheritedRPrFrom": "first_fragment_run",
+        "droppedMidTagFormatting": false
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SPLIT_RUN_MERGED",
+      "message": "Merged placeholder split across 4 runs into one contiguous tag: {full_name}",
+      "before": "{full_name}",
+      "after": "{full_name}",
+      "details": {
+        "spannedRuns": 4,
+        "inheritedRPrFrom": "first_fragment_run",
+        "droppedMidTagFormatting": false
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SPLIT_RUN_MERGED",
+      "message": "Merged placeholder split across 4 runs into one contiguous tag: {client_full_name}",
+      "before": "{client_full_name}",
+      "after": "{client_full_name}",
+      "details": {
+        "spannedRuns": 4,
+        "inheritedRPrFrom": "first_fragment_run",
+        "droppedMidTagFormatting": false
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SPLIT_RUN_MERGED",
+      "message": "Merged placeholder split across 3 runs into one contiguous tag: {contingent_on}",
+      "before": "{contingent_on}",
+      "after": "{contingent_on}",
+      "details": {
+        "spannedRuns": 3,
+        "inheritedRPrFrom": "first_fragment_run",
+        "droppedMidTagFormatting": false
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SPLIT_RUN_MERGED",
+      "message": "Merged placeholder split across 3 runs into one contiguous tag: {share_percent}",
+      "before": "{share_percent}",
+      "after": "{share_percent}",
+      "details": {
+        "spannedRuns": 3,
+        "inheritedRPrFrom": "first_fragment_run",
+        "droppedMidTagFormatting": false
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SPLIT_RUN_MERGED",
+      "message": "Merged placeholder split across 3 runs into one contiguous tag: {/distribution_residuary}",
+      "before": "{/distribution_residuary}",
+      "after": "{/distribution_residuary}",
+      "details": {
+        "spannedRuns": 3,
+        "inheritedRPrFrom": "first_fragment_run",
+        "droppedMidTagFormatting": false
+      },
+      "part": "word/document.xml"
+    }
+  ],
+  "renames": [],
+  "detections": [
+    {
+      "kind": "detection",
+      "code": "REPAIR_PASS_COMPLETE",
+      "message": "Split-run repair applied 11 repair(s)"
+    },
+    {
+      "kind": "detection",
+      "code": "ALIAS_PASS_COMPLETE",
+      "message": "Alias rename applied 0 rename(s)"
+    },
+    {
+      "kind": "detection",
+      "code": "VALIDATION_COMPLETE",
+      "message": "Validation dry-run failed (3 syntax error(s))",
+      "details": {
+        "missingTags": [],
+        "syntaxErrors": [
+          "The tag beginning with \"}1. _ _[Description of distrib\" is unopened (tag: California)",
+          "The tag ending with \"rnia}}\" has duplicate close tags (tag: rnia}})",
+          "The tag beginning with \"}County of San Diego\" is unopened (tag: Diego)"
+        ]
+      }
+    }
+  ],
+  "warnings": [
+    {
+      "kind": "warning",
+      "code": "SPLIT_RUN_COMPLEX",
+      "message": "Placeholder {client_full_name} spans 3 runs that include non-text content; attempted conservative coalesce using first-run formatting",
+      "before": "{client_full_name}",
+      "after": "{client_full_name}",
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "warning",
+      "code": "UNMATCHED_LOOP_OPEN",
+      "message": "Loop opener {#children} has no matching {/children} or {/} in this paragraph; left unchanged",
+      "before": "{#children}",
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "warning",
+      "code": "SPLIT_RUN_COMPLEX",
+      "message": "Placeholder {full_name} spans 4 runs that include non-text content; attempted conservative coalesce using first-run formatting",
+      "before": "{full_name}",
+      "after": "{full_name}",
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "warning",
+      "code": "UNMATCHED_LOOP_OPEN",
+      "message": "Loop opener {#distribution_residuary} has no matching {/distribution_residuary} or {/} in this paragraph; left unchanged",
+      "before": "{#distribution_residuary}",
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "warning",
+      "code": "SPLIT_RUN_COMPLEX",
+      "message": "Placeholder {share_percent} spans 3 runs that include non-text content; attempted conservative coalesce using first-run formatting",
+      "before": "{share_percent}",
+      "after": "{share_percent}",
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "warning",
+      "code": "SPLIT_RUN_COMPLEX",
+      "message": "Placeholder {/distribution_residuary} spans 3 runs that include non-text content; attempted conservative coalesce using first-run formatting",
+      "before": "{/distribution_residuary}",
+      "after": "{/distribution_residuary}",
+      "part": "word/document.xml"
+    }
+  ],
+  "errors": [
+    {
+      "kind": "error",
+      "code": "VALIDATION_SYNTAX",
+      "message": "The tag beginning with \"}1. _ _[Description of distrib\" is unopened (tag: California)"
+    },
+    {
+      "kind": "error",
+      "code": "VALIDATION_SYNTAX",
+      "message": "The tag ending with \"rnia}}\" has duplicate close tags (tag: rnia}})"
+    },
+    {
+      "kind": "error",
+      "code": "VALIDATION_SYNTAX",
+      "message": "The tag beginning with \"}County of San Diego\" is unopened (tag: Diego)"
+    }
+  ],
+  "validation": {
+    "ok": false,
+    "missingTags": [],
+    "syntaxErrors": [
+      "The tag beginning with \"}1. _ _[Description of distrib\" is unopened (tag: California)",
+      "The tag ending with \"rnia}}\" has duplicate close tags (tag: rnia}})",
+      "The tag beginning with \"}County of San Diego\" is unopened (tag: Diego)"
+    ],
+    "messages": [
+      "Failed to load/compile template into docxtemplater"
+    ]
+  }
+}

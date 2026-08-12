@@ -1,8 +1,9 @@
 /**
  * Types for the template normalization pipeline.
  *
- * Foundation slice: repair split Word runs, rename tags to the mapper contract,
- * and dry-run validate with docxtemplater. Does not rewrite legal language.
+ * Pipeline: repair split Word runs / orphan braces → sample/blank detect →
+ * rename tags to the mapper contract → dry-run validate with docxtemplater.
+ * Does not rewrite legal language.
  */
 
 /** How to supply the source .docx */
@@ -57,6 +58,11 @@ export interface NormalizeTemplateOptions {
   renderFixture?: boolean;
   /** Optional override fixture variables for validation render */
   fixtureVariables?: Record<string, unknown>;
+  /**
+   * When false, skip sample-value / underscore-blank detection (default: true).
+   * High-confidence hits become tags; low-confidence hits are report suggestions.
+   */
+  detectSamples?: boolean;
 }
 
 export interface NormalizeTemplateResult {

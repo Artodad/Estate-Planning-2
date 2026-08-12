@@ -1,29 +1,32 @@
-# Template Normalizer (Foundation)
+# Template Normalizer
 
 **Goal**: Take a badly formatted attorney `.docx` and produce a better **docxtemplater** template that preserves original formatting and legal language while aligning placeholders to the mapper contract.
 
-This is **not** legal drafting. The engine never invents clauses. It only repairs placeholder structure and renames tags.
+This is **not** legal drafting. The engine never invents clauses. It only repairs placeholder structure, renames tags, and (conservatively) turns high-confidence blanks/samples into mapper tags.
 
 **Mapper contract (source of truth)**: `apps/web/src/features/documents/mapper.ts` (`mapIntakeToDocVariables`)  
-**Manual prep guide**: `docs/template-preparation-guide.md`
+**Manual prep guide**: `docs/template-preparation-guide.md`  
+**Real-corpus reports**: `docs/template-normalizer-reports/`
 
 ---
 
-## Pipeline (this slice)
+## Pipeline
 
 ```
 input.docx
-  → repair-runs     (merge `{tags}` split across Word <w:t> runs; heal safe tag shape)
-  → normalize-tags  (rename common aliases → mapper keys)
-  → validate        (docxtemplater compile + fixture render, paragraphLoop: true)
+  → repair-runs          (merge split `{tags}`; orphan `}` removal; heal safe tag shape)
+  → detect-sample-values (underscore blanks / filled venue samples → tags when high-confidence)
+  → normalize-tags       (rename common aliases → mapper keys)
+  → validate             (docxtemplater compile + fixture render, paragraphLoop: true)
   → output.normalized.docx + report JSON
 ```
 
 | Step | Module | What it does |
 |------|--------|----------------|
-| 1 | `template-normalize/repair-runs.ts` | Opens the zip with PizZip; for `word/document.xml` and headers/footers, merges placeholders split across `<w:r>`/`<w:t>` runs (including mid-tag bold/italic); trims spaces inside tags; collapses `{{tag}}` → `{tag}` when the inner text looks like a tag |
-| 2 | `template-normalize/normalize-tags.ts` | Applies an alias table (`client_name` → `client_full_name`, `{#child}` → `{#children}`, etc.) and records every rename |
-| 3 | `template-normalize/validate-template.ts` | Loads the buffer with Docxtemplater (same options as `generator.ts`) and dry-runs compile/render with empty-safe fixture variables |
+| 1 | `template-normalize/repair-runs.ts` | Opens the zip with PizZip; for `word/document.xml` and headers/footers, merges placeholders split across `<w:r>`/`<w:t>` runs (including mid-tag bold/italic and leading tabs); removes orphan `}` not part of any `{...}` pair; trims spaces inside tags; collapses `{{tag}}` → `{tag}` when safe |
+| 2 | `template-normalize/detect-sample-values.ts` | High-confidence underscore blanks (`_[Name of Trust]_` → `{trust_name}`) and notary venue samples (`County of San Diego` → `County of {county_of_residence}`); low-confidence blanks reported as suggestions only |
+| 3 | `template-normalize/normalize-tags.ts` | Alias table (`client_name` → `client_full_name`, `{#child}` → `{#children}`, etc.) |
+| 4 | `template-normalize/validate-template.ts` | Docxtemplater dry-run with the same options as `generator.ts` |
 
 Orchestrator: `normalizeTemplate()` / `normalizeTemplateBuffer()` in `template-normalize/normalize-template.ts`.
 
@@ -31,8 +34,11 @@ Orchestrator: `normalizeTemplate()` / `normalizeTemplateBuffer()` in `template-n
 
 ## What is automated today
 
-- Split-run healing for likely `{placeholder}` tags — including fragments split by mid-tag bold/italic/underline or spellcheck across consecutive `<w:r>` runs
+- Split-run healing for likely `{placeholder}` tags — including fragments split by mid-tag bold/italic/underline, spellcheck, or leading `<w:tab/>` chrome
+- Orphan closing-brace removal (real Trust Family notary pattern: `State of California` + tab runs + `}`)
 - Safe tag-shape fixes (inner whitespace, double braces)
+- High-confidence sample/blank → mapper tag replacements (reported)
+- Low-confidence blank suggestions (reported, not rewritten)
 - Alias renames toward the mapper contract (reported)
 - Conservative warnings for ambiguous braces in legal prose (left unchanged)
 - Validation errors for broken syntax (unclosed loops, etc.)
@@ -42,18 +48,25 @@ Orchestrator: `normalizeTemplate()` / `normalizeTemplateBuffer()` in `template-n
 When `{client_full_name}` is broken across runs with different formatting (e.g. `{cli` + bold `ent` + `_full_name}`):
 
 1. Detect the placeholder across consecutive runs (formatting differences ignored for detection).
-2. Replace the fragment span with a **single** `<w:r>` whose text is the intact `{tag}`.
-3. **Inherit `w:rPr` from the first fragment run.** Mid-tag bold/italic/underline on later fragment runs is dropped so the tag is one readable style in Word.
-4. Any text **after** the closing `}` that lived in the last fragment run is kept in a separate run using that **last** run’s `w:rPr` (suffix is outside the placeholder).
+2. Replace the fragment span with a **single** `<w:r>` whose text is the intact `{tag}` (prefix/suffix prose may share that run).
+3. **Inherit `w:rPr` from the first fragment run.** Mid-tag bold/italic/underline on later fragment runs is dropped.
+4. Preserve leading chrome (`<w:tab/>`, breaks) from the first fragment run.
+5. Any text **after** the closing `}` that lived in the last fragment run is kept in a separate run using that **last** run’s `w:rPr`.
 
-This prefers human-readable, docxtemplater-safe tags over preserving accidental mid-tag character formatting.
+### Orphan `}` + zero-length runs
 
-## What is **not** automated yet (next slice)
+Word often inserts empty tab-only `<w:r>` runs between prose and a stray `}`. Character offsets must skip those zero-length runs when locating the closer — otherwise repair edits the wrong run and corrupts XML. Covered by unit tests derived from the real notary venue block.
 
-- **Sample-value detection**: finding filled client names / addresses in a “finished” Word draft and turning them into tags
-- Dashboard upload UI for normalize jobs
-- Changing mapper variable names
-- Changing generation fidelity behavior
+## High-confidence sample/blank mappings (v1)
+
+| Pattern | Tag | Notes |
+|---------|-----|-------|
+| `_[Name of Trust]_` | `{trust_name}` | Title line |
+| `_[Name]_` immediately before `TRUST` / `Family Trust` | `{trust_name}` | Short name blank |
+| `_[Name of settlor]_` | `{client_full_name}` | Citizenship / settlor blanks |
+| Whole paragraph `County of <Name>` | `{county_of_residence}` | Notary venue sample only |
+
+Low-confidence (suggestion only): second successor trustee, marriage city/date, deemed survivor, distribution descriptions, age ladders, do/do not choice language.
 
 ---
 
@@ -62,14 +75,14 @@ This prefers human-readable, docxtemplater-safe tags over preserving accidental 
 From the repo root (pnpm workspace):
 
 ```bash
-# Normalize a template
+# Normalize one template
 pnpm --filter web normalize-template -- ./path/to/attorney-template.docx
 
-# Or directly
-cd apps/web && pnpm exec tsx scripts/normalize-template.ts ./path/to/attorney-template.docx
+# Batch the real Trust Family corpus + write reports
+pnpm --filter web normalize-trust-corpus
 ```
 
-Outputs (next to the input by default):
+Outputs (single-file CLI, next to the input by default):
 
 - `attorney-template.normalized.docx`
 - `attorney-template.normalize-report.json`
@@ -86,14 +99,33 @@ const { buffer, report } = await normalizeTemplate({ kind: "path", path: "templa
 
 ---
 
+## Real Trust Family corpus results
+
+SHA-deduped sources under `apps/web/.local-document-storage/templates/`:
+
+| File | Distinct | Classification | Result |
+|------|----------|----------------|--------|
+| `Trust-_Family-changed-mprg7y50.docx` | yes (`77206515…`) | Partially tagged template + underscore blanks + notary orphan `}` | **pass** compile+render |
+| `Trust-_Family-changed-mprg6n30.docx` | duplicate of mprg7y50 | same | **pass** |
+| `Trust-_Family-changed-mprnxupt.docx` | yes (`3a01b7b2…`) | same failure mode as mprg7y50 | **pass** |
+| `Trust-_Family-changed-mprpud8a.docx` | yes (`92d4cca2…`) | Partially tagged (no notary orphans) | **pass** (already at foundation baseline) |
+| `verify/revocable_trust_test_v1.docx` | yes | Synthetic verify | **pass** |
+
+Baseline (foundation only) had mprg7y50 / mprnxupt **failing** on notary orphan braces. After orphan-closer repair + sample detection, all distinct Trust Family docs pass. Per-file JSON: `docs/template-normalizer-reports/`.
+
+These docs are **not** fully filled client samples — they are attorney templates mid-conversion (mapper-shaped tags already present, plus `_ [label] _` blanks and a few filled venue strings).
+
+---
+
 ## Report shape
 
 The JSON report includes:
 
 - `ok` — false if validation syntax errors (or input read failure)
-- `repairs` — split-run merges, whitespace / double-brace fixes
+- `repairs` — split-run merges, orphan closer removals, whitespace / double-brace fixes, sample tags
 - `renames` — each alias rewrite (`before` / `after`)
-- `warnings` — ambiguous braces, unmatched loop openers in a paragraph, missing fixture tags
+- `detections` — pass completions, low-confidence sample suggestions
+- `warnings` — ambiguous braces, unmatched loop openers **in a single paragraph** (often benign with `paragraphLoop: true`), missing fixture tags
 - `errors` — actionable validation / load failures
 - `validation` — `{ ok, missingTags, syntaxErrors, messages }`
 
@@ -104,16 +136,26 @@ The JSON report includes:
 Uses Node’s built-in test runner + `tsx` (same as `machine.test.ts`):
 
 ```bash
-cd apps/web && npx tsx --test src/features/documents/template-normalize/*.test.ts
+cd apps/web && pnpm test:unit:normalize
 ```
+
+Includes synthetic split-run / bold-split fixtures, notary orphan zero-length-run fixtures, sample/blank detection, and integration tests against the real corpus paths.
+
+---
+
+## Remaining limitations
+
+- Cross-paragraph loop open/close still warns per-paragraph (`UNMATCHED_LOOP_OPEN`) even when valid under `paragraphLoop: true`
+- Many underscore blanks have **no mapper key** yet (second successor, marriage details, age ladders) — reported as suggestions only
+- Filled personal names buried in prose (without labels) are not auto-detected
+- Does not rewrite `<OPTION>` attorney drafting notes or invent conditional legal language
+- Dashboard upload UI for normalize jobs is out of scope
 
 ---
 
 ## Fidelity notes
 
 - Stay on the **PizZip + raw Word XML** path (no alternate docx libraries)
-- Only `<w:t>` text nodes are rewritten for placeholder healing; run properties, paragraphs, tables, headers/footers structure remain
+- Only `<w:t>` text (and whole orphan-`}` runs) are rewritten for placeholder healing; paragraph/table/header structure remains
 - If a brace pair does not look like a docxtemplater tag, it is left alone and warned
 - Generated documents remain DRAFT-for-attorney-review via the existing generator watermark path — normalization does not remove that requirement
-
-Last updated: aligned with the foundation slice in `apps/web/src/features/documents/template-normalize/`.

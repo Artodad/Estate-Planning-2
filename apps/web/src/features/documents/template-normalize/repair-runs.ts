@@ -90,15 +90,58 @@ function extractRunText(runXml: string): string {
   return text;
 }
 
+/** Non-text run chrome we preserve when coalescing (tabs/breaks), not drop. */
+const PRESERVABLE_CHROME_RE =
+  /<w:tab\s*\/>|<w:br\b[^>]*\/>|<w:cr\s*\/>|<w:lastRenderedPageBreak\s*\/>/g;
+
 function isSimpleTextRun(runXml: string): boolean {
   const stripped = runXml
     .replace(/<w:r\b[^>]*>/, "")
     .replace(/<\/w:r>/, "")
     .replace(RPR_RE, "")
     .replace(/<w:t(\s[^>]*)?>[\s\S]*?<\/w:t>/g, "")
-    .replace(/<w:lastRenderedPageBreak\s*\/>/g, "")
+    .replace(PRESERVABLE_CHROME_RE, "")
     .trim();
   return stripped === "";
+}
+
+/**
+ * Split a run into leading chrome (before first w:t), text, and trailing chrome
+ * (after last w:t). Used so mid-tag coalesce keeps leading tabs on the first run.
+ */
+export function splitRunChrome(runXml: string): {
+  open: string;
+  rPr: string;
+  before: string;
+  after: string;
+  close: string;
+} {
+  const openMatch = runXml.match(/^<w:r\b[^>]*>/);
+  const open = openMatch ? openMatch[0] : "<w:r>";
+  const close = "</w:r>";
+  const inner = runXml.slice(open.length, runXml.endsWith(close) ? -close.length : undefined);
+  const rPrMatch = inner.match(RPR_RE);
+  const rPr = rPrMatch ? rPrMatch[0] : "";
+  const afterRPr = rPr ? inner.slice(rPr.length) : inner;
+  const firstT = afterRPr.search(/<w:t\b/);
+  if (firstT === -1) {
+    return { open, rPr, before: afterRPr, after: "", close };
+  }
+  const lastTClose = afterRPr.lastIndexOf("</w:t>");
+  const before = afterRPr.slice(0, firstT);
+  const after = lastTClose === -1 ? "" : afterRPr.slice(lastTClose + "</w:t>".length);
+  return { open, rPr, before, after, close };
+}
+
+/** Build a text run preserving optional leading/trailing chrome (e.g. w:tab). */
+export function buildTextRunWithChrome(
+  text: string,
+  rPr: string = "",
+  beforeChrome: string = "",
+  afterChrome: string = "",
+): string {
+  const space = text === "" || /^\s|\s$/.test(text) ? ` xml:space="preserve"` : "";
+  return `<w:r>${rPr}${beforeChrome}<w:t${space}>${escapeXmlText(text)}</w:t>${afterChrome}</w:r>`;
 }
 
 function findRuns(paragraphXml: string): RunInfo[] {
@@ -197,24 +240,45 @@ function findTagSpans(concat: string): { tags: TagSpan[]; warnings: NormalizeRep
   return { tags, warnings };
 }
 
-/** Map a concatenated offset to run index + offset within that run's text */
+/**
+ * Map a concatenated offset to run index + offset within that run's text.
+ * Skips zero-length runs (tab-only runs common in Trust Family notary blocks)
+ * so character offsets never resolve onto empty runs.
+ */
 function locate(
   runs: RunInfo[],
   concatOffset: number,
 ): { runIndex: number; offsetInRun: number } {
   let cursor = 0;
+  let lastNonEmpty = -1;
   for (let s = 0; s < runs.length; s += 1) {
     const len = runs[s].text.length;
+    if (len === 0) continue;
+    lastNonEmpty = s;
     if (concatOffset < cursor + len) {
       return { runIndex: s, offsetInRun: concatOffset - cursor };
     }
-    if (concatOffset === cursor + len && s < runs.length - 1) {
-      return { runIndex: s + 1, offsetInRun: 0 };
-    }
     cursor += len;
+  }
+  if (lastNonEmpty >= 0) {
+    return {
+      runIndex: lastNonEmpty,
+      offsetInRun: runs[lastNonEmpty].text.length,
+    };
   }
   const last = Math.max(0, runs.length - 1);
   return { runIndex: last, offsetInRun: runs[last]?.text.length ?? 0 };
+}
+
+/** Back up from an exclusive end at offset 0, skipping empty runs. */
+function backupEndRun(runs: RunInfo[], i0: number, i1: number, endOffset: number): {
+  i1: number;
+  endOffset: number;
+} {
+  if (endOffset !== 0 || i1 <= i0) return { i1, endOffset };
+  let idx = i1 - 1;
+  while (idx > i0 && runs[idx].text.length === 0) idx -= 1;
+  return { i1: idx, endOffset: runs[idx].text.length };
 }
 
 function escapeXmlText(text: string): string {
@@ -267,7 +331,14 @@ export function repairParagraphXml(paragraphXml: string): XmlPartRepairResult {
   items.push(...warnings);
 
   if (tags.length === 0) {
-    return { xml: paragraphXml, items };
+    // Still strip orphan closers (notary venue paragraphs often have no tags).
+    const orphanOnly = removeOrphanClosers(paragraphXml);
+    items.push(...orphanOnly.items);
+    const healedConcat = findRuns(orphanOnly.xml)
+      .map((r) => r.text)
+      .join("");
+    items.push(...detectUnmatchedLoops(healedConcat));
+    return { xml: orphanOnly.xml, items };
   }
 
   // Right-to-left so earlier offsets stay valid until we rewrite the paragraph.
@@ -310,11 +381,7 @@ export function repairParagraphXml(paragraphXml: string): XmlPartRepairResult {
     let i0 = startLoc.runIndex;
     let i1 = endLoc.runIndex;
     let endOffset = endLoc.offsetInRun;
-
-    if (endOffset === 0 && i1 > i0) {
-      i1 -= 1;
-      endOffset = runs[i1].text.length;
-    }
+    ({ i1, endOffset } = backupEndRun(runs, i0, i1, endOffset));
 
     const spannedRuns = i1 - i0 + 1;
     const prefix = runs[i0].text.slice(0, startLoc.offsetInRun);
@@ -322,10 +389,11 @@ export function repairParagraphXml(paragraphXml: string): XmlPartRepairResult {
     const originalSlice = currentConcat.slice(start, end);
 
     if (spannedRuns === 1) {
-      // In-place text heal inside one run (keep that run's rPr as-is)
+      // In-place text heal inside one run (keep that run's rPr + chrome as-is)
       const run = runs[i0];
+      const chrome = splitRunChrome(run.xml);
       const newText = prefix + replacement + suffix;
-      const newRun = buildTextRun(newText, run.rPr);
+      const newRun = buildTextRunWithChrome(newText, run.rPr, chrome.before, chrome.after);
       result = result.slice(0, run.fullStart) + newRun + result.slice(run.fullEnd);
     } else {
       // Multi-run fragment (possibly mixed bold/italic): coalesce into one tag run.
@@ -346,10 +414,18 @@ export function repairParagraphXml(paragraphXml: string): XmlPartRepairResult {
       // Inherit first fragment run's rPr for the whole tag (documented strategy).
       const tagRPr = runs[i0].rPr;
       const suffixRPr = runs[i1].rPr;
+      const firstChrome = splitRunChrome(runs[i0].xml);
+      const lastChrome = splitRunChrome(runs[i1].xml);
 
-      let replacementXml = buildTextRun(prefix + replacement, tagRPr);
+      // Keep leading tabs/breaks from the first fragment run (common in Trust Family docs).
+      let replacementXml = buildTextRunWithChrome(
+        prefix + replacement,
+        tagRPr,
+        firstChrome.before,
+        suffix ? "" : lastChrome.after,
+      );
       if (suffix) {
-        replacementXml += buildTextRun(suffix, suffixRPr);
+        replacementXml += buildTextRunWithChrome(suffix, suffixRPr, "", lastChrome.after);
       }
 
       const spanStart = runs[i0].fullStart;
@@ -369,6 +445,7 @@ export function repairParagraphXml(paragraphXml: string): XmlPartRepairResult {
           spannedRuns,
           inheritedRPrFrom: "first_fragment_run",
           droppedMidTagFormatting: conflicting,
+          preservedLeadingChrome: Boolean(firstChrome.before),
         },
       });
       continue;
@@ -389,9 +466,136 @@ export function repairParagraphXml(paragraphXml: string): XmlPartRepairResult {
     }
   }
 
+  // Remove stray `}` that are not part of any likely placeholder (real Trust Family
+  // notary venue pattern: "State of California}" / lone "}" / "County of San Diego}").
+  const orphanResult = removeOrphanClosers(result);
+  result = orphanResult.xml;
+  items.push(...orphanResult.items);
+
   const finalRuns = findRuns(result);
   const healedConcat = finalRuns.map((r) => r.text).join("");
   items.push(...detectUnmatchedLoops(healedConcat));
+
+  return { xml: result, items };
+}
+
+/**
+ * Delete `}` characters that are not closers of a likely placeholder tag.
+ * Leaves `{...}` placeholders and ambiguous `{prose}` pairs untouched.
+ */
+export function removeOrphanClosers(paragraphXml: string): XmlPartRepairResult {
+  const items: NormalizeReportItem[] = [];
+  let result = paragraphXml;
+  let runs = findRuns(result);
+  if (runs.length === 0) return { xml: result, items };
+
+  const concat = runs.map((r) => r.text).join("");
+  const { tags } = findTagSpans(concat);
+  const covered = new Array(concat.length).fill(false);
+  for (const tag of tags) {
+    for (let i = tag.start; i < tag.end; i += 1) covered[i] = true;
+  }
+
+  // Also cover ambiguous `{...}` pairs so we don't strip their closers.
+  let scan = 0;
+  while (scan < concat.length) {
+    if (concat[scan] !== "{") {
+      scan += 1;
+      continue;
+    }
+    if (concat[scan + 1] === "{") {
+      const close = concat.indexOf("}}", scan + 2);
+      if (close === -1) break;
+      for (let i = scan; i < close + 2; i += 1) covered[i] = true;
+      scan = close + 2;
+      continue;
+    }
+    const close = concat.indexOf("}", scan + 1);
+    if (close === -1) break;
+    for (let i = scan; i <= close; i += 1) covered[i] = true;
+    scan = close + 1;
+  }
+
+  const orphanOffsets: number[] = [];
+  for (let i = 0; i < concat.length; i += 1) {
+    if (concat[i] === "}" && !covered[i]) orphanOffsets.push(i);
+  }
+  if (orphanOffsets.length === 0) return { xml: result, items };
+
+  // Remove right-to-left so offsets stay valid within the current concat/run map.
+  for (const offset of orphanOffsets.sort((a, b) => b - a)) {
+    runs = findRuns(result);
+    const currentConcat = runs.map((r) => r.text).join("");
+    // Re-locate this orphan by scanning uncovered } from the end when concat shifted.
+    // After prior deletions, use the character at the same relative remaining orphans.
+    if (offset >= currentConcat.length || currentConcat[offset] !== "}") {
+      // Fallback: remove the rightmost uncovered } in current text
+      const { tags: again } = findTagSpans(currentConcat);
+      const cov = new Array(currentConcat.length).fill(false);
+      for (const tag of again) {
+        for (let i = tag.start; i < tag.end; i += 1) cov[i] = true;
+      }
+      let amb = 0;
+      while (amb < currentConcat.length) {
+        if (currentConcat[amb] !== "{") {
+          amb += 1;
+          continue;
+        }
+        const close = currentConcat.indexOf("}", amb + 1);
+        if (close === -1) break;
+        for (let i = amb; i <= close; i += 1) cov[i] = true;
+        amb = close + 1;
+      }
+      let found = -1;
+      for (let i = currentConcat.length - 1; i >= 0; i -= 1) {
+        if (currentConcat[i] === "}" && !cov[i]) {
+          found = i;
+          break;
+        }
+      }
+      if (found === -1) continue;
+      const loc = locate(runs, found);
+      const run = runs[loc.runIndex];
+      const chrome = splitRunChrome(run.xml);
+      const newText =
+        run.text.slice(0, loc.offsetInRun) + run.text.slice(loc.offsetInRun + 1);
+      const ctxBefore = currentConcat.slice(Math.max(0, found - 24), found);
+      const newRun = buildTextRunWithChrome(newText, run.rPr, chrome.before, chrome.after);
+      result = result.slice(0, run.fullStart) + newRun + result.slice(run.fullEnd);
+      items.push({
+        kind: "repair",
+        code: "ORPHAN_CLOSER_REMOVED",
+        message: `Removed orphan '}' after ${JSON.stringify(ctxBefore)}`,
+        before: `${ctxBefore}}`,
+        after: ctxBefore,
+      });
+      continue;
+    }
+
+    const loc = locate(runs, offset);
+    const run = runs[loc.runIndex];
+    if (run.text[loc.offsetInRun] !== "}") {
+      continue;
+    }
+    const chrome = splitRunChrome(run.xml);
+    const newText =
+      run.text.slice(0, loc.offsetInRun) + run.text.slice(loc.offsetInRun + 1);
+    const ctxBefore = currentConcat.slice(Math.max(0, offset - 24), offset);
+    // Drop the whole run when it only existed to hold the orphan closer
+    // (keeps leading tab-only sibling runs intact).
+    const replacementXml =
+      newText === "" && !chrome.before && !chrome.after
+        ? ""
+        : buildTextRunWithChrome(newText, run.rPr, chrome.before, chrome.after);
+    result = result.slice(0, run.fullStart) + replacementXml + result.slice(run.fullEnd);
+    items.push({
+      kind: "repair",
+      code: "ORPHAN_CLOSER_REMOVED",
+      message: `Removed orphan '}' after ${JSON.stringify(ctxBefore)}`,
+      before: `${ctxBefore}}`,
+      after: ctxBefore,
+    });
+  }
 
   return { xml: result, items };
 }
