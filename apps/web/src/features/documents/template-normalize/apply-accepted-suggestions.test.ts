@@ -1,7 +1,17 @@
 /**
- * Unit tests for apply-accepted-suggestions (soft suggestion human-gate).
+ * Unit tests for applyAcceptedSuggestions (soft suggestion human-gate).
+ *
+ * Orchestrator item 4 — applyAcceptedSuggestions() unit coverage:
+ * - softSuggestionsFromReportItems shape (proposed after / applicable)
+ * - apply only accepted ids; leave others intact
+ * - empty accepted ids is a no-op
+ * - prepareTemplateUpload default does not apply; accepted ids apply + counts
+ * - high-confidence trust_name still auto-tags without accept
+ *
+ * Broader upload gate / persist coverage: ../soft-suggestion-accept-reject.test.ts
  *
  * Run: cd apps/web && pnpm test:unit:normalize
+ *      pnpm test:unit:upload-normalize  (includes this file)
  */
 
 import { strict as assert } from "node:assert";
