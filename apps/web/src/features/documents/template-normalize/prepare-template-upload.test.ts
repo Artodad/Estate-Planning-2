@@ -78,3 +78,26 @@ test("prepareTemplateUpload summary is client-safe (no buffer fields)", () => {
   assert.ok(typeof result.summary.repairCount === "number");
   assert.ok(Array.isArray(result.summary.highlights));
 });
+
+test("prepareTemplateUpload summary counts match report arrays (repairs/renames/warnings)", () => {
+  const result = prepareTemplateUpload(createSplitRunFixtureDocx());
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+
+  assert.equal(result.summary.repairCount, result.report.repairs.length);
+  assert.equal(result.summary.renameCount, result.report.renames.length);
+  assert.equal(result.summary.warningCount, result.report.warnings.length);
+  assert.equal(result.summary.errorCount, result.report.errors.length);
+  assert.equal(result.summary.detectionCount, result.report.detections.length);
+  assert.ok(result.summary.validation);
+  assert.equal(result.summary.validation!.ok, result.report.validation!.ok);
+});
+
+test("prepareTemplateUpload keeps originalBuffer byte-identical to input", () => {
+  const input = createSplitRunFixtureDocx();
+  const result = prepareTemplateUpload(input);
+  assert.ok(Buffer.isBuffer(result.originalBuffer));
+  assert.equal(result.originalBuffer.length, input.length);
+  assert.ok(result.originalBuffer.equals(input));
+  assert.notEqual(result.normalizedBuffer.equals(input), true);
+});

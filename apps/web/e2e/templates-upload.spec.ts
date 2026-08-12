@@ -66,6 +66,79 @@ function createMinimalValidDocxForTest(): Buffer {
   return Buffer.from(zip.generate({ type: 'nodebuffer' }));
 }
 
+/** Messy fixture: split-run tags + alias `{#child}` so normalize-on-upload report shows repairs/renames. */
+function createMessyDocxForNormalizeReport(): Buffer {
+  const zip = new PizZip();
+  zip.file('[Content_Types].xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+  <Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
+</Types>`);
+  zip.file('_rels/.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`);
+  zip.file('word/_rels/document.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`);
+  zip.file('word/styles.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:style w:type="paragraph" w:styleId="Normal" w:default="1"><w:name w:val="Normal"/></w:style>
+</w:styles>`);
+  zip.file('word/document.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    <w:p>
+      <w:r><w:t>Client: </w:t></w:r>
+      <w:r><w:t>{client_</w:t></w:r>
+      <w:r><w:t>full_</w:t></w:r>
+      <w:r><w:t>name}</w:t></w:r>
+    </w:p>
+    <w:p><w:r><w:t>{#child}</w:t></w:r></w:p>
+    <w:p><w:r><w:t>{full_name}</w:t></w:r></w:p>
+    <w:p><w:r><w:t>{/child}</w:t></w:r></w:p>
+    <w:sectPr/>
+  </w:body>
+</w:document>`);
+  return Buffer.from(zip.generate({ type: 'nodebuffer' }));
+}
+
+/** Broken unclosed loop — upload must reject after normalize validation. */
+function createBrokenDocxForReject(): Buffer {
+  const zip = new PizZip();
+  zip.file('[Content_Types].xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+  <Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
+</Types>`);
+  zip.file('_rels/.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`);
+  zip.file('word/_rels/document.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`);
+  zip.file('word/styles.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:style w:type="paragraph" w:styleId="Normal" w:default="1"><w:name w:val="Normal"/></w:style>
+</w:styles>`);
+  zip.file('word/document.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    <w:p><w:r><w:t>Broken: {#children}</w:t></w:r></w:p>
+    <w:p><w:r><w:t>Name {client_full_name}</w:t></w:r></w:p>
+    <w:sectPr/>
+  </w:body>
+</w:document>`);
+  return Buffer.from(zip.generate({ type: 'nodebuffer' }));
+}
+
 /**
  * ============================================================================
  * TEMPLATE UPLOAD E2E (Major Feature — per AGENTS.md requirement)
@@ -150,5 +223,64 @@ test.describe('Templates upload (owner only)', () => {
 
     // Clean note for manual review: the uploaded file now lives in .local-document-storage/templates/<slug>/...
     // (normalized primary + *.original.docx side file) and can be used for real generation.
+  });
+
+  test('messy .docx upload surfaces repair/rename normalize report', async ({ page }) => {
+    await page.goto('/dashboard/templates');
+
+    const insufficient = page.getByText(/Templates management is restricted to firm owners/i);
+    if (await insufficient.isVisible().catch(() => false)) {
+      test.skip(true, 'E2E test user is not an owner of an onboarded firm in this environment.');
+      return;
+    }
+
+    await expect(page.getByRole('heading', { name: /Upload New Template/i })).toBeVisible();
+
+    const docxBuffer = createMessyDocxForNormalizeReport();
+    await page.locator('input[type="file"][name="file"]').setInputFiles({
+      name: `e2e-messy-${Date.now()}.docx`,
+      mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      buffer: docxBuffer,
+    });
+    await page.selectOption('select[name="documentType"]', 'revocable_trust');
+    await page.fill('input[name="name"]', `E2E Messy Normalize ${Date.now()}`);
+    await page.getByRole('button', { name: /Upload Template/i }).click();
+
+    await expect(
+      page.getByText(/Template uploaded and normalized|Template registered|normalized/i).first()
+    ).toBeVisible({ timeout: 15000 });
+
+    // TemplateUploadNormalizeSummary panel: "N repair(s), M rename(s)"
+    await expect(page.getByText(/\d+\s+repairs?/i).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/\d+\s+renames?/i).first()).toBeVisible({ timeout: 10000 });
+  });
+
+  test('broken .docx upload is rejected with validation error (nothing registered)', async ({ page }) => {
+    await page.goto('/dashboard/templates');
+
+    const insufficient = page.getByText(/Templates management is restricted to firm owners/i);
+    if (await insufficient.isVisible().catch(() => false)) {
+      test.skip(true, 'E2E test user is not an owner of an onboarded firm in this environment.');
+      return;
+    }
+
+    await expect(page.getByRole('heading', { name: /Upload New Template/i })).toBeVisible();
+
+    const brokenName = `E2E Broken Reject ${Date.now()}`;
+    await page.locator('input[type="file"][name="file"]').setInputFiles({
+      name: `e2e-broken-${Date.now()}.docx`,
+      mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      buffer: createBrokenDocxForReject(),
+    });
+    await page.selectOption('select[name="documentType"]', 'revocable_trust');
+    await page.fill('input[name="name"]', brokenName);
+    await page.getByRole('button', { name: /Upload Template/i }).click();
+
+    await expect(
+      page.getByText(/failed validation after normalization|not saved|Unclosed loop/i).first()
+    ).toBeVisible({ timeout: 15000 });
+
+    // Must not appear as a registered template row
+    await expect(page.getByText(brokenName)).toHaveCount(0);
   });
 });
