@@ -12,6 +12,7 @@ import test from "node:test";
 
 import { mapIntakeToDocVariables, mapToPourOverWill, mapToRevocableTrust } from "./mapper";
 import {
+  marriedAlternateSuccessorIntake,
   marriedCaRichIntake,
   missingClientNameIntake,
   partneredAdultChildrenNonCaIntake,
@@ -243,4 +244,173 @@ test("healthcareAgentId cross-ref resolves when role shortcut absent", () => {
   );
 
   assert.equal(v.healthcare_agent_full_name, "Casey Grove");
+});
+
+// ---------------------------------------------------------------------------
+// Complementary edges for Phase 7 fidelity smoke (PR #12)
+// Happy-path filled Trust Family smoke lives in template-fidelity-smoke.test.ts —
+// do not re-assert spouse/Carmen/21-25-30/marriage/ladder-23 here.
+// ---------------------------------------------------------------------------
+
+test("complementary: marriage_city_state / marriage_date trim; omitted when married stays empty", () => {
+  const trimmed = mapIntakeToDocVariables(
+    {
+      personal: {
+        client: { firstName: "Pat", lastName: "Lee" },
+        maritalStatus: "married",
+        spouseOrPartner: { firstName: "Sam", lastName: "Lee" },
+        marriageCityState: "  Los Angeles, California  ",
+        marriageDate: "  May 1, 2010  ",
+        isCAResident: true,
+      },
+    },
+    "revocable_trust",
+  );
+  assert.equal(trimmed.marriage_city_state, "Los Angeles, California");
+  assert.equal(trimmed.marriage_date, "May 1, 2010");
+
+  const marriedNoVenue = mapIntakeToDocVariables(
+    {
+      personal: {
+        client: { firstName: "Pat", lastName: "Lee" },
+        maritalStatus: "married",
+        spouseOrPartner: { firstName: "Sam", lastName: "Lee" },
+        isCAResident: true,
+      },
+    },
+    "revocable_trust",
+  );
+  assert.equal(marriedNoVenue.has_spouse, true);
+  assert.equal(marriedNoVenue.spouse_full_name, "Sam Lee");
+  assert.equal(marriedNoVenue.marriage_city_state, "");
+  assert.equal(marriedNoVenue.marriage_date, "");
+});
+
+test("complementary: deemed_survivor omitted / whitespace-only stays empty (never spouse/client guess)", () => {
+  const omitted = mapIntakeToDocVariables(
+    {
+      personal: {
+        client: { firstName: "Pat", lastName: "Lee" },
+        maritalStatus: "married",
+        spouseOrPartner: { firstName: "Sam", lastName: "Lee" },
+        isCAResident: true,
+      },
+    },
+    "revocable_trust",
+  );
+  assert.equal(omitted.spouse_full_name, "Sam Lee");
+  assert.equal(omitted.deemed_survivor_full_name, "");
+  assert.notEqual(omitted.deemed_survivor_full_name, omitted.spouse_full_name);
+  assert.notEqual(omitted.deemed_survivor_full_name, omitted.client_full_name);
+
+  const whitespaceOnly = mapIntakeToDocVariables(
+    {
+      personal: {
+        client: { firstName: "Pat", lastName: "Lee" },
+        maritalStatus: "married",
+        spouseOrPartner: { firstName: "Sam", lastName: "Lee" },
+        deemedSurvivorFullName: "   ",
+        isCAResident: true,
+      },
+    },
+    "revocable_trust",
+  );
+  assert.equal(whitespaceOnly.deemed_survivor_full_name, "");
+});
+
+test("complementary: second_successor via linked alternate; unrelated alternate ignored", () => {
+  const viaAlt = mapIntakeToDocVariables(marriedAlternateSuccessorIntake, "revocable_trust");
+  assert.equal(viaAlt.successor_trustee_full_name, "Isabella Vargas");
+  assert.equal(viaAlt.second_successor_trustee_full_name, "Nora Chen");
+
+  const unrelatedAlt = mapIntakeToDocVariables(
+    {
+      personal: {
+        client: { firstName: "A", lastName: "B" },
+        maritalStatus: "single",
+        isCAResident: true,
+      },
+      decisionMakers: [
+        {
+          id: "dm-exec",
+          role: "executor",
+          person: { firstName: "Exec", lastName: "One" },
+        },
+        {
+          id: "dm-succ",
+          role: "successor_trustee",
+          person: { firstName: "Succ", lastName: "One" },
+        },
+        {
+          id: "dm-alt-exec",
+          role: "alternate",
+          alternateFor: "dm-exec",
+          person: { firstName: "Alt", lastName: "Exec" },
+        },
+      ],
+    },
+    "revocable_trust",
+  );
+  assert.equal(unrelatedAlt.successor_trustee_full_name, "Succ One");
+  assert.equal(unrelatedAlt.second_successor_trustee_full_name, "");
+});
+
+test("complementary: whitespace-only intake ages trim to empty; padded ages trim", () => {
+  const whitespaceAges = mapIntakeToDocVariables(
+    {
+      personal: {
+        client: { firstName: "A", lastName: "B" },
+        maritalStatus: "single",
+        isCAResident: true,
+      },
+      distribution: {
+        youngPersonRetentionAge: "   ",
+        firstDistributionAge: "  \t  ",
+        secondDistributionAge: " ",
+        thirdDistributionAge: "\n",
+        outrightDistributionAge: "  ",
+        educationalTrustEligibilityAge: "   ",
+        educationalTrustRemainderAge: "\t",
+        educationalTrustTerminationAge: "  ",
+      },
+    },
+    "revocable_trust",
+  );
+  assert.equal(whitespaceAges.young_person_retention_age, "");
+  assert.equal(whitespaceAges.first_distribution_age, "");
+  assert.equal(whitespaceAges.second_distribution_age, "");
+  assert.equal(whitespaceAges.third_distribution_age, "");
+  assert.equal(whitespaceAges.outright_distribution_age, "");
+  assert.equal(whitespaceAges.educational_trust_eligibility_age, "");
+  assert.equal(whitespaceAges.educational_trust_remainder_age, "");
+  assert.equal(whitespaceAges.educational_trust_termination_age, "");
+
+  const trimmed = mapIntakeToDocVariables(
+    {
+      personal: {
+        client: { firstName: "A", lastName: "B" },
+        maritalStatus: "single",
+        isCAResident: true,
+      },
+      distribution: {
+        youngPersonRetentionAge: "  19  ",
+        firstDistributionAge: "  24  ",
+        secondDistributionAge: "  29  ",
+        thirdDistributionAge: "  34  ",
+        outrightDistributionAge: "  40  ",
+        educationalTrustEligibilityAge: "  20  ",
+        educationalTrustRemainderAge: "  24  ",
+        educationalTrustTerminationAge: "  30  ",
+      },
+    },
+    "revocable_trust",
+  );
+  assert.equal(trimmed.young_person_retention_age, "19");
+  assert.equal(trimmed.first_distribution_age, "24");
+  assert.equal(trimmed.second_distribution_age, "29");
+  assert.equal(trimmed.third_distribution_age, "34");
+  assert.equal(trimmed.outright_distribution_age, "40");
+  assert.equal(trimmed.educational_trust_eligibility_age, "20");
+  assert.equal(trimmed.educational_trust_remainder_age, "24");
+  assert.equal(trimmed.educational_trust_termination_age, "30");
 });
