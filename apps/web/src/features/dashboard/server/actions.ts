@@ -820,9 +820,11 @@ export async function getPackageTemplatesForCurrentFirm(): Promise<
  *
  * - Strict owner RBAC via checkOwnerOrStaff.
  * - Firm-scoped fileKey via computeTemplateFileKey (namespaced by slug when available).
- * - Runs template normalizer (repair / alias / sample / validate) before persist.
+ * - Runs template normalizer (repair / alias / sample / validate) before persist
+ *   unless FormData `skipNormalize` is set (checkbox: template already prepared).
  * - Persists **normalized** bytes as the primary Template.fileKey (what generation uses).
- * - Also stores the original bytes as a side file (`*.original.docx`) for audit.
+ * - Also stores the original bytes as a side file (`*.original.docx`) for audit
+ *   when normalize ran (skipped when `skipNormalize` — primary already is raw).
  * - Rejects upload when post-normalize validation has syntax/compile errors (safer
  *   than the prior accept-any-.docx behavior). Warnings do not block upload.
  * - Creates the Template record via existing helper.
@@ -841,7 +843,8 @@ export async function uploadTemplateForCurrentFirm(
       success: true;
       template: any;
       normalizeReport: TemplateUploadNormalizeSummary;
-      originalFileKey: string;
+      /** Present when normalize ran and a `*.original.docx` side file was written. */
+      originalFileKey?: string;
     }
   | {
       error: string;
@@ -891,6 +894,12 @@ export async function uploadTemplateForCurrentFirm(
     const name = (formData.get("name") as string | null)?.trim() || "";
     const description = (formData.get("description") as string | null)?.trim() || undefined;
     const documentType = (formData.get("documentType") as string | null) as DocumentType | null;
+    // Checkbox: present when checked ("on" / "true" / "1"); default OFF → normalize.
+    const skipNormalizeRaw = formData.get("skipNormalize");
+    const skipNormalize =
+      skipNormalizeRaw === "on" ||
+      skipNormalizeRaw === "true" ||
+      skipNormalizeRaw === "1";
 
     if (!name) {
       return { error: "Template name is required." };
@@ -899,8 +908,8 @@ export async function uploadTemplateForCurrentFirm(
       return { error: "A valid document type is required (one of the 8 estate plan documents)." };
     }
 
-    // --- Normalize before persist (normalized bytes are generation primary) ---
-    const prepared = prepareTemplateUpload(buffer);
+    // --- Normalize before persist (unless attorney opted out) ---
+    const prepared = prepareTemplateUpload(buffer, { skipNormalize });
     if (!prepared.ok) {
       return {
         error: prepared.error,
@@ -915,12 +924,16 @@ export async function uploadTemplateForCurrentFirm(
       originalName: file.name,
       firmSlug,
     });
-    const originalFileKey = computeOriginalTemplateFileKey(fileKey);
 
-    // Primary: normalized (what getFileBuffer / generation reads via Template.fileKey)
+    // Primary: normalized (or raw when skipNormalize) — what generation reads via Template.fileKey
     await uploadTemplate(prepared.normalizedBuffer, fileKey);
-    // Side file: original attorney bytes for audit / re-normalize (not in Prisma schema)
-    await uploadTemplate(prepared.originalBuffer, originalFileKey);
+
+    // Side file only when we actually normalized (primary would otherwise duplicate raw).
+    let originalFileKey: string | undefined;
+    if (!skipNormalize) {
+      originalFileKey = computeOriginalTemplateFileKey(fileKey);
+      await uploadTemplate(prepared.originalBuffer, originalFileKey);
+    }
 
     const created = await templateHelpers.createForFirm(firmId, {
       name,
@@ -940,7 +953,8 @@ export async function uploadTemplateForCurrentFirm(
         name,
         size: prepared.normalizedBuffer.length,
         originalSize: prepared.originalBuffer.length,
-        normalized: true,
+        normalized: !skipNormalize,
+        skipNormalize,
         repairCount: prepared.summary.repairCount,
         renameCount: prepared.summary.renameCount,
         warningCount: prepared.summary.warningCount,
@@ -954,7 +968,7 @@ export async function uploadTemplateForCurrentFirm(
       success: true,
       template: created,
       normalizeReport: prepared.summary,
-      originalFileKey,
+      ...(originalFileKey ? { originalFileKey } : {}),
     };
   } catch (err: any) {
     console.error("[dashboard/actions] uploadTemplateForCurrentFirm failed:", err);

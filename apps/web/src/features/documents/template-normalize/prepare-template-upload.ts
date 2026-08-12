@@ -9,12 +9,26 @@
  * - Warnings (missing fixture tags, low-confidence suggestions) do not block upload.
  * - Previously the upload path accepted any .docx without compile checks; rejecting
  *   broken templates after normalize prevents silent generation failures.
+ *
+ * Opt-out (`skipNormalize: true`):
+ * - Persist uploaded bytes as-is (no repair/alias/validate pipeline).
+ * - No normalize report highlights; summary.skipped === true.
+ * - Caller should not write a `*.original.docx` side file (primary already is raw).
  */
 
 import { normalizeTemplateBuffer } from "./normalize-template";
 import type { NormalizeReport, TemplateUploadNormalizeSummary } from "./types";
 
 export type { TemplateUploadNormalizeSummary };
+
+export type PrepareTemplateUploadOptions = {
+  /**
+   * When true, skip auto-normalize and treat the uploaded bytes as the primary
+   * template (for attorneys who already prepared the .docx offline).
+   * Default: false (normalize on upload).
+   */
+  skipNormalize?: boolean;
+};
 
 export type PrepareTemplateUploadResult =
   | {
@@ -35,7 +49,22 @@ export type PrepareTemplateUploadResult =
 
 const HIGHLIGHT_CAP = 12;
 
-function toSummary(report: NormalizeReport): TemplateUploadNormalizeSummary {
+function emptySkippedReport(): NormalizeReport {
+  return {
+    ok: true,
+    items: [],
+    repairs: [],
+    renames: [],
+    detections: [],
+    warnings: [],
+    errors: [],
+  };
+}
+
+function toSummary(
+  report: NormalizeReport,
+  opts?: { skipped?: boolean },
+): TemplateUploadNormalizeSummary {
   const highlightSource = [
     ...report.errors,
     ...report.repairs,
@@ -54,6 +83,7 @@ function toSummary(report: NormalizeReport): TemplateUploadNormalizeSummary {
 
   return {
     ok: report.ok,
+    skipped: opts?.skipped === true ? true : undefined,
     repairCount: report.repairs.length,
     renameCount: report.renames.length,
     detectionCount: report.detections.length,
@@ -92,8 +122,23 @@ function buildFailureMessage(report: NormalizeReport): string {
 
 /**
  * Normalize an uploaded template buffer and gate persistence on validation.
+ * Pass `{ skipNormalize: true }` to store bytes as uploaded (no pipeline).
  */
-export function prepareTemplateUpload(buffer: Buffer): PrepareTemplateUploadResult {
+export function prepareTemplateUpload(
+  buffer: Buffer,
+  options?: PrepareTemplateUploadOptions,
+): PrepareTemplateUploadResult {
+  if (options?.skipNormalize) {
+    const report = emptySkippedReport();
+    return {
+      ok: true,
+      normalizedBuffer: buffer,
+      originalBuffer: buffer,
+      report,
+      summary: toSummary(report, { skipped: true }),
+    };
+  }
+
   const { buffer: normalizedBuffer, report } = normalizeTemplateBuffer(buffer);
   const summary = toSummary(report);
 

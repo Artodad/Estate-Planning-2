@@ -51,5 +51,9 @@ export type { ValidateTemplateOptions } from "./validate-template";
 
 export { normalizeTemplate, normalizeTemplateBuffer } from "./normalize-template";
 
-export { prepareTemplateUpload } from "./prepare-template-upload";
+export {
+  prepareTemplateUpload,
+  type PrepareTemplateUploadOptions,
+  type PrepareTemplateUploadResult,
+} from "./prepare-template-upload";
 export type { PrepareTemplateUploadResult } from "./prepare-template-upload";
