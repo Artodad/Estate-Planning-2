@@ -5,6 +5,8 @@
  * (not normalizer internals). Covers:
  *   1) Synthetic template with correct mapper-contract tags (happy + edge)
  *   2) Real Trust Family corpus after normalize → fill with mapper output
+ *   3) PR #10 intake-backed soft-blank tags — complementary present/empty fill asserts
+ *      (lean; Dev owns upcoming Trust Family normalize→generate fidelity smoke)
  *
  * Run: cd apps/web && npx tsx --test src/features/documents/intake-to-fill.test.ts
  */
@@ -26,9 +28,26 @@ import {
   paragraphWithRuns,
 } from "./template-normalize/docx-fixture";
 import {
+  marriedAlternateSuccessorIntake,
   marriedCaRichIntake,
   singleNoChildrenIntake,
 } from "./__fixtures__/intake-answers";
+
+/** PR #10 intake-backed soft-blank / Educational Trust tags. */
+const INTAKE_BACKED_SOFT_BLANK_TAGS = [
+  "marriage_city_state",
+  "marriage_date",
+  "second_successor_trustee_full_name",
+  "deemed_survivor_full_name",
+  "young_person_retention_age",
+  "first_distribution_age",
+  "second_distribution_age",
+  "third_distribution_age",
+  "outright_distribution_age",
+  "educational_trust_eligibility_age",
+  "educational_trust_remainder_age",
+  "educational_trust_termination_age",
+] as const;
 
 const WEB_ROOT = existsSync(path.join(process.cwd(), ".local-document-storage"))
   ? process.cwd()
@@ -62,8 +81,14 @@ function createIntakeFillTemplateDocx(): Buffer {
     paragraphWithRuns(["Healthcare Agent: {healthcare_agent_full_name}"]),
     paragraphWithRuns(["Marriage: {marriage_city_state} on {marriage_date}"]),
     paragraphWithRuns(["Deemed Survivor: {deemed_survivor_full_name}"]),
+    paragraphWithRuns(["Young Person Age: {young_person_retention_age}"]),
     paragraphWithRuns(["First Distribution Age: {first_distribution_age}"]),
+    paragraphWithRuns(["Second Distribution Age: {second_distribution_age}"]),
+    paragraphWithRuns(["Third Distribution Age: {third_distribution_age}"]),
+    paragraphWithRuns(["Outright Age: {outright_distribution_age}"]),
     paragraphWithRuns(["Educational Eligibility Age: {educational_trust_eligibility_age}"]),
+    paragraphWithRuns(["Educational Remainder Age: {educational_trust_remainder_age}"]),
+    paragraphWithRuns(["Educational Termination Age: {educational_trust_termination_age}"]),
     // Correct polarity (show spouse block when has_spouse is true)
     paragraphWithRuns(["{#has_spouse}"]),
     paragraphWithRuns(["Spouse: {spouse_full_name}"]),
@@ -151,8 +176,14 @@ test("intake → fill (synthetic): married CA rich answers populate party names,
   assert.match(text, /Healthcare Agent: Marco Vargas/);
   assert.match(text, /Marriage: San Francisco, California on September 1, 2000/);
   assert.match(text, /Deemed Survivor: Diego Vargas/);
+  assert.match(text, /Young Person Age: 21/);
   assert.match(text, /First Distribution Age: 25/);
+  assert.match(text, /Second Distribution Age: 30/);
+  assert.match(text, /Third Distribution Age: 35/);
+  assert.match(text, /Outright Age: 30/);
   assert.match(text, /Educational Eligibility Age: 22/);
+  assert.match(text, /Educational Remainder Age: 25/);
+  assert.match(text, /Educational Termination Age: 26/);
   assert.ok(text.includes("[Community property assets present]"));
 
   assertNoUnresolvedMapperTags(text, [
@@ -161,13 +192,9 @@ test("intake → fill (synthetic): married CA rich answers populate party names,
     "county_of_residence",
     "spouse_full_name",
     "successor_trustee_full_name",
-    "second_successor_trustee_full_name",
     "executor_full_name",
     "healthcare_agent_full_name",
-    "marriage_city_state",
-    "marriage_date",
-    "first_distribution_age",
-    "educational_trust_eligibility_age",
+    ...INTAKE_BACKED_SOFT_BLANK_TAGS,
   ]);
 });
 
@@ -187,10 +214,27 @@ test("intake → fill (synthetic): single / no children omits spouse + minors an
   assert.ok(!text.includes("[Community property assets present]"));
   assert.ok(!text.includes("Sofia"), "prior fixture child names must not leak");
   assert.match(text, /Successor Trustee: Jordan Nguyen/);
-  assert.match(text, /Executor: Jordan Nguyen/);
+    assert.match(text, /Executor: Jordan Nguyen/);
   // Healthcare role absent → empty substitution, tag gone
   assert.match(text, /Healthcare Agent:\s*$/m);
-  assertNoUnresolvedMapperTags(text, ["client_full_name", "spouse_full_name", "trust_name"]);
+  assert.match(text, /Marriage:\s+on\s*$/m);
+  assert.match(text, /Deemed Survivor:\s*$/m);
+  assert.match(text, /Young Person Age:\s*$/m);
+  assert.match(text, /First Distribution Age:\s*$/m);
+  assert.match(text, /Second Distribution Age:\s*$/m);
+  assert.match(text, /Third Distribution Age:\s*$/m);
+  assert.match(text, /Outright Age:\s*$/m);
+  assert.match(text, /Educational Eligibility Age:\s*$/m);
+  assert.match(text, /Educational Remainder Age:\s*$/m);
+  assert.match(text, /Educational Termination Age:\s*$/m);
+  assert.ok(!text.includes("September 1, 2000"), "married marriage_date must not leak");
+  assert.ok(!text.includes("Marco Vargas"), "married second successor must not leak into single fill");
+  assertNoUnresolvedMapperTags(text, [
+    "client_full_name",
+    "spouse_full_name",
+    "trust_name",
+    ...INTAKE_BACKED_SOFT_BLANK_TAGS,
+  ]);
 });
 
 test("intake → fill (synthetic): wrong party names would fail — adult-children partnered fixture", () => {
@@ -311,14 +355,39 @@ for (const entry of TRUST_FAMILY) {
       "trust_name",
       "county_of_residence",
       "successor_trustee_full_name",
-      "second_successor_trustee_full_name",
-      "marriage_city_state",
-      "marriage_date",
-      "first_distribution_age",
-      "educational_trust_eligibility_age",
+      ...INTAKE_BACKED_SOFT_BLANK_TAGS,
     ]);
   });
 }
+
+
+test("intake → fill (synthetic): alternate second successor + full PR #10 age ladder including Educational Trust", () => {
+  const variables = mapIntakeToDocVariables(marriedAlternateSuccessorIntake, "revocable_trust");
+  const text = plainTextFromDocx(renderDocx(createIntakeFillTemplateDocx(), variables));
+
+  assert.match(text, /Client: Elena Vargas/);
+  assert.match(text, /Spouse: Diego Vargas/);
+  assert.match(text, /Successor Trustee: Isabella Vargas/);
+  assert.match(text, /Second Successor: Nora Chen/);
+  assert.match(text, /Marriage: Oakland, California on 2001-08-20/);
+  assert.match(text, /Deemed Survivor: Nora Chen/);
+  assert.match(text, /Young Person Age: 18/);
+  assert.match(text, /First Distribution Age: 21/);
+  assert.match(text, /Second Distribution Age: 25/);
+  assert.match(text, /Third Distribution Age: 30/);
+  assert.match(text, /Outright Age: 35/);
+  assert.match(text, /Educational Eligibility Age: 23/);
+  assert.match(text, /Educational Remainder Age: 27/);
+  assert.match(text, /Educational Termination Age: 28/);
+  // Distinct educational ages must not collapse in filled output
+  assert.ok(text.includes("23") && text.includes("27") && text.includes("28"));
+  assertNoUnresolvedMapperTags(text, [...INTAKE_BACKED_SOFT_BLANK_TAGS]);
+});
+
+// Still suggestion-only on PR #10 — no intake fill path.
+test.todo("intake → fill: distribution description blank remains attorney free-text (suggestion-only on #10)");
+test.todo("intake → fill: do/do not blank remains suggestion-only (no invented conditional)");
+test.todo("intake → fill: CEB specific-person note remains suggestion-only (no mapper scalar)");
 
 test("intake → fill (Trust Family mprg7y50): single intake leaves spouse inverted-block edge documented", (t) => {
   /**

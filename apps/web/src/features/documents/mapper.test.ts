@@ -12,6 +12,7 @@ import test from "node:test";
 
 import { mapIntakeToDocVariables, mapToPourOverWill, mapToRevocableTrust } from "./mapper";
 import {
+  marriedAlternateSuccessorIntake,
   marriedCaRichIntake,
   missingClientNameIntake,
   partneredAdultChildrenNonCaIntake,
@@ -121,9 +122,17 @@ test("missing optional Trust Family fields stay empty-safe strings", () => {
   assert.equal(v.marriage_date, "");
   assert.equal(v.deemed_survivor_full_name, "");
   assert.equal(v.second_successor_trustee_full_name, "");
-  assert.equal(v.first_distribution_age, "");
-  assert.equal(v.educational_trust_eligibility_age, "");
   assert.equal(v.young_person_retention_age, "");
+  assert.equal(v.first_distribution_age, "");
+  assert.equal(v.second_distribution_age, "");
+  assert.equal(v.third_distribution_age, "");
+  assert.equal(v.outright_distribution_age, "");
+  assert.equal(v.educational_trust_eligibility_age, "");
+  assert.equal(v.educational_trust_remainder_age, "");
+  assert.equal(v.educational_trust_termination_age, "");
+  // Empty string, never undefined (docxtemplater nullGetter safety)
+  assert.equal(typeof v.deemed_survivor_full_name, "string");
+  assert.equal(typeof v.educational_trust_termination_age, "string");
 });
 
 test("single / no children → empty optional sections, no spouse, empty role gaps", () => {
@@ -244,3 +253,191 @@ test("healthcareAgentId cross-ref resolves when role shortcut absent", () => {
 
   assert.equal(v.healthcare_agent_full_name, "Casey Grove");
 });
+
+// ---------------------------------------------------------------------------
+// PR #10 intake-backed soft-blank tags — complementary edge / wrong-role cases
+// (happy-path present values covered above; Dev corpus smoke lives on #10 / upcoming fidelity)
+// ---------------------------------------------------------------------------
+
+test("marriage_city_state / marriage_date trim whitespace; omitted when married stays empty (no spouse fallback)", () => {
+  const trimmed = mapIntakeToDocVariables(
+    {
+      personal: {
+        client: { firstName: "Pat", lastName: "Lee" },
+        maritalStatus: "married",
+        spouseOrPartner: { firstName: "Sam", lastName: "Lee" },
+        marriageCityState: "  Los Angeles, California  ",
+        marriageDate: "  May 1, 2010  ",
+        isCAResident: true,
+      },
+    },
+    "revocable_trust",
+  );
+  assert.equal(trimmed.marriage_city_state, "Los Angeles, California");
+  assert.equal(trimmed.marriage_date, "May 1, 2010");
+
+  const marriedNoVenue = mapIntakeToDocVariables(
+    {
+      personal: {
+        client: { firstName: "Pat", lastName: "Lee" },
+        maritalStatus: "married",
+        spouseOrPartner: { firstName: "Sam", lastName: "Lee" },
+        isCAResident: true,
+      },
+    },
+    "revocable_trust",
+  );
+  assert.equal(marriedNoVenue.has_spouse, true);
+  assert.equal(marriedNoVenue.spouse_full_name, "Sam Lee");
+  assert.equal(marriedNoVenue.marriage_city_state, "");
+  assert.equal(marriedNoVenue.marriage_date, "");
+});
+
+test("deemed_survivor_full_name maps from intake; omitted stays empty (never spouse/client guess)", () => {
+  const present = mapIntakeToDocVariables(marriedCaRichIntake, "revocable_trust");
+  assert.equal(present.deemed_survivor_full_name, "Diego Vargas");
+
+  const omitted = mapIntakeToDocVariables(
+    {
+      personal: {
+        client: { firstName: "Pat", lastName: "Lee" },
+        maritalStatus: "married",
+        spouseOrPartner: { firstName: "Sam", lastName: "Lee" },
+        isCAResident: true,
+      },
+    },
+    "revocable_trust",
+  );
+  assert.equal(omitted.spouse_full_name, "Sam Lee");
+  assert.equal(omitted.deemed_survivor_full_name, "");
+  assert.notEqual(omitted.deemed_survivor_full_name, omitted.spouse_full_name);
+  assert.notEqual(omitted.deemed_survivor_full_name, omitted.client_full_name);
+
+  const whitespaceOnly = mapIntakeToDocVariables(
+    {
+      personal: {
+        client: { firstName: "Pat", lastName: "Lee" },
+        maritalStatus: "married",
+        spouseOrPartner: { firstName: "Sam", lastName: "Lee" },
+        deemedSurvivorFullName: "   ",
+        isCAResident: true,
+      },
+    },
+    "revocable_trust",
+  );
+  assert.equal(whitespaceOnly.deemed_survivor_full_name, "");
+});
+
+test("second_successor_trustee_full_name from alternate linked to primary; unrelated alternate ignored", () => {
+  const viaAlt = mapIntakeToDocVariables(marriedAlternateSuccessorIntake, "revocable_trust");
+  assert.equal(viaAlt.successor_trustee_full_name, "Isabella Vargas");
+  assert.equal(viaAlt.second_successor_trustee_full_name, "Nora Chen");
+
+  const unrelatedAlt = mapIntakeToDocVariables(
+    {
+      personal: {
+        client: { firstName: "A", lastName: "B" },
+        maritalStatus: "single",
+        isCAResident: true,
+      },
+      decisionMakers: [
+        {
+          id: "dm-exec",
+          role: "executor",
+          person: { firstName: "Exec", lastName: "One" },
+        },
+        {
+          id: "dm-succ",
+          role: "successor_trustee",
+          person: { firstName: "Succ", lastName: "One" },
+        },
+        {
+          id: "dm-alt-exec",
+          role: "alternate",
+          alternateFor: "dm-exec",
+          person: { firstName: "Alt", lastName: "Exec" },
+        },
+      ],
+    },
+    "revocable_trust",
+  );
+  assert.equal(unrelatedAlt.successor_trustee_full_name, "Succ One");
+  assert.equal(unrelatedAlt.second_successor_trustee_full_name, "");
+});
+
+test("young-person / staggered / outright ages map from distribution; trim + empty-safe", () => {
+  const present = mapIntakeToDocVariables(marriedCaRichIntake, "revocable_trust");
+  assert.equal(present.young_person_retention_age, "21");
+  assert.equal(present.first_distribution_age, "25");
+  assert.equal(present.second_distribution_age, "30");
+  assert.equal(present.third_distribution_age, "35");
+  assert.equal(present.outright_distribution_age, "30");
+
+  const trimmed = mapIntakeToDocVariables(
+    {
+      personal: {
+        client: { firstName: "A", lastName: "B" },
+        maritalStatus: "single",
+        isCAResident: true,
+      },
+      distribution: {
+        youngPersonRetentionAge: "  19  ",
+        firstDistributionAge: "  24  ",
+        secondDistributionAge: "  29  ",
+        thirdDistributionAge: "  34  ",
+        outrightDistributionAge: "  40  ",
+      },
+    },
+    "revocable_trust",
+  );
+  assert.equal(trimmed.young_person_retention_age, "19");
+  assert.equal(trimmed.first_distribution_age, "24");
+  assert.equal(trimmed.second_distribution_age, "29");
+  assert.equal(trimmed.third_distribution_age, "34");
+  assert.equal(trimmed.outright_distribution_age, "40");
+
+  const empty = mapIntakeToDocVariables(partneredAdultChildrenNonCaIntake, "revocable_trust");
+  assert.equal(empty.young_person_retention_age, "");
+  assert.equal(empty.first_distribution_age, "");
+  assert.equal(empty.second_distribution_age, "");
+  assert.equal(empty.third_distribution_age, "");
+  assert.equal(empty.outright_distribution_age, "");
+});
+
+test("Educational Trust ages map as distinct intake-backed keys (present + empty-safe)", () => {
+  const present = mapIntakeToDocVariables(marriedCaRichIntake, "revocable_trust");
+  assert.equal(present.educational_trust_eligibility_age, "22");
+  assert.equal(present.educational_trust_remainder_age, "25");
+  assert.equal(present.educational_trust_termination_age, "26");
+  // Distinct tags must not collapse to one shared value when intake differs
+  assert.notEqual(present.educational_trust_eligibility_age, present.educational_trust_termination_age);
+
+  const distinct = mapIntakeToDocVariables(
+    {
+      personal: {
+        client: { firstName: "A", lastName: "B" },
+        maritalStatus: "single",
+        isCAResident: true,
+      },
+      distribution: {
+        educationalTrustEligibilityAge: "  20  ",
+        educationalTrustRemainderAge: "  24  ",
+        educationalTrustTerminationAge: "  30  ",
+      },
+    },
+    "revocable_trust",
+  );
+  assert.equal(distinct.educational_trust_eligibility_age, "20");
+  assert.equal(distinct.educational_trust_remainder_age, "24");
+  assert.equal(distinct.educational_trust_termination_age, "30");
+
+  const empty = mapIntakeToDocVariables(singleNoChildrenIntake, "revocable_trust");
+  assert.equal(empty.educational_trust_eligibility_age, "");
+  assert.equal(empty.educational_trust_remainder_age, "");
+  assert.equal(empty.educational_trust_termination_age, "");
+});
+
+// Still suggestion-only on PR #10 — no intake/mapper scalars; do not invent wiring.
+test.todo("distribution description blank stays suggestion-only (no intake-backed mapper scalar)");
+test.todo("do/do not blank stays suggestion-only (no intake-backed mapper conditional)");
+test.todo("CEB 'Can Choose a Specific Person…' note stays suggestion-only (no mapper scalar)");

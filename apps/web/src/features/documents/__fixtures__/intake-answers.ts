@@ -274,3 +274,43 @@ export const missingClientNameIntake: PartialIntake = {
     isCAResident: true,
   },
 };
+
+/**
+ * Married intake with a single primary successor + `alternate` linked to that role.
+ * Covers second_successor_trustee_full_name via alternateFor (not a 2nd successor_trustee).
+ */
+export const marriedAlternateSuccessorIntake: PartialIntake = {
+  personal: {
+    client: { firstName: "Elena", lastName: "Vargas" },
+    maritalStatus: "married",
+    spouseOrPartner: { firstName: "Diego", lastName: "Vargas" },
+    marriageCityState: "Oakland, California",
+    marriageDate: "2001-08-20",
+    deemedSurvivorFullName: "Nora Chen",
+    isCAResident: true,
+    countyOfResidence: "Alameda",
+  },
+  decisionMakers: [
+    {
+      id: "dm-succ-1",
+      role: "successor_trustee",
+      person: { firstName: "Isabella", lastName: "Vargas" },
+    },
+    {
+      id: "dm-succ-alt",
+      role: "alternate",
+      alternateFor: "dm-succ-1",
+      person: { firstName: "Nora", lastName: "Chen" },
+    },
+  ],
+  distribution: {
+    youngPersonRetentionAge: "18",
+    firstDistributionAge: "21",
+    secondDistributionAge: "25",
+    thirdDistributionAge: "30",
+    outrightDistributionAge: "35",
+    educationalTrustEligibilityAge: "23",
+    educationalTrustRemainderAge: "27",
+    educationalTrustTerminationAge: "28",
+  },
+};
