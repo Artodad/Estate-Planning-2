@@ -87,6 +87,8 @@ Outputs (single-file CLI, next to the input by default):
 - `attorney-template.normalized.docx`
 - `attorney-template.normalize-report.json`
 
+Optional: `--out /tmp/out.docx` also writes `/tmp/out.normalize-report.json`.
+
 ### Programmatic
 
 ```ts
