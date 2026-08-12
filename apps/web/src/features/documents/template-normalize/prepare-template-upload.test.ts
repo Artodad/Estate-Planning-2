@@ -117,6 +117,9 @@ test("prepareTemplateUpload skipNormalize=true bypasses pipeline and marks summa
   assert.equal(result.summary.warningCount, 0);
   assert.equal(result.summary.errorCount, 0);
   assert.equal(result.summary.highlights.length, 0);
+  assert.equal(result.summary.softSuggestions.length, 0);
+  assert.equal(result.summary.appliedSuggestionCount, 0);
+  assert.equal(result.summary.leftAsSuggestionCount, 0);
   assert.ok(result.normalizedBuffer.equals(input));
   assert.ok(result.originalBuffer.equals(input));
 

@@ -12,6 +12,7 @@ export type {
   NormalizeReportItemKind,
   TemplateValidationResult,
   TemplateUploadNormalizeSummary,
+  TemplateUploadSoftSuggestion,
   XmlPartRepairResult,
 } from "./types";
 
@@ -43,8 +44,17 @@ export {
   detectSampleValuesInParagraph,
   detectSampleValuesInXml,
   detectSampleValuesInDocx,
+  applyReplacementsInParagraph,
+  isDocxtemplaterSafeProposedTag,
 } from "./detect-sample-values";
 export type { SampleDetectionRule } from "./detect-sample-values";
+
+export {
+  applyAcceptedSuggestions,
+  softSuggestionsFromReportItems,
+  type SoftSuggestion,
+  type ApplyAcceptedSuggestionsResult,
+} from "./apply-accepted-suggestions";
 
 export { validateTemplate } from "./validate-template";
 export type { ValidateTemplateOptions } from "./validate-template";
@@ -56,4 +66,3 @@ export {
   type PrepareTemplateUploadOptions,
   type PrepareTemplateUploadResult,
 } from "./prepare-template-upload";
-export type { PrepareTemplateUploadResult } from "./prepare-template-upload";

@@ -44,6 +44,11 @@ export type TemplateUploadActionResult =
       originalFileKey?: string;
     }
   | {
+      /** Soft suggestions present — review/accept before persist. */
+      needsConfirmation: true;
+      normalizeReport: TemplateUploadNormalizeSummary;
+    }
+  | {
       error: string;
       details?: unknown;
       normalizeReport?: TemplateUploadNormalizeSummary;
@@ -137,6 +142,14 @@ export async function executeUploadTemplateForCurrentFirm(
       skipNormalizeRaw === "on" ||
       skipNormalizeRaw === "true" ||
       skipNormalizeRaw === "1";
+    const confirmSoftRaw = formData.get("confirmSoftSuggestions");
+    const confirmSoftSuggestions =
+      confirmSoftRaw === "on" ||
+      confirmSoftRaw === "true" ||
+      confirmSoftRaw === "1";
+    const acceptedSuggestionIds = formData
+      .getAll("acceptedSuggestionIds")
+      .filter((v): v is string => typeof v === "string" && v.length > 0);
 
     if (!name) {
       return { error: "Template name is required." };
@@ -148,12 +161,28 @@ export async function executeUploadTemplateForCurrentFirm(
       };
     }
 
-    const prepared = prepareTemplateUpload(buffer, { skipNormalize });
+    // Preview pass (no accepted ids) surfaces soft suggestions; confirm pass applies them.
+    const prepared = prepareTemplateUpload(buffer, {
+      skipNormalize,
+      acceptedSuggestionIds: confirmSoftSuggestions ? acceptedSuggestionIds : [],
+    });
     if (!prepared.ok) {
       return {
         error: prepared.error,
         normalizeReport: prepared.summary,
         details: "NORMALIZE_VALIDATION_FAILED",
+      };
+    }
+
+    // Human-gate soft suggestions: nothing soft is applied until the attorney confirms.
+    if (
+      !skipNormalize &&
+      !confirmSoftSuggestions &&
+      prepared.summary.softSuggestions.length > 0
+    ) {
+      return {
+        needsConfirmation: true,
+        normalizeReport: prepared.summary,
       };
     }
 
@@ -194,6 +223,8 @@ export async function executeUploadTemplateForCurrentFirm(
         repairCount: prepared.summary.repairCount,
         renameCount: prepared.summary.renameCount,
         warningCount: prepared.summary.warningCount,
+        appliedSuggestionCount: prepared.summary.appliedSuggestionCount,
+        leftAsSuggestionCount: prepared.summary.leftAsSuggestionCount,
       },
     });
 
