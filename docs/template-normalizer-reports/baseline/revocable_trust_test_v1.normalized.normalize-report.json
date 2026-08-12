@@ -1,0 +1,94 @@
+{
+  "ok": true,
+  "items": [
+    {
+      "kind": "detection",
+      "code": "REPAIR_PASS_COMPLETE",
+      "message": "Split-run repair applied 0 repair(s)"
+    },
+    {
+      "kind": "detection",
+      "code": "ALIAS_PASS_COMPLETE",
+      "message": "Alias rename applied 0 rename(s)"
+    },
+    {
+      "kind": "detection",
+      "code": "VALIDATION_COMPLETE",
+      "message": "Validation dry-run passed",
+      "details": {
+        "missingTags": [
+          "full_name",
+          "is_minor",
+          "relationship"
+        ],
+        "syntaxErrors": []
+      }
+    },
+    {
+      "kind": "warning",
+      "code": "VALIDATION_MISSING_TAGS",
+      "message": "Dry-run nullGetter recorded missing tags: full_name, is_minor, relationship",
+      "details": {
+        "missingTags": [
+          "full_name",
+          "is_minor",
+          "relationship"
+        ]
+      }
+    }
+  ],
+  "repairs": [],
+  "renames": [],
+  "detections": [
+    {
+      "kind": "detection",
+      "code": "REPAIR_PASS_COMPLETE",
+      "message": "Split-run repair applied 0 repair(s)"
+    },
+    {
+      "kind": "detection",
+      "code": "ALIAS_PASS_COMPLETE",
+      "message": "Alias rename applied 0 rename(s)"
+    },
+    {
+      "kind": "detection",
+      "code": "VALIDATION_COMPLETE",
+      "message": "Validation dry-run passed",
+      "details": {
+        "missingTags": [
+          "full_name",
+          "is_minor",
+          "relationship"
+        ],
+        "syntaxErrors": []
+      }
+    }
+  ],
+  "warnings": [
+    {
+      "kind": "warning",
+      "code": "VALIDATION_MISSING_TAGS",
+      "message": "Dry-run nullGetter recorded missing tags: full_name, is_minor, relationship",
+      "details": {
+        "missingTags": [
+          "full_name",
+          "is_minor",
+          "relationship"
+        ]
+      }
+    }
+  ],
+  "errors": [],
+  "validation": {
+    "ok": true,
+    "missingTags": [
+      "full_name",
+      "is_minor",
+      "relationship"
+    ],
+    "syntaxErrors": [],
+    "messages": [
+      "Dry-run recorded 3 tag(s) without fixture values (nullGetter). These may be intentional custom tags or mapper gaps."
+    ]
+  }
+}
