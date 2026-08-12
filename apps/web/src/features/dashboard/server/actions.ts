@@ -17,8 +17,14 @@ import {
   FULL_PLAN_DOCUMENT_ORDER,
 } from "@/features/documents/package";
 
-// Template upload support (storage + key helpers)
-import { uploadTemplate, computeTemplateFileKey } from "@/features/documents/storage";
+// Template upload support (storage + key helpers + normalize-on-upload)
+import {
+  uploadTemplate,
+  computeTemplateFileKey,
+  computeOriginalTemplateFileKey,
+} from "@/features/documents/storage";
+import { prepareTemplateUpload } from "@/features/documents/template-normalize/prepare-template-upload";
+import type { TemplateUploadNormalizeSummary } from "@/features/documents/template-normalize/types";
 import { revalidatePath } from "next/cache";
 
 /**
@@ -814,7 +820,11 @@ export async function getPackageTemplatesForCurrentFirm(): Promise<
  *
  * - Strict owner RBAC via checkOwnerOrStaff.
  * - Firm-scoped fileKey via computeTemplateFileKey (namespaced by slug when available).
- * - Persists via the storage abstraction (dev FS today).
+ * - Runs template normalizer (repair / alias / sample / validate) before persist.
+ * - Persists **normalized** bytes as the primary Template.fileKey (what generation uses).
+ * - Also stores the original bytes as a side file (`*.original.docx`) for audit.
+ * - Rejects upload when post-normalize validation has syntax/compile errors (safer
+ *   than the prior accept-any-.docx behavior). Warnings do not block upload.
  * - Creates the Template record via existing helper.
  * - Audits "template.uploaded" (minimal metadata only — never file content).
  * - Revalidates the templates page so the list updates immediately.
@@ -827,8 +837,17 @@ export async function uploadTemplateForCurrentFirm(
   prevStateOrFormData: unknown,
   maybeFormData?: FormData,
 ): Promise<
-  | { success: true; template: any }
-  | { error: string; details?: unknown }
+  | {
+      success: true;
+      template: any;
+      normalizeReport: TemplateUploadNormalizeSummary;
+      originalFileKey: string;
+    }
+  | {
+      error: string;
+      details?: unknown;
+      normalizeReport?: TemplateUploadNormalizeSummary;
+    }
 > {
   // Normalize so we always have the real FormData.
   // - When called via useActionState wrapper: we receive only FormData (one arg)
@@ -880,14 +899,28 @@ export async function uploadTemplateForCurrentFirm(
       return { error: "A valid document type is required (one of the 8 estate plan documents)." };
     }
 
+    // --- Normalize before persist (normalized bytes are generation primary) ---
+    const prepared = prepareTemplateUpload(buffer);
+    if (!prepared.ok) {
+      return {
+        error: prepared.error,
+        normalizeReport: prepared.summary,
+        details: "NORMALIZE_VALIDATION_FAILED",
+      };
+    }
+
     // --- Key + persist + DB record ---
     const fileKey = computeTemplateFileKey({
       documentType,
       originalName: file.name,
       firmSlug,
     });
+    const originalFileKey = computeOriginalTemplateFileKey(fileKey);
 
-    await uploadTemplate(buffer, fileKey);
+    // Primary: normalized (what getFileBuffer / generation reads via Template.fileKey)
+    await uploadTemplate(prepared.normalizedBuffer, fileKey);
+    // Side file: original attorney bytes for audit / re-normalize (not in Prisma schema)
+    await uploadTemplate(prepared.originalBuffer, originalFileKey);
 
     const created = await templateHelpers.createForFirm(firmId, {
       name,
@@ -905,14 +938,24 @@ export async function uploadTemplateForCurrentFirm(
       metadata: {
         documentType,
         name,
-        size: buffer.length,
+        size: prepared.normalizedBuffer.length,
+        originalSize: prepared.originalBuffer.length,
+        normalized: true,
+        repairCount: prepared.summary.repairCount,
+        renameCount: prepared.summary.renameCount,
+        warningCount: prepared.summary.warningCount,
         // No original filename or content — PII/compliance safe
       },
     });
 
     revalidatePath("/dashboard/templates");
 
-    return { success: true, template: created };
+    return {
+      success: true,
+      template: created,
+      normalizeReport: prepared.summary,
+      originalFileKey,
+    };
   } catch (err: any) {
     console.error("[dashboard/actions] uploadTemplateForCurrentFirm failed:", err);
     // Surface a safe message (never leak storage paths or stack)

@@ -137,6 +137,11 @@ test.describe('Templates upload (owner only)', () => {
     // Success feedback (either the Callout or the sonner toast region)
     await expect(page.getByText(/Template uploaded successfully|Template registered/i)).toBeVisible({ timeout: 15000 });
 
+    // Normalize-on-upload report should surface (counts even when 0 repairs)
+    await expect(
+      page.getByText(/repair|normalized|validated/i).first()
+    ).toBeVisible({ timeout: 10000 });
+
     // The new template row should now be in the "Your Templates" list (revalidated by the action)
     // We look for either the exact name we sent or the documentType we chose.
     await expect(
@@ -144,6 +149,6 @@ test.describe('Templates upload (owner only)', () => {
     ).toBeVisible({ timeout: 10000 });
 
     // Clean note for manual review: the uploaded file now lives in .local-document-storage/templates/<slug>/...
-    // and can be used for real generation in the same browser session.
+    // (normalized primary + *.original.docx side file) and can be used for real generation.
   });
 });
