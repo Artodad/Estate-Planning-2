@@ -1,18 +1,19 @@
 /**
  * Behavioral coverage: attorney-gated soft-suggestion accept/reject on upload (PR #15).
  *
- * Complements `template-normalize/apply-accepted-suggestions.test.ts` with the
- * upload-pipeline / human-gate policy that `uploadTemplateForCurrentFirm` uses:
+ * Complements `template-normalize/apply-accepted-suggestions.test.ts` (item 4 unit
+ * tests) with the upload-pipeline / human-gate policy that
+ * `uploadTemplateForCurrentFirm` uses:
  * preview → needsConfirmation (no persist) → confirm + accepted ids → apply +
  * re-validate → persist.
  *
- * Asserts:
- * 1. Soft SAMPLE_VALUE_SUGGESTIONs never auto-apply
- * 2. Soft present → action gate returns needsConfirmation (mirrored, no Clerk)
- * 3. Accepted ids → applyAcceptedSuggestions + re-validate before persist
- * 4. Rejected/ignored stay as suggestions in the summary (counts + blanks)
- * 5. High-confidence path unchanged
- * 6. skipNormalize unchanged (no soft gate / empty softSuggestions)
+ * Orchestrator checklist (explicit):
+ * 1. Soft suggestions never auto-apply
+ * 2. Upload with soft items → needsConfirmation (no persist)
+ * 3. Multi-select default none → Confirm applies accepted patches, re-validates, persists
+ *    (reject-all / partial / accept-all; *.original.docx still written when normalize ran)
+ * 4. applyAcceptedSuggestions() unit tests — see apply-accepted-suggestions.test.ts
+ * 5. High-confidence path + skipNormalize / *.original.docx unchanged
  *
  * Run:
  *   pnpm test:unit:upload-normalize
@@ -169,10 +170,10 @@ async function persistLikeAction(opts: {
 }
 
 // ---------------------------------------------------------------------------
-// 1. Soft SAMPLE_VALUE_SUGGESTIONs do NOT auto-apply
+// Orchestrator 1 — Soft suggestions never auto-apply
 // ---------------------------------------------------------------------------
 
-test("soft suggestions: distribution / do-do-not / CEB never auto-apply on default prepare", () => {
+test("[1] soft suggestions never auto-apply (distribution / do-do-not / CEB)", () => {
   const prepared = prepareTemplateUpload(createProductSoftFixtureDocx());
   assert.equal(prepared.ok, true);
   if (!prepared.ok) return;
@@ -213,10 +214,10 @@ test("soft suggestions: distribution / do-do-not / CEB never auto-apply on defau
 });
 
 // ---------------------------------------------------------------------------
-// 2. Soft present → needsConfirmation (nothing persisted)
+// Orchestrator 2 — Upload with soft items → needsConfirmation
 // ---------------------------------------------------------------------------
 
-test("upload gate: soft suggestions → needsConfirmation and no storage keys", async () => {
+test("[2] upload with soft items → needsConfirmation and no storage keys", async () => {
   const input = createProductSoftFixtureDocx();
   // Preview pass: action always prepares with acceptedSuggestionIds: [] until confirm
   const prepared = prepareTemplateUpload(input, { acceptedSuggestionIds: [] });
@@ -251,7 +252,11 @@ test("upload gate: soft suggestions → needsConfirmation and no storage keys", 
   await assert.rejects(() => getFileBuffer(originalFileKey), /getFileBuffer failed/);
 });
 
-test("upload gate: confirm with zero accepted ids persists blanks (reject-all)", async () => {
+// ---------------------------------------------------------------------------
+// Orchestrator 3 — Multi-select default none → Confirm (reject-all / accept)
+// ---------------------------------------------------------------------------
+
+test("[3a] multi-select default none → Confirm with zero ids persists blanks (reject-all)", async () => {
   const input = createProductSoftFixtureDocx();
   const prepared = prepareTemplateUpload(input, { acceptedSuggestionIds: [] });
   assert.equal(prepared.ok, true);
@@ -289,11 +294,7 @@ test("upload gate: confirm with zero accepted ids persists blanks (reject-all)",
   }
 });
 
-// ---------------------------------------------------------------------------
-// 3. Accepted ids → applyAcceptedSuggestions + re-validate before persist
-// ---------------------------------------------------------------------------
-
-test("confirm accept: prepare applies ids, re-validates, then primary stores tags", async () => {
+test("[3b] Confirm multi-select accept → applyAcceptedSuggestions, re-validate, persist tags + *.original.docx", async () => {
   const input = createProductSoftFixtureDocx();
   const preview = prepareTemplateUpload(input);
   assert.equal(preview.ok, true);
@@ -372,7 +373,7 @@ test("confirm accept: prepare applies ids, re-validates, then primary stores tag
   }
 });
 
-test("confirm accept: invalid accepted apply fails validation and must not persist", async () => {
+test("[3c] Confirm accept with invalid template fails re-validate and must not persist", async () => {
   // Craft a soft suggestion whose proposed tag would break compile if applied —
   // exercise prepare's post-apply validate gate via a non-applicable / skipped path
   // is already covered; here we assert reject decision never writes keys when ok=false.
@@ -421,11 +422,7 @@ test("confirm accept: invalid accepted apply fails validation and must not persi
   await assert.rejects(() => getFileBuffer(fileKey), /getFileBuffer failed/);
 });
 
-// ---------------------------------------------------------------------------
-// 4. Rejected / ignored stay as suggestions in the summary
-// ---------------------------------------------------------------------------
-
-test("partial accept: rejected siblings remain blanks + leftAsSuggestionCount", () => {
+test("[3d] Confirm partial multi-select: accepted tag applied; rejected siblings stay suggestions", () => {
   const input = createProductSoftFixtureDocx();
   const preview = prepareTemplateUpload(input);
   assert.equal(preview.ok, true);
@@ -470,7 +467,7 @@ test("partial accept: rejected siblings remain blanks + leftAsSuggestionCount", 
   assert.ok(!xml.includes("{ceb_appoint_person_note}"));
 });
 
-test("softSuggestionsFromReportItems keeps rejected blanks as SAMPLE_VALUE_SUGGESTION rows", () => {
+test("[3e] softSuggestionsFromReportItems keeps unaccepted blanks as SAMPLE_VALUE_SUGGESTION rows", () => {
   const prepared = prepareTemplateUpload(createProductSoftFixtureDocx());
   assert.equal(prepared.ok, true);
   if (!prepared.ok) return;
@@ -489,10 +486,11 @@ test("softSuggestionsFromReportItems keeps rejected blanks as SAMPLE_VALUE_SUGGE
 });
 
 // ---------------------------------------------------------------------------
-// 5. High-confidence path unchanged
+// Orchestrator 5 — High-confidence + skipNormalize / *.original.docx unchanged
+// (Orchestrator 4 = apply-accepted-suggestions.test.ts, wired into upload-normalize)
 // ---------------------------------------------------------------------------
 
-test("high-confidence county / trust_name still auto-tag without soft accept", () => {
+test("[5a] high-confidence path unchanged: trust_name + county auto-tag without soft accept", () => {
   const body = [
     paragraphWithRuns(["_[Name of Trust]_ Family Trust"]),
     paragraphWithRuns(["County of San Diego"]),
@@ -521,11 +519,7 @@ test("high-confidence county / trust_name still auto-tag without soft accept", (
   );
 });
 
-// ---------------------------------------------------------------------------
-// 6. skipNormalize unchanged
-// ---------------------------------------------------------------------------
-
-test("skipNormalize: empty softSuggestions, no needsConfirmation, raw persist", async () => {
+test("[5b] skipNormalize unchanged: empty softSuggestions, no needsConfirmation, no *.original.docx", async () => {
   const input = createProductSoftFixtureDocx();
   const prepared = prepareTemplateUpload(input, { skipNormalize: true });
   assert.equal(prepared.ok, true);
