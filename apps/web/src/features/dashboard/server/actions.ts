@@ -17,13 +17,8 @@ import {
   FULL_PLAN_DOCUMENT_ORDER,
 } from "@/features/documents/package";
 
-// Template upload support (storage + key helpers + normalize-on-upload)
-import {
-  uploadTemplate,
-  computeTemplateFileKey,
-  computeOriginalTemplateFileKey,
-} from "@/features/documents/storage";
-import { prepareTemplateUpload } from "@/features/documents/template-normalize/prepare-template-upload";
+// Template upload support (normalize-on-upload core + Next revalidate)
+import { executeUploadTemplateForCurrentFirm } from "@/features/dashboard/server/upload-template-action";
 import type { TemplateUploadNormalizeSummary } from "@/features/documents/template-normalize/types";
 import { revalidatePath } from "next/cache";
 
@@ -858,126 +853,14 @@ export async function uploadTemplateForCurrentFirm(
   const formData: FormData =
     maybeFormData ?? (prevStateOrFormData as FormData);
 
-  const check = await checkOwnerOrStaff();
-  if (!check.ok) {
-    return { error: check.error };
-  }
-
-  const ctx = check.context;
-  const firmId = ctx.currentFirm?.id;
-  const firmSlug = ctx.currentFirm?.slug ?? undefined;
-  if (!firmId) {
-    return { error: "Active firm context required. Complete firm setup first." };
-  }
-
-  try {
-    // --- File extraction + validation (minimal, no Zod for File) ---
-    const file = formData.get("file");
-    if (!(file instanceof File)) {
-      return { error: "A .docx template file is required." };
-    }
-    if (file.size === 0) {
-      return { error: "The uploaded file is empty." };
-    }
-    if (file.size > 8 * 1024 * 1024) {
-      return { error: "Template files must be under 8MB." };
-    }
-    const lowerName = file.name.toLowerCase();
-    if (!lowerName.endsWith(".docx")) {
-      return { error: "Only .docx files are supported for templates." };
-    }
-
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
-    // --- Metadata fields ---
-    const name = (formData.get("name") as string | null)?.trim() || "";
-    const description = (formData.get("description") as string | null)?.trim() || undefined;
-    const documentType = (formData.get("documentType") as string | null) as DocumentType | null;
-    // Checkbox: present when checked ("on" / "true" / "1"); default OFF → normalize.
-    const skipNormalizeRaw = formData.get("skipNormalize");
-    const skipNormalize =
-      skipNormalizeRaw === "on" ||
-      skipNormalizeRaw === "true" ||
-      skipNormalizeRaw === "1";
-
-    if (!name) {
-      return { error: "Template name is required." };
-    }
-    if (!documentType || !FULL_PLAN_DOCUMENT_ORDER.includes(documentType)) {
-      return { error: "A valid document type is required (one of the 8 estate plan documents)." };
-    }
-
-    // --- Normalize before persist (unless attorney opted out) ---
-    const prepared = prepareTemplateUpload(buffer, { skipNormalize });
-    if (!prepared.ok) {
-      return {
-        error: prepared.error,
-        normalizeReport: prepared.summary,
-        details: "NORMALIZE_VALIDATION_FAILED",
-      };
-    }
-
-    // --- Key + persist + DB record ---
-    const fileKey = computeTemplateFileKey({
-      documentType,
-      originalName: file.name,
-      firmSlug,
-    });
-
-    // Primary: normalized (or raw when skipNormalize) — what generation reads via Template.fileKey
-    await uploadTemplate(prepared.normalizedBuffer, fileKey);
-
-    // Side file only when we actually normalized (primary would otherwise duplicate raw).
-    let originalFileKey: string | undefined;
-    if (!skipNormalize) {
-      originalFileKey = computeOriginalTemplateFileKey(fileKey);
-      await uploadTemplate(prepared.originalBuffer, originalFileKey);
-    }
-
-    const created = await templateHelpers.createForFirm(firmId, {
-      name,
-      description,
-      fileKey,
-      documentType,
-    });
-
-    logAuditEvent({
-      firmId,
-      actorClerkId: ctx.userId,
-      action: "template.uploaded",
-      targetType: "template",
-      targetId: created.id,
-      metadata: {
-        documentType,
-        name,
-        size: prepared.normalizedBuffer.length,
-        originalSize: prepared.originalBuffer.length,
-        normalized: !skipNormalize,
-        skipNormalize,
-        repairCount: prepared.summary.repairCount,
-        renameCount: prepared.summary.renameCount,
-        warningCount: prepared.summary.warningCount,
-        // No original filename or content — PII/compliance safe
-      },
-    });
-
-    revalidatePath("/dashboard/templates");
-
-    return {
-      success: true,
-      template: created,
-      normalizeReport: prepared.summary,
-      ...(originalFileKey ? { originalFileKey } : {}),
-    };
-  } catch (err: any) {
-    console.error("[dashboard/actions] uploadTemplateForCurrentFirm failed:", err);
-    // Surface a safe message (never leak storage paths or stack)
-    const msg = err?.message?.includes("uploadTemplate") || err?.message?.includes("storage")
-      ? "Failed to store the template file. Please try again or contact support."
-      : "Failed to register the template. Please check the file and try again.";
-    return { error: msg, details: err?.name || null };
-  }
+  // Thin "use server" wrapper: real Clerk/RBAC + Prisma + audit + revalidate.
+  // Core logic (and unit tests with mocked auth) live in upload-template-action.ts.
+  return executeUploadTemplateForCurrentFirm(formData, {
+    checkOwnerOrStaff,
+    createForFirm: (firmId, data) => templateHelpers.createForFirm(firmId, data),
+    logAuditEvent,
+    revalidatePath,
+  });
 }
 
 /**
