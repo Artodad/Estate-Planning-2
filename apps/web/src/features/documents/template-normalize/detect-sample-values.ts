@@ -140,6 +140,22 @@ function findUnderscoreBlank(labelPattern: string): SampleDetectionRule["find"] 
   };
 }
 
+/** Underscore blank whose immediately preceding prose matches `prefixRe`. */
+function findUnderscoreBlankWithPrefix(
+  labelPattern: string,
+  prefixRe: RegExp,
+  lookbehindChars = 48,
+): SampleDetectionRule["find"] {
+  const findBlank = findUnderscoreBlank(labelPattern);
+  return (text: string) =>
+    findBlank(text).filter((m) => {
+      const before = text.slice(Math.max(0, m.start - lookbehindChars), m.start);
+      // Real Trust Family docs often put a decorative `_ ` between prose and `_[blank]_`.
+      const withoutDecorative = before.replace(/[_\t \u00a0]+$/g, "");
+      return prefixRe.test(withoutDecorative);
+    });
+}
+
 /**
  * High-confidence auto-replacements + low-confidence suggestions derived from
  * the real Trust-_Family-changed corpus blanks.
@@ -221,32 +237,85 @@ export const SAMPLE_DETECTION_RULES: SampleDetectionRule[] = [
     replaceWith: "{county_of_residence}",
     reason: "Filled notary venue 'County of <Name>' paragraph → county_of_residence",
   },
-  // Low-confidence: report only (no mapper key or ambiguous)
+  // --- High-confidence promotions (iteration-2): label-anchored → mapper keys ---
   {
     id: "blank_second_successor_trustee",
-    confidence: "low",
+    mapperKey: "second_successor_trustee_full_name",
+    confidence: "high",
     find: findUnderscoreBlank("name of second successor trustee"),
+    replaceWith: "{second_successor_trustee_full_name}",
     reason:
-      "Second successor trustee blank — mapper only has successor_trustee_full_name (primary)",
+      "Underscore blank [name of second successor trustee] → second_successor_trustee_full_name",
   },
   {
     id: "blank_city_state_marriage",
-    confidence: "low",
+    mapperKey: "marriage_city_state",
+    confidence: "high",
     find: findUnderscoreBlank("city and state of marriage"),
-    reason: "Marriage location blank — no mapper key yet",
+    replaceWith: "{marriage_city_state}",
+    reason: "Underscore blank [city and state of marriage] → marriage_city_state",
   },
   {
     id: "blank_date_of_marriage",
-    confidence: "low",
+    mapperKey: "marriage_date",
+    confidence: "high",
     find: findUnderscoreBlank("date of marriage"),
-    reason: "Marriage date blank — no mapper key yet",
+    replaceWith: "{marriage_date}",
+    reason: "Underscore blank [date of marriage] → marriage_date",
   },
   {
     id: "blank_deemed_survivor",
-    confidence: "low",
+    mapperKey: "deemed_survivor_full_name",
+    confidence: "high",
     find: findUnderscoreBlank("name of deemed survivor"),
-    reason: "Deemed survivor blank — no mapper key yet",
+    replaceWith: "{deemed_survivor_full_name}",
+    reason:
+      "Underscore blank [name of deemed survivor] → deemed_survivor_full_name (dedicated key; not spouse/client guess)",
   },
+  {
+    id: "blank_first_distribution_age",
+    mapperKey: "first_distribution_age",
+    confidence: "high",
+    find: findUnderscoreBlank("first age"),
+    replaceWith: "{first_distribution_age}",
+    reason: "Underscore blank [first age] → first_distribution_age",
+  },
+  {
+    id: "blank_second_distribution_age",
+    mapperKey: "second_distribution_age",
+    confidence: "high",
+    find: findUnderscoreBlank("second age"),
+    replaceWith: "{second_distribution_age}",
+    reason: "Underscore blank [second age] → second_distribution_age",
+  },
+  {
+    id: "blank_third_distribution_age",
+    mapperKey: "third_distribution_age",
+    confidence: "high",
+    find: findUnderscoreBlank("third age"),
+    replaceWith: "{third_distribution_age}",
+    reason: "Underscore blank [third age] → third_distribution_age",
+  },
+  {
+    id: "blank_young_person_retention_age",
+    mapperKey: "young_person_retention_age",
+    confidence: "high",
+    find: findUnderscoreBlankWithPrefix("age", /under the age of\s*$/i),
+    replaceWith: "{young_person_retention_age}",
+    reason:
+      "Bare [age] immediately after 'under the age of' (Young Persons) → young_person_retention_age",
+  },
+  {
+    id: "blank_outright_distribution_age",
+    mapperKey: "outright_distribution_age",
+    confidence: "high",
+    // "attains" (not educational "has attained") so educational-trust ages stay suggestions.
+    find: findUnderscoreBlankWithPrefix("age", /attains the age of\s*$/i),
+    replaceWith: "{outright_distribution_age}",
+    reason:
+      "Bare [age] immediately after 'attains the age of' (single-age principal) → outright_distribution_age",
+  },
+  // Low-confidence: report only (ambiguous / free-form / needs conditionals)
   {
     id: "blank_distribution_description",
     confidence: "low",
@@ -254,16 +323,25 @@ export const SAMPLE_DETECTION_RULES: SampleDetectionRule[] = [
     reason: "Free-text distribution description — keep attorney-authored; not auto-tagged",
   },
   {
-    id: "blank_age",
-    confidence: "low",
-    find: findUnderscoreBlank("(?:first |second |third )?age"),
-    reason: "Age / staggered distribution age blanks — no dedicated mapper keys",
-  },
-  {
     id: "blank_do_do_not",
     confidence: "low",
     find: findUnderscoreBlank("do/do not"),
     reason: "Choice language blank — do not invent conditional legal text",
+  },
+  {
+    id: "blank_age_ambiguous",
+    confidence: "low",
+    find: findUnderscoreBlank("age"),
+    reason:
+      "Bare [age] blank without a high-confidence prose anchor (e.g. educational trust ages) — not auto-tagged",
+  },
+  {
+    id: "blank_ceb_appoint_person",
+    confidence: "low",
+    find: findUnderscoreBlank(
+      "Can Choose a Specific Person if Beneficiary Dies Before Distribution",
+    ),
+    reason: "Attorney drafting / CEB choice note — not a mapper scalar",
   },
 ];
 

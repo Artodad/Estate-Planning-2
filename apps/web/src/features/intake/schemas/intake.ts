@@ -198,6 +198,10 @@ export const PersonalInfoSchema = z.object({
   maritalStatus: z.enum(['single', 'married', 'partnered', 'divorced', 'widowed']),
   isCAResident: z.boolean().default(true),
   countyOfResidence: z.string().optional(),
+  /** Free-text venue for trust marriage recital blanks, e.g. "San Diego, California". */
+  marriageCityState: z.string().optional(),
+  /** Marriage date as attorney-facing text (ISO or written form); template owns formatting. */
+  marriageDate: z.string().optional(),
   citizenshipImmigrationNotes: z.string().optional().describe('Minimized PII; attorney notes only'),
 });
 

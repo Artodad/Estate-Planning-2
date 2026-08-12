@@ -66,10 +66,66 @@ test("detectSampleValuesInParagraph does not rewrite County of inside longer pro
   assert.ok(!items.some((i) => i.code === "SAMPLE_VALUE_TAGGED"));
 });
 
-test("detectSampleValuesInParagraph reports low-confidence blanks without rewriting", () => {
+test("detectSampleValuesInParagraph tags second successor trustee blank", () => {
   const xml = `<w:p><w:r><w:t>_ _[name of second successor trustee]_ _ shall become</w:t></w:r></w:p>`;
   const { xml: out, items } = detectSampleValuesInParagraph(xml);
-  assert.match(out, /\[name of second successor trustee\]/);
+  assert.match(out, /\{second_successor_trustee_full_name\}/);
+  assert.ok(!out.includes("[name of second successor trustee]"));
+  assert.ok(
+    items.some(
+      (i) => i.code === "SAMPLE_VALUE_TAGGED" && i.after === "{second_successor_trustee_full_name}",
+    ),
+  );
+});
+
+test("detectSampleValuesInParagraph tags marriage city/state and date blanks", () => {
+  const xml = `<w:p><w:r><w:t>married in _ _[city and state of marriage]_ _ on _ _[date of marriage]_ _.</w:t></w:r></w:p>`;
+  const { xml: out, items } = detectSampleValuesInParagraph(xml);
+  assert.match(out, /\{marriage_city_state\}/);
+  assert.match(out, /\{marriage_date\}/);
+  assert.equal(items.filter((i) => i.code === "SAMPLE_VALUE_TAGGED").length, 2);
+});
+
+test("detectSampleValuesInParagraph tags deemed survivor blank", () => {
+  const xml = `<w:p><w:r><w:t>_ _[name of deemed survivor]_ _ shall be deemed</w:t></w:r></w:p>`;
+  const { xml: out } = detectSampleValuesInParagraph(xml);
+  assert.match(out, /\{deemed_survivor_full_name\}/);
+});
+
+test("detectSampleValuesInParagraph tags first/second/third distribution ages", () => {
+  const xml = `<w:p><w:r><w:t>age of _ _[first age]_ _, then _ _[second age]_ _, then _ _[third age]_ _.</w:t></w:r></w:p>`;
+  const { xml: out, items } = detectSampleValuesInParagraph(xml);
+  assert.match(out, /\{first_distribution_age\}/);
+  assert.match(out, /\{second_distribution_age\}/);
+  assert.match(out, /\{third_distribution_age\}/);
+  assert.equal(items.filter((i) => i.code === "SAMPLE_VALUE_TAGGED").length, 3);
+});
+
+test("detectSampleValuesInParagraph tags young-person retention age via prose anchor", () => {
+  const xml = `<w:p><w:r><w:t>is under the age of _ _[age]_ _ at the time</w:t></w:r></w:p>`;
+  const { xml: out, items } = detectSampleValuesInParagraph(xml);
+  assert.match(out, /\{young_person_retention_age\}/);
+  assert.ok(items.some((i) => i.after === "{young_person_retention_age}"));
+});
+
+test("detectSampleValuesInParagraph tags outright distribution age via attains anchor", () => {
+  const xml = `<w:p><w:r><w:t>When Beneficiary attains the age of _ _[age]_ _, the trustee shall</w:t></w:r></w:p>`;
+  const { xml: out } = detectSampleValuesInParagraph(xml);
+  assert.match(out, /\{outright_distribution_age\}/);
+});
+
+test("detectSampleValuesInParagraph leaves educational under-age blank as suggestion", () => {
+  const xml = `<w:p><w:r><w:t>If a child of the Settlors’ is under age _ _[age]_ _ at the time</w:t></w:r></w:p>`;
+  const { xml: out, items } = detectSampleValuesInParagraph(xml);
+  assert.match(out, /\[age\]/);
+  assert.ok(items.some((i) => i.code === "SAMPLE_VALUE_SUGGESTION"));
+  assert.ok(!items.some((i) => i.code === "SAMPLE_VALUE_TAGGED"));
+});
+
+test("detectSampleValuesInParagraph reports do/do not without rewriting", () => {
+  const xml = `<w:p><w:r><w:t>and "issue" _ _[do/do not]_ _ include stepchildren</w:t></w:r></w:p>`;
+  const { xml: out, items } = detectSampleValuesInParagraph(xml);
+  assert.match(out, /\[do\/do not\]/);
   assert.ok(items.some((i) => i.code === "SAMPLE_VALUE_SUGGESTION"));
   assert.ok(!items.some((i) => i.code === "SAMPLE_VALUE_TAGGED"));
 });
