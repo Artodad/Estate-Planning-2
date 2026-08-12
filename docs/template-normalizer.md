@@ -107,7 +107,9 @@ Owner template upload (`/dashboard/templates` → `uploadTemplateForCurrentFirm`
 4. **If validation passes**: persist **normalized** bytes as `Template.fileKey` (what generation reads). Also write the attorney’s original bytes to a side key `*.original.docx` (`computeOriginalTemplateFileKey`) for audit / re-normalize. No Prisma schema change — only `fileKey` is registered.
 5. Return a client-safe `TemplateUploadNormalizeSummary` (counts + capped highlights). `TemplateUploadForm` shows success + summary (or warnings); validation failures use the existing error callout pattern.
 
-Generation always uses the normalized primary bytes. Original side files are not selected by the template resolver.
+**Opt-out:** FormData `skipNormalize=true` (UI checkbox “Skip auto-normalize (template already prepared)”, default off) stores uploaded bytes as `Template.fileKey` with no normalize report and no `*.original.docx` side file.
+
+Generation always uses the primary `Template.fileKey` bytes. Original side files are not selected by the template resolver.
 
 ---
 
