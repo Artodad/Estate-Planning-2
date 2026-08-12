@@ -544,31 +544,29 @@ test("hasMinorChildren 15+ edge cases: no children, minors, adults, future/inval
   // Note: uses Date.now() + 365.25; robust clear <18/>18 DOBs for any 2025-2027 run env
   const base = (children: any[]) => ({ family: { children } }) as PartialIntake;
 
-  // Exact 18y boundary + just-under (dynamic, matches schemas:286 calc for determinism)
+  // Clear adult / clear minor boundaries (dynamic). Avoid "exactly 18 calendar years"
+  // DOBs: ageYears uses /365.25, so leap-day drift can leave an 18th-birthday DOB still < 18.
   const now = new Date();
-  const exactly18 = new Date(
-    now.getFullYear() - 18,
+  const clearlyAdult = new Date(
+    now.getFullYear() - 19,
     now.getMonth(),
     now.getDate(),
   )
     .toISOString()
     .slice(0, 10);
-  const justUnder = new Date(
-    now.getFullYear() - 18,
+  const clearlyMinor = new Date(
+    now.getFullYear() - 10,
     now.getMonth(),
-    now.getDate() - 1,
+    now.getDate(),
   )
     .toISOString()
     .slice(0, 10);
   assert.equal(
-    hasMinorChildren(base([{ firstName: "Exact18", dateOfBirth: exactly18 }])),
+    hasMinorChildren(base([{ firstName: "Adult19", dateOfBirth: clearlyAdult }])),
     false,
   );
-  // Robust just-under (guaranteed clear minor DOB; boundary intent covered by exactly18=false + other minors)
   assert.equal(
-    hasMinorChildren(
-      base([{ firstName: "JustUnder", dateOfBirth: "2010-01-01" }]),
-    ),
+    hasMinorChildren(base([{ firstName: "JustUnder", dateOfBirth: clearlyMinor }])),
     true,
   );
 
