@@ -27,25 +27,25 @@ const CORPUS = [
     id: "mprg7y50",
     rel: ".local-document-storage/templates/aaa-1780034544721732674/revocable_trust/Trust-_Family-changed-mprg7y50.docx",
     expectOk: true,
-    sha256Prefix: "77206515",
+    sha256Prefix: "5a04f290",
   },
   {
     id: "mprnxupt",
     rel: ".local-document-storage/templates/aaa-1780034544721732674/revocable_trust/Trust-_Family-changed-mprnxupt.docx",
     expectOk: true,
-    sha256Prefix: "3a01b7b2",
+    sha256Prefix: "eba34174",
   },
   {
     id: "mprpud8a",
     rel: ".local-document-storage/templates/aaa-1780034544721732674/revocable_trust/Trust-_Family-changed-mprpud8a.docx",
     expectOk: true,
-    sha256Prefix: "92d4cca2",
+    sha256Prefix: "f517a39c",
   },
   {
     id: "mprg6n30-dup",
     rel: ".local-document-storage/templates/firm-12-1779936733274746364/revocable_trust/Trust-_Family-changed-mprg6n30.docx",
     expectOk: true,
-    sha256Prefix: "77206515", // duplicate of mprg7y50
+    sha256Prefix: "5a04f290", // duplicate of mprg7y50
   },
   {
     id: "verify",

@@ -103,6 +103,21 @@ test("normalizeTagsInDocx corrects inverted settlor spouse polarity in a .docx",
   assert.ok(items.some((i) => i.code === "SETTLOR_SPOUSE_POLARITY_FIXED"));
 });
 
+test("fixSettlorSpousePolarityInXml handles tags split across adjacent w:t runs", () => {
+  // Mirrors repaired Trust Family XML: intact tags, still in separate runs.
+  const xml =
+    `<w:r><w:t xml:space="preserve"> {^has_spouse}</w:t></w:r>` +
+    `<w:r><w:t xml:space="preserve"> and {spouse_full_name}</w:t></w:r>` +
+    `<w:r><w:t>{/has_spouse}</w:t></w:r>` +
+    `<w:r><w:t>{^has_spouse}[No spouse section]{/has_spouse}</w:t></w:r>`;
+  const { xml: out, items } = fixSettlorSpousePolarityInXml(xml);
+  assert.match(out, /\{#has_spouse\}/);
+  assert.ok(!out.includes("{^has_spouse}</w:t></w:r><w:r><w:t xml:space=\"preserve\"> and {spouse_full_name}"));
+  assert.match(out, /\{\^has_spouse\}\[No spouse section\]\{\/has_spouse\}/);
+  assert.equal(items.length, 1);
+  assert.equal(items[0].code, "SETTLOR_SPOUSE_POLARITY_FIXED");
+});
+
 test("normalize → fill: inverted settlor polarity yields spouse name for married fixture", () => {
   // Synthetic mirrors the Trust Family settlor clause bug reported by Tester (PR #3).
   const body = [
