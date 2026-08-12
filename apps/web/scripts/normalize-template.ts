@@ -21,8 +21,8 @@ import { normalizeTemplate } from "../src/features/documents/template-normalize/
 function printUsage(): never {
   console.error(`Usage: tsx scripts/normalize-template.ts <input.docx> [--out <path>]
 
-Normalizes placeholder structure (split-run repair + alias rename + validate).
-Does not rewrite legal language. Sample-value auto-tagging is not in this slice.`);
+Normalizes placeholder structure (split-run / orphan-brace repair + sample/blank
+detect + alias rename + validate). Does not rewrite legal language.`);
   process.exit(2);
 }
 

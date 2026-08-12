@@ -1,7 +1,6 @@
 /**
- * Template normalization foundation (placeholder repair + alias rename + validate).
- *
- * Sample-value → tag detection is intentionally out of scope (next slice).
+ * Template normalization: repair split/orphan braces → sample/blank detect →
+ * alias rename → docxtemplater validate.
  */
 
 export type {
@@ -21,7 +20,10 @@ export {
   repairParagraphXml,
   repairXmlPart,
   repairDocxRuns,
+  removeOrphanClosers,
   buildTextRun,
+  buildTextRunWithChrome,
+  splitRunChrome,
 } from "./repair-runs";
 
 export {
@@ -33,6 +35,14 @@ export {
   normalizeTagsInDocx,
   buildFixtureVariables,
 } from "./normalize-tags";
+
+export {
+  SAMPLE_DETECTION_RULES,
+  detectSampleValuesInParagraph,
+  detectSampleValuesInXml,
+  detectSampleValuesInDocx,
+} from "./detect-sample-values";
+export type { SampleDetectionRule } from "./detect-sample-values";
 
 export { validateTemplate } from "./validate-template";
 export type { ValidateTemplateOptions } from "./validate-template";

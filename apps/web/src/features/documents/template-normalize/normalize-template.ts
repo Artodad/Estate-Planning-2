@@ -1,13 +1,15 @@
 /**
- * Orchestrator: repair split runs → alias-normalize tags → validate.
+ * Orchestrator: repair split runs → sample/blank detect → alias-normalize → validate.
  *
  * Returns a normalized .docx buffer plus a structured report.
- * Does not rewrite legal language or detect sample client values (next slice).
+ * Does not invent legal language. Sample/blank → tag detection is conservative
+ * (high-confidence mapper mappings only; low-confidence suggestions in the report).
  */
 
 import { readFile } from "node:fs/promises";
 
 import { repairDocxRuns } from "./repair-runs";
+import { detectSampleValuesInDocx } from "./detect-sample-values";
 import { normalizeTagsInDocx } from "./normalize-tags";
 import { validateTemplate } from "./validate-template";
 import type {
@@ -79,17 +81,24 @@ export async function normalizeTemplate(
     return { buffer: Buffer.alloc(0), report };
   }
 
-  // 1. Repair split runs / tag shape
+  // 1. Repair split runs / tag shape / orphan closers
   const repaired = repairDocxRuns(buffer);
   buffer = repaired.buffer;
   items.push(...repaired.items);
 
-  // 2. Alias rename → mapper contract
+  // 2. Sample-value / underscore-blank → tag (conservative)
+  if (options.detectSamples !== false) {
+    const detected = detectSampleValuesInDocx(buffer);
+    buffer = detected.buffer;
+    items.push(...detected.items);
+  }
+
+  // 3. Alias rename → mapper contract
   const renamed = normalizeTagsInDocx(buffer);
   buffer = renamed.buffer;
   items.push(...renamed.items);
 
-  // 3. Validate with docxtemplater (same options as generator)
+  // 4. Validate with docxtemplater (same options as generator)
   let validation: NormalizeReport["validation"];
   if (shouldValidate) {
     validation = validateTemplate(buffer, {
@@ -125,6 +134,12 @@ export function normalizeTemplateBuffer(
   const repaired = repairDocxRuns(buffer);
   let next = repaired.buffer;
   items.push(...repaired.items);
+
+  if (options.detectSamples !== false) {
+    const detected = detectSampleValuesInDocx(next);
+    next = detected.buffer;
+    items.push(...detected.items);
+  }
 
   const renamed = normalizeTagsInDocx(next);
   next = renamed.buffer;
