@@ -97,6 +97,20 @@ import { normalizeTemplate } from "@/features/documents/template-normalize";
 const { buffer, report } = await normalizeTemplate({ kind: "path", path: "template.docx" });
 ```
 
+### Dashboard upload integration
+
+Owner template upload (`/dashboard/templates` → `uploadTemplateForCurrentFirm`) runs the same pipeline automatically via `prepareTemplateUpload()`:
+
+1. Read the uploaded `.docx` buffer (firm-scoped RBAC unchanged).
+2. Run `normalizeTemplateBuffer` (repair → sample detect → alias/polarity → validate).
+3. **If validation fails** (`report.ok === false` — syntax/compile errors): **reject the upload** with an actionable error listing broken tags/loops. The template is not persisted. (Safer than the previous accept-any-`.docx` behavior; warnings / missing fixture tags do **not** block upload.)
+4. **If validation passes**: persist **normalized** bytes as `Template.fileKey` (what generation reads). Also write the attorney’s original bytes to a side key `*.original.docx` (`computeOriginalTemplateFileKey`) for audit / re-normalize. No Prisma schema change — only `fileKey` is registered.
+5. Return a client-safe `TemplateUploadNormalizeSummary` (counts + capped highlights). `TemplateUploadForm` shows success + summary (or warnings); validation failures use the existing error callout pattern.
+
+**Opt-out:** FormData `skipNormalize=true` (UI checkbox “Skip auto-normalize (template already prepared)”, default off) stores uploaded bytes as `Template.fileKey` with no normalize report and no `*.original.docx` side file.
+
+Generation always uses the primary `Template.fileKey` bytes. Original side files are not selected by the template resolver.
+
 ---
 
 ## Real Trust Family corpus results
@@ -105,10 +119,10 @@ SHA-deduped sources under `apps/web/.local-document-storage/templates/`:
 
 | File | Distinct | Classification | Result |
 |------|----------|----------------|--------|
-| `Trust-_Family-changed-mprg7y50.docx` | yes (`77206515…`) | Partially tagged template + underscore blanks + notary orphan `}` | **pass** compile+render |
+| `Trust-_Family-changed-mprg7y50.docx` | yes (`5a04f290…`) | Partially tagged template + underscore blanks + notary orphan `}` | **pass** compile+render |
 | `Trust-_Family-changed-mprg6n30.docx` | duplicate of mprg7y50 | same | **pass** |
-| `Trust-_Family-changed-mprnxupt.docx` | yes (`3a01b7b2…`) | same failure mode as mprg7y50 | **pass** |
-| `Trust-_Family-changed-mprpud8a.docx` | yes (`92d4cca2…`) | Partially tagged (no notary orphans) | **pass** (already at foundation baseline) |
+| `Trust-_Family-changed-mprnxupt.docx` | yes (`eba34174…`) | same failure mode as mprg7y50 | **pass** |
+| `Trust-_Family-changed-mprpud8a.docx` | yes (`f517a39c…`) | Partially tagged (no notary orphans) | **pass** (already at foundation baseline) |
 | `verify/revocable_trust_test_v1.docx` | yes | Synthetic verify | **pass** |
 
 Baseline (foundation only) had mprg7y50 / mprnxupt **failing** on notary orphan braces. After orphan-closer repair + sample detection, all distinct Trust Family docs pass. Per-file JSON: `docs/template-normalizer-reports/`.
@@ -139,7 +153,7 @@ Uses Node’s built-in test runner + `tsx` (same as `machine.test.ts`):
 cd apps/web && pnpm test:unit:normalize
 ```
 
-Includes synthetic split-run / bold-split fixtures, notary orphan zero-length-run fixtures, sample/blank detection, and integration tests against the real corpus paths.
+Includes synthetic split-run / bold-split fixtures, notary orphan zero-length-run fixtures, sample/blank detection, upload-path adapter tests (`prepare-template-upload.test.ts`), and integration tests against the real corpus paths.
 
 ---
 
@@ -149,7 +163,7 @@ Includes synthetic split-run / bold-split fixtures, notary orphan zero-length-ru
 - Many underscore blanks have **no mapper key** yet (second successor, marriage details, age ladders) — reported as suggestions only
 - Filled personal names buried in prose (without labels) are not auto-detected
 - Does not rewrite `<OPTION>` attorney drafting notes or invent conditional legal language
-- Dashboard upload UI for normalize jobs is out of scope
+- Upload stores original as a side file only (no `originalFileKey` column yet); dual-store UX beyond the normalize report is future work
 
 ---
 

@@ -148,9 +148,27 @@ export function computeTemplateFileKey(opts: {
 }
 
 /**
+ * Side-file key for the attorney's pre-normalization .docx (audit / re-normalize).
+ * Primary `fileKey` always points at the normalized bytes used for generation.
+ * Format: same path with `.original.docx` instead of `.docx`.
+ */
+export function computeOriginalTemplateFileKey(normalizedFileKey: string): string {
+  if (!normalizedFileKey || typeof normalizedFileKey !== "string") {
+    throw new Error("[storage] computeOriginalTemplateFileKey called with invalid fileKey");
+  }
+  if (/\.docx$/i.test(normalizedFileKey)) {
+    return normalizedFileKey.replace(/\.docx$/i, ".original.docx");
+  }
+  return `${normalizedFileKey}.original.docx`;
+}
+
+/**
  * Persist an attorney .docx template uploaded via the owner-only Templates UI.
  * Returns the fileKey (to be recorded in the Prisma Template row).
  * Symmetric to uploadGenerated but intended for input templates (never overwritten by generation).
+ *
+ * Callers that normalize on upload should pass the **normalized** buffer as the primary
+ * key content; optionally also persist the original via computeOriginalTemplateFileKey.
  */
 export async function uploadTemplate(
   buffer: Buffer,

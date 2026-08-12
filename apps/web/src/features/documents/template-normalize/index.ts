@@ -1,6 +1,6 @@
 /**
  * Template normalization: repair split/orphan braces → sample/blank detect →
- * alias rename → docxtemplater validate.
+ * alias rename + settlor spouse polarity → docxtemplater validate.
  */
 
 export type {
@@ -11,6 +11,7 @@ export type {
   NormalizeReportItem,
   NormalizeReportItemKind,
   TemplateValidationResult,
+  TemplateUploadNormalizeSummary,
   XmlPartRepairResult,
 } from "./types";
 
@@ -32,6 +33,7 @@ export {
   splitTag,
   resolveAlias,
   renameTagsInXml,
+  fixSettlorSpousePolarityInXml,
   normalizeTagsInDocx,
   buildFixtureVariables,
 } from "./normalize-tags";
@@ -48,3 +50,10 @@ export { validateTemplate } from "./validate-template";
 export type { ValidateTemplateOptions } from "./validate-template";
 
 export { normalizeTemplate, normalizeTemplateBuffer } from "./normalize-template";
+
+export {
+  prepareTemplateUpload,
+  type PrepareTemplateUploadOptions,
+  type PrepareTemplateUploadResult,
+} from "./prepare-template-upload";
+export type { PrepareTemplateUploadResult } from "./prepare-template-upload";

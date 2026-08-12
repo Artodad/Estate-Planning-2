@@ -288,12 +288,11 @@ for (const entry of TRUST_FAMILY) {
   });
 }
 
-test("intake → fill (Trust Family mprg7y50): single intake leaves spouse inverted-block edge documented", (t) => {
+test("intake → fill (Trust Family mprg7y50): settlor spouse polarity fills married / omits for single", (t) => {
   /**
-   * Gap note: normalized Trust Family uses `{^has_spouse} and {spouse_full_name}{/has_spouse}`
-   * (inverted polarity). Married fills therefore omit the spouse name in that clause;
-   * single fills insert " and " with an empty spouse name. This test locks current behavior
-   * so a future polarity fix is intentional, not accidental.
+   * After settlor polarity fix: Trust Family uses
+   * `{#has_spouse} and {spouse_full_name}{/has_spouse}` so married fills include the
+   * spouse name and single fills omit the "and …" spouse clause.
    */
   const abs = path.join(WEB_ROOT, TRUST_FAMILY[0].rel);
   if (!existsSync(abs)) {
@@ -309,11 +308,11 @@ test("intake → fill (Trust Family mprg7y50): single intake leaves spouse inver
       mapIntakeToDocVariables(marriedCaRichIntake, "revocable_trust"),
     ),
   );
-  // Current (incorrect polarity): spouse name does NOT appear next to settlor for married
   assert.ok(marriedText.includes("Elena Vargas"));
-  assert.ok(
-    !/Elena Vargas\s+and\s+Diego Vargas/.test(marriedText),
-    "known gap: inverted ^has_spouse prevents married spouse substitution in settlor clause",
+  assert.match(
+    marriedText,
+    /Elena Vargas\s+and\s+Diego Vargas/,
+    "married settlor clause must include spouse under positive {#has_spouse}",
   );
 
   const singleText = plainTextFromDocx(
@@ -323,6 +322,9 @@ test("intake → fill (Trust Family mprg7y50): single intake leaves spouse inver
     ),
   );
   assert.ok(singleText.includes("Alex Nguyen"));
-  // Inverted block renders for single → "and" appears with empty spouse
-  assert.match(singleText, /Alex Nguyen\s+and\s+,/);
+  // Positive polarity: spouse clause hidden when has_spouse is false
+  assert.ok(
+    !/Alex Nguyen\s+and\s+,/.test(singleText),
+    "single settlor clause must not render empty spouse 'and' gap",
+  );
 });

@@ -70,6 +70,37 @@ export interface NormalizeTemplateResult {
   report: NormalizeReport;
 }
 
+/**
+ * Client-safe summary returned from template upload (no buffers / file content).
+ * Used by the dashboard TemplateUploadForm and upload Server Action.
+ */
+export interface TemplateUploadNormalizeSummary {
+  ok: boolean;
+  /**
+   * True when the uploader opted out of auto-normalize (`skipNormalize`).
+   * Counts are zero and no `*.original.docx` side file is written.
+   */
+  skipped?: boolean;
+  repairCount: number;
+  renameCount: number;
+  detectionCount: number;
+  warningCount: number;
+  errorCount: number;
+  /** Short list for UI (capped). */
+  highlights: Array<{
+    kind: NormalizeReportItemKind;
+    code: string;
+    message: string;
+    before?: string;
+    after?: string;
+  }>;
+  validation?: {
+    ok: boolean;
+    missingTags: string[];
+    syntaxErrors: string[];
+  };
+}
+
 export interface XmlPartRepairResult {
   xml: string;
   items: NormalizeReportItem[];
