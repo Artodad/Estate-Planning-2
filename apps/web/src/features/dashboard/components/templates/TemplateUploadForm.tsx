@@ -130,13 +130,19 @@ export function TemplateUploadForm() {
   // Handle success side-effects (toast + clear file name display)
   useEffect(() => {
     if (state && "success" in state && state.success) {
-      const repairs = state.normalizeReport?.repairCount ?? 0;
-      const renames = state.normalizeReport?.renameCount ?? 0;
-      toast.success(
-        repairs + renames > 0
-          ? `Template uploaded and normalized (${repairs} repairs, ${renames} renames).`
-          : "Template uploaded successfully. It is now available for document generation.",
-      );
+      if (state.normalizeReport?.skipped) {
+        toast.success(
+          "Template uploaded as-is (auto-normalize skipped). It is now available for document generation.",
+        );
+      } else {
+        const repairs = state.normalizeReport?.repairCount ?? 0;
+        const renames = state.normalizeReport?.renameCount ?? 0;
+        toast.success(
+          repairs + renames > 0
+            ? `Template uploaded and normalized (${repairs} repairs, ${renames} renames).`
+            : "Template uploaded successfully. It is now available for document generation.",
+        );
+      }
       setSelectedFileName("");
       // The parent RSC list will be fresh because the action called revalidatePath.
     }
@@ -221,6 +227,27 @@ export function TemplateUploadForm() {
           />
         </div>
 
+        <div className="flex items-start gap-2">
+          <input
+            id="skipNormalize"
+            name="skipNormalize"
+            type="checkbox"
+            value="true"
+            className="mt-1 h-4 w-4 rounded border"
+          />
+          <div className="space-y-1">
+            <Label htmlFor="skipNormalize" className="font-normal leading-snug">
+              Skip auto-normalize (template already prepared)
+            </Label>
+            <p className="text-[10px] text-muted-foreground">
+              Default is off: we repair split tags, rename known aliases, validate, and keep a
+              <code className="mx-0.5">*.original.docx</code> side file. Check this only if the
+              .docx is already docxtemplater-ready — bytes are stored as uploaded with no
+              normalize report or original side file.
+            </p>
+          </div>
+        </div>
+
         <div className="pt-1">
           <SubmitButton />
         </div>
@@ -239,10 +266,11 @@ export function TemplateUploadForm() {
         {state && "success" in state && state.success && (
           <>
             <SuccessCallout role="status">
-              Template registered. Normalized bytes are stored as the active template for
-              generation; your original file is kept alongside for audit.
+              {normalizeReport?.skipped
+                ? "Template registered as uploaded (auto-normalize skipped). Generation will use these exact bytes."
+                : "Template registered. Normalized bytes are stored as the active template for generation; your original file is kept alongside for audit."}
             </SuccessCallout>
-            {normalizeReport && (
+            {normalizeReport && !normalizeReport.skipped && (
               normalizeReport.warningCount > 0 ? (
                 <WarningCallout>
                   <NormalizeReportPanel report={normalizeReport} variant="success" />

@@ -76,6 +76,11 @@ export interface NormalizeTemplateResult {
  */
 export interface TemplateUploadNormalizeSummary {
   ok: boolean;
+  /**
+   * True when the uploader opted out of auto-normalize (`skipNormalize`).
+   * Counts are zero and no `*.original.docx` side file is written.
+   */
+  skipped?: boolean;
   repairCount: number;
   renameCount: number;
   detectionCount: number;

@@ -101,3 +101,43 @@ test("prepareTemplateUpload keeps originalBuffer byte-identical to input", () =>
   assert.ok(result.originalBuffer.equals(input));
   assert.notEqual(result.normalizedBuffer.equals(input), true);
 });
+
+test("prepareTemplateUpload skipNormalize=true bypasses pipeline and marks summary.skipped", () => {
+  const input = createSplitRunFixtureDocx();
+  const result = prepareTemplateUpload(input, { skipNormalize: true });
+
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+
+  assert.equal(result.summary.skipped, true);
+  assert.equal(result.summary.ok, true);
+  assert.equal(result.summary.repairCount, 0);
+  assert.equal(result.summary.renameCount, 0);
+  assert.equal(result.summary.detectionCount, 0);
+  assert.equal(result.summary.warningCount, 0);
+  assert.equal(result.summary.errorCount, 0);
+  assert.equal(result.summary.highlights.length, 0);
+  assert.ok(result.normalizedBuffer.equals(input));
+  assert.ok(result.originalBuffer.equals(input));
+
+  // Messy tags must remain unrepaired when skipped
+  const docXml = new PizZip(result.normalizedBuffer).file("word/document.xml")!.asText();
+  assert.ok(docXml.includes("{#child}"), "skipNormalize must keep pre-alias {#child}");
+  assert.ok(!docXml.includes("{#children}"), "skipNormalize must not rename child→children");
+});
+
+test("prepareTemplateUpload skipNormalize=false still normalizes (default)", () => {
+  const input = createSplitRunFixtureDocx();
+  const result = prepareTemplateUpload(input, { skipNormalize: false });
+
+  assert.equal(result.ok, true);
+  if (!result.ok) return;
+
+  assert.notEqual(result.summary.skipped, true);
+  assert.ok(result.summary.repairCount >= 1);
+  assert.ok(result.summary.renameCount >= 1);
+  assert.notEqual(result.normalizedBuffer.equals(input), true);
+
+  const docXml = new PizZip(result.normalizedBuffer).file("word/document.xml")!.asText();
+  assert.match(docXml, /\{#children\}/);
+});

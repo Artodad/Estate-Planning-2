@@ -331,17 +331,80 @@ for (const entry of TRUST_FAMILY) {
 }
 
 // ---------------------------------------------------------------------------
-// Opt-out / store-original-only — not implemented on PR #7 (documented gap)
+// Opt-out: skipNormalize=true stores raw primary, no *.original.docx side file
 // ---------------------------------------------------------------------------
 
-test("opt-out skipNormalize FormData flag is not implemented yet (needs from Dev)", (t) => {
-  // PR #7 always normalizes and always writes *.original.docx alongside primary.
-  // There is no FormData flag (e.g. skipNormalize / storeOriginalOnly) to opt out.
-  // When Dev adds one, replace this todo with behavioral asserts:
-  //   - skipNormalize=true → Template.fileKey bytes === raw upload
-  //   - optional: no *.original.docx when already storing raw as primary
-  //   - summary.ok / counts reflect skipped normalize (or a skipped:true field)
-  t.todo(
-    "Dev: add explicit opt-out FormData flag name + semantics if attorneys may store raw-only; then assert primary/original keys + report for that path",
+test("pipeline: skipNormalize=true stores raw primary and writes no original side file", async () => {
+  const input = createSplitRunFixtureDocx();
+  const prepared = prepareTemplateUpload(input, { skipNormalize: true });
+
+  assert.equal(prepared.ok, true);
+  if (!prepared.ok) return;
+
+  assert.equal(prepared.summary.skipped, true);
+  assert.equal(prepared.summary.repairCount, 0);
+  assert.equal(prepared.summary.renameCount, 0);
+  assert.equal(prepared.summary.errorCount, 0);
+  assert.equal(prepared.summary.highlights.length, 0);
+  assert.ok(
+    prepared.normalizedBuffer.equals(input),
+    "skipNormalize primary buffer must be byte-identical to upload",
   );
+  assert.ok(prepared.originalBuffer.equals(input));
+
+  const fileKey = computeTemplateFileKey({
+    documentType: "revocable_trust",
+    originalName: "skip-normalize.docx",
+    firmSlug: "_pipeline_test",
+    timestamp: "skip1",
+  });
+  const originalFileKey = computeOriginalTemplateFileKey(fileKey);
+
+  // Mirror action: upload primary only when skipNormalize (no side file)
+  await uploadTemplate(prepared.normalizedBuffer, fileKey);
+
+  try {
+    const primary = await getFileBuffer(fileKey);
+    assert.equal(sha256(primary), sha256(input));
+
+    await assert.rejects(
+      () => getFileBuffer(originalFileKey),
+      /getFileBuffer failed/,
+      "skipNormalize must not write *.original.docx",
+    );
+  } finally {
+    await cleanupKeys(fileKey, originalFileKey);
+  }
+});
+
+test("pipeline: skipNormalize=false (default) still normalizes and writes original side file", async () => {
+  const input = createSplitRunFixtureDocx();
+  const prepared = prepareTemplateUpload(input);
+  assert.equal(prepared.ok, true);
+  if (!prepared.ok) return;
+
+  assert.notEqual(prepared.summary.skipped, true);
+  assert.ok(prepared.summary.repairCount >= 1);
+  assert.ok(prepared.summary.renameCount >= 1);
+  assert.notEqual(
+    sha256(prepared.normalizedBuffer),
+    sha256(input),
+    "default path must still normalize messy fixtures",
+  );
+
+  const { fileKey, originalFileKey } = await persistPreparedUpload({
+    originalBuffer: prepared.originalBuffer,
+    normalizedBuffer: prepared.normalizedBuffer,
+    originalName: "default-normalize.docx",
+    timestamp: "noskip1",
+  });
+
+  try {
+    const primary = await getFileBuffer(fileKey);
+    const original = await getFileBuffer(originalFileKey);
+    assert.equal(sha256(primary), sha256(prepared.normalizedBuffer));
+    assert.equal(sha256(original), sha256(input));
+  } finally {
+    await cleanupKeys(fileKey, originalFileKey);
+  }
 });
