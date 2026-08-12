@@ -65,6 +65,9 @@ export const MAPPER_CONTRACT_KEYS = [
   "second_distribution_age",
   "third_distribution_age",
   "outright_distribution_age",
+  "educational_trust_eligibility_age",
+  "educational_trust_remainder_age",
+  "educational_trust_termination_age",
   // Charitable
   "charitable_organizations",
   // Healthcare

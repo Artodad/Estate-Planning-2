@@ -57,8 +57,13 @@ function createIntakeFillTemplateDocx(): Buffer {
     paragraphWithRuns(["Trust: {trust_name}"]),
     paragraphWithRuns(["County: {county_of_residence}"]),
     paragraphWithRuns(["Successor Trustee: {successor_trustee_full_name}"]),
+    paragraphWithRuns(["Second Successor: {second_successor_trustee_full_name}"]),
     paragraphWithRuns(["Executor: {executor_full_name}"]),
     paragraphWithRuns(["Healthcare Agent: {healthcare_agent_full_name}"]),
+    paragraphWithRuns(["Marriage: {marriage_city_state} on {marriage_date}"]),
+    paragraphWithRuns(["Deemed Survivor: {deemed_survivor_full_name}"]),
+    paragraphWithRuns(["First Distribution Age: {first_distribution_age}"]),
+    paragraphWithRuns(["Educational Eligibility Age: {educational_trust_eligibility_age}"]),
     // Correct polarity (show spouse block when has_spouse is true)
     paragraphWithRuns(["{#has_spouse}"]),
     paragraphWithRuns(["Spouse: {spouse_full_name}"]),
@@ -141,8 +146,13 @@ test("intake → fill (synthetic): married CA rich answers populate party names,
   assert.ok(text.includes("- Sofia Vargas @ 50%"));
   assert.ok(text.includes("- Leo Vargas @ 50%"));
   assert.match(text, /Successor Trustee: Isabella Vargas/);
+  assert.match(text, /Second Successor: Marco Vargas/);
   assert.match(text, /Executor: Elena Vargas/);
   assert.match(text, /Healthcare Agent: Marco Vargas/);
+  assert.match(text, /Marriage: San Francisco, California on September 1, 2000/);
+  assert.match(text, /Deemed Survivor: Diego Vargas/);
+  assert.match(text, /First Distribution Age: 25/);
+  assert.match(text, /Educational Eligibility Age: 22/);
   assert.ok(text.includes("[Community property assets present]"));
 
   assertNoUnresolvedMapperTags(text, [
@@ -151,8 +161,13 @@ test("intake → fill (synthetic): married CA rich answers populate party names,
     "county_of_residence",
     "spouse_full_name",
     "successor_trustee_full_name",
+    "second_successor_trustee_full_name",
     "executor_full_name",
     "healthcare_agent_full_name",
+    "marriage_city_state",
+    "marriage_date",
+    "first_distribution_age",
+    "educational_trust_eligibility_age",
   ]);
 });
 
@@ -269,10 +284,22 @@ for (const entry of TRUST_FAMILY) {
       text.includes("Vargas Revocable Living Trust"),
       "trust_name must appear in filled Trust Family doc",
     );
-    assert.ok(text.includes("San Francisco"), "county_of_residence must appear");
+    assert.ok(text.includes("San Francisco"), "county_of_residence / marriage city must appear");
     assert.ok(
       text.includes("Isabella Vargas"),
       "successor_trustee_full_name must appear",
+    );
+    assert.ok(
+      text.includes("Marco Vargas"),
+      "second_successor_trustee_full_name must appear",
+    );
+    assert.ok(
+      text.includes("September 1, 2000"),
+      "marriage_date must appear after normalize→fill",
+    );
+    assert.ok(
+      text.includes("25"),
+      "first_distribution_age (and related ages) must appear after normalize→fill",
     );
 
     // Children + residuary loops (tags present on normalized Trust Family docs)
@@ -284,6 +311,11 @@ for (const entry of TRUST_FAMILY) {
       "trust_name",
       "county_of_residence",
       "successor_trustee_full_name",
+      "second_successor_trustee_full_name",
+      "marriage_city_state",
+      "marriage_date",
+      "first_distribution_age",
+      "educational_trust_eligibility_age",
     ]);
   });
 }

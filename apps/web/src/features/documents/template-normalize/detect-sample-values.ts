@@ -306,11 +306,46 @@ export const SAMPLE_DETECTION_RULES: SampleDetectionRule[] = [
       "Bare [age] immediately after 'under the age of' (Young Persons) → young_person_retention_age",
   },
   {
+    id: "blank_educational_trust_eligibility_age",
+    mapperKey: "educational_trust_eligibility_age",
+    confidence: "high",
+    // Educational Trust uses "under age" (not Young Persons "under the age of").
+    find: findUnderscoreBlankWithPrefix("age", /under age\s*$/i),
+    replaceWith: "{educational_trust_eligibility_age}",
+    reason:
+      "Bare [age] after 'under age' (Educational Trust eligibility) → educational_trust_eligibility_age",
+  },
+  {
+    id: "blank_educational_trust_remainder_age",
+    mapperKey: "educational_trust_remainder_age",
+    confidence: "high",
+    // Must run before outright "attains" — educational prose is "has attained the age of".
+    find: findUnderscoreBlankWithPrefix("age", /has attained the age of\s*$/i),
+    replaceWith: "{educational_trust_remainder_age}",
+    reason:
+      "Bare [age] after 'has attained the age of' (Educational Trust remainder) → educational_trust_remainder_age",
+  },
+  {
+    id: "blank_educational_trust_termination_age",
+    mapperKey: "educational_trust_termination_age",
+    confidence: "high",
+    find: findUnderscoreBlankWithPrefix("age", /(?:he\/she|they)\s+turns\s*$/i),
+    replaceWith: "{educational_trust_termination_age}",
+    reason:
+      "Bare [age] after 'he/she turns' / 'they turns' (Educational Trust hold-until) → educational_trust_termination_age",
+  },
+  {
     id: "blank_outright_distribution_age",
     mapperKey: "outright_distribution_age",
     confidence: "high",
-    // "attains" (not educational "has attained") so educational-trust ages stay suggestions.
-    find: findUnderscoreBlankWithPrefix("age", /attains the age of\s*$/i),
+    // Exclude educational "has attained" (handled above).
+    find: (text) =>
+      findUnderscoreBlankWithPrefix("age", /attains the age of\s*$/i)(text).filter((m) => {
+        const before = text
+          .slice(Math.max(0, m.start - 48), m.start)
+          .replace(/[_\t \u00a0]+$/g, "");
+        return !/has attained the age of\s*$/i.test(before);
+      }),
     replaceWith: "{outright_distribution_age}",
     reason:
       "Bare [age] immediately after 'attains the age of' (single-age principal) → outright_distribution_age",
@@ -332,8 +367,7 @@ export const SAMPLE_DETECTION_RULES: SampleDetectionRule[] = [
     id: "blank_age_ambiguous",
     confidence: "low",
     find: findUnderscoreBlank("age"),
-    reason:
-      "Bare [age] blank without a high-confidence prose anchor (e.g. educational trust ages) — not auto-tagged",
+    reason: "Bare [age] blank without a high-confidence prose anchor — not auto-tagged",
   },
   {
     id: "blank_ceb_appoint_person",

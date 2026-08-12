@@ -133,11 +133,28 @@ export const BeneficiaryShareSchema = z.object({
   contingentOn: z.string().optional(),
 });
 
+/** Optional age blanks as attorney-facing text (e.g. "25"); template owns legal wording. */
+const OptionalAgeText = z.string().max(32, 'Keep age short (e.g. 25)').optional();
+
 export const DistributionSchema = z.object({
   residuary: z.array(BeneficiaryShareSchema).default([]),
   contingentBeneficiaries: z.array(BeneficiaryShareSchema).optional(),
   minorTrustProvisions: z.string().optional().describe('Data notes only — e.g. "age 25 distribution, trustee discretion"'),
   spendthrift: z.boolean().optional(),
+  /** Young Persons “under the age of …” retention threshold. */
+  youngPersonRetentionAge: OptionalAgeText,
+  /** Staggered principal ladder ages (first / second / third). */
+  firstDistributionAge: OptionalAgeText,
+  secondDistributionAge: OptionalAgeText,
+  thirdDistributionAge: OptionalAgeText,
+  /** Single-age outright principal alternative (“attains the age of …”). */
+  outrightDistributionAge: OptionalAgeText,
+  /** Educational Trust: child under this age at surviving settlor’s death. */
+  educationalTrustEligibilityAge: OptionalAgeText,
+  /** Educational Trust: age when remainder is distributed (“has attained”). */
+  educationalTrustRemainderAge: OptionalAgeText,
+  /** Educational Trust: hold-until / turns age. */
+  educationalTrustTerminationAge: OptionalAgeText,
 });
 
 export const CharitableIntentSchema = z.object({
@@ -202,6 +219,11 @@ export const PersonalInfoSchema = z.object({
   marriageCityState: z.string().optional(),
   /** Marriage date as attorney-facing text (ISO or written form); template owns formatting. */
   marriageDate: z.string().optional(),
+  /**
+   * Simultaneous-death named survivor (trust “deemed survivor” blank).
+   * Dedicated free-text — do not assume spouse or client.
+   */
+  deemedSurvivorFullName: z.string().optional(),
   citizenshipImmigrationNotes: z.string().optional().describe('Minimized PII; attorney notes only'),
 });
 

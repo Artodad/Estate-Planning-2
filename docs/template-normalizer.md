@@ -80,7 +80,17 @@ Word often inserts empty tab-only `<w:r>` runs between prose and a stray `}`. Ch
 | `_[age]_` after “under the age of” | `{young_person_retention_age}` | Young Persons clause only |
 | `_[age]_` after “attains the age of” | `{outright_distribution_age}` | Single-age principal clause (not “has attained”) |
 
-Low-confidence (suggestion only): free-text `[Description of distribution.]`, `[do/do not]` choice language, bare `[age]` in Educational Trust clauses (multiple distinct ages), CEB “Can Choose a Specific Person…” drafting notes, citizenship OPTION wrappers.
+### v3 (Educational Trust ages + intake-backed fills)
+
+| Pattern | Tag | Notes |
+|---------|-----|-------|
+| `_[age]_` after “under age” | `{educational_trust_eligibility_age}` | Distinct from Young Persons “under the age of” |
+| `_[age]_` after “has attained the age of” | `{educational_trust_remainder_age}` | Distinct from outright “attains” |
+| `_[age]_` after “he/she turns” / “they turns” | `{educational_trust_termination_age}` | Hold-until age |
+
+All v2/v3 age + marriage + deemed-survivor + second-successor tags are intake-backed (optional fields; empty-safe when absent).
+
+Low-confidence (suggestion only): free-text `[Description of distribution.]`, `[do/do not]` choice language, CEB “Can Choose a Specific Person…” drafting notes, citizenship OPTION wrappers.
 
 ---
 

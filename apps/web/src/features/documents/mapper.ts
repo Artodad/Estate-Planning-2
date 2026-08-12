@@ -316,8 +316,8 @@ export function mapIntakeToDocVariables(
     financial_poa_full_name: financialPoa?.full_name || "",
     healthcare_agent_full_name: resolvedHealthcareAgent?.full_name || "",
     guardian_of_minor_full_name: guardianMinor?.full_name || "",
-    // Simultaneous-death named survivor — intake does not collect yet; empty until then.
-    deemed_survivor_full_name: "",
+    // Simultaneous-death named survivor (dedicated; never guessed from spouse/client).
+    deemed_survivor_full_name: safeStr(a.personal?.deemedSurvivorFullName),
 
     // Gifts / distribution
     specific_gifts,
@@ -325,12 +325,15 @@ export function mapIntakeToDocVariables(
     minor_trust_provisions: safeStr(a.distribution?.minorTrustProvisions),
     spendthrift_clause: !!a.distribution?.spendthrift,
     contingent_beneficiaries: (a.distribution?.contingentBeneficiaries ?? []).map(normalizeBeneficiary),
-    // Staggered / young-person age blanks — structured intake not collected yet (empty-safe).
-    young_person_retention_age: "",
-    first_distribution_age: "",
-    second_distribution_age: "",
-    third_distribution_age: "",
-    outright_distribution_age: "",
+    // Age blanks — empty-safe strings when intake omits them.
+    young_person_retention_age: safeStr(a.distribution?.youngPersonRetentionAge),
+    first_distribution_age: safeStr(a.distribution?.firstDistributionAge),
+    second_distribution_age: safeStr(a.distribution?.secondDistributionAge),
+    third_distribution_age: safeStr(a.distribution?.thirdDistributionAge),
+    outright_distribution_age: safeStr(a.distribution?.outrightDistributionAge),
+    educational_trust_eligibility_age: safeStr(a.distribution?.educationalTrustEligibilityAge),
+    educational_trust_remainder_age: safeStr(a.distribution?.educationalTrustRemainderAge),
+    educational_trust_termination_age: safeStr(a.distribution?.educationalTrustTerminationAge),
 
     // Charitable
     charitable_organizations,

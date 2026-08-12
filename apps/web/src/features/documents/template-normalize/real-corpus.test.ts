@@ -124,12 +124,15 @@ test("real corpus mprg7y50: orphan notary braces healed and trust_name tagged", 
   assert.match(joined, /\{first_distribution_age\}/);
   assert.match(joined, /\{young_person_retention_age\}/);
   assert.match(joined, /\{outright_distribution_age\}/);
+  assert.match(joined, /\{educational_trust_eligibility_age\}/);
+  assert.match(joined, /\{educational_trust_remainder_age\}/);
+  assert.match(joined, /\{educational_trust_termination_age\}/);
   assert.ok(report.repairs.some((r) => r.code === "ORPHAN_CLOSER_REMOVED"));
   assert.ok(report.repairs.some((r) => r.code === "SAMPLE_VALUE_TAGGED"));
-  // Educational ages + do/do not + distribution descriptions remain suggestions.
+  // Remaining soft: do/do not + distribution descriptions (+ optional CEB note).
   assert.ok(report.detections.some((d) => d.code === "SAMPLE_VALUE_SUGGESTION"));
   const tagged = report.repairs.filter((r) => r.code === "SAMPLE_VALUE_TAGGED").length;
   const suggestions = report.detections.filter((d) => d.code === "SAMPLE_VALUE_SUGGESTION").length;
-  assert.ok(tagged >= 14, `expected ≥14 sample tags, got ${tagged}`);
-  assert.ok(suggestions <= 7, `expected ≤7 suggestions, got ${suggestions}`);
+  assert.ok(tagged >= 17, `expected ≥17 sample tags, got ${tagged}`);
+  assert.ok(suggestions <= 4, `expected ≤4 suggestions, got ${suggestions}`);
 });

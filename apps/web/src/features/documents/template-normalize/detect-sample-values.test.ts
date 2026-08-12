@@ -114,12 +114,33 @@ test("detectSampleValuesInParagraph tags outright distribution age via attains a
   assert.match(out, /\{outright_distribution_age\}/);
 });
 
-test("detectSampleValuesInParagraph leaves educational under-age blank as suggestion", () => {
+test("detectSampleValuesInParagraph tags educational trust eligibility age", () => {
   const xml = `<w:p><w:r><w:t>If a child of the Settlors’ is under age _ _[age]_ _ at the time</w:t></w:r></w:p>`;
   const { xml: out, items } = detectSampleValuesInParagraph(xml);
-  assert.match(out, /\[age\]/);
-  assert.ok(items.some((i) => i.code === "SAMPLE_VALUE_SUGGESTION"));
-  assert.ok(!items.some((i) => i.code === "SAMPLE_VALUE_TAGGED"));
+  assert.match(out, /\{educational_trust_eligibility_age\}/);
+  assert.ok(!out.includes("[age]"));
+  assert.ok(items.some((i) => i.after === "{educational_trust_eligibility_age}"));
+});
+
+test("detectSampleValuesInParagraph tags educational trust remainder age (has attained)", () => {
+  const xml = `<w:p><w:r><w:t>When the Settlors’ child has attained the age of _ _[age]_ _ years, the Trustee shall</w:t></w:r></w:p>`;
+  const { xml: out, items } = detectSampleValuesInParagraph(xml);
+  assert.match(out, /\{educational_trust_remainder_age\}/);
+  assert.ok(!out.includes("{outright_distribution_age}"));
+  assert.ok(items.some((i) => i.after === "{educational_trust_remainder_age}"));
+});
+
+test("detectSampleValuesInParagraph tags educational trust termination age (turns)", () => {
+  const xml = `<w:p><w:r><w:t>until he/she turns _ _[age]_ _ years of age subject to this Division</w:t></w:r></w:p>`;
+  const { xml: out } = detectSampleValuesInParagraph(xml);
+  assert.match(out, /\{educational_trust_termination_age\}/);
+});
+
+test("detectSampleValuesInParagraph keeps outright attains distinct from educational has attained", () => {
+  const xml = `<w:p><w:r><w:t>When Beneficiary attains the age of _ _[age]_ _, the trustee shall</w:t></w:r></w:p>`;
+  const { xml: out } = detectSampleValuesInParagraph(xml);
+  assert.match(out, /\{outright_distribution_age\}/);
+  assert.ok(!out.includes("{educational_trust_remainder_age}"));
 });
 
 test("detectSampleValuesInParagraph reports do/do not without rewriting", () => {
