@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>How the Estate Planning Engine Works | Usage Guide</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&amp;family=Playfair+Display:wght@700&amp;display=swap');
+        
+        :root {
+            --primary: #0f172a;
+        }
+        
+        body {
+            font-family: 'Inter', system_ui, sans-serif;
+        }
+        
+        .heading-serif {
+            font-family: 'Playfair Display', Georgia, serif;
+            font-weight: 700;
+        }
+
+        .section-header {
+            font-size: 2.25rem;
+            line-height: 2.5rem;
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        .flow-card {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .flow-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.05), 0 4px 6px -4px rgb(0 0 0 / 0.05);
+        }
+
+        .step-number {
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+
+        .perspective-header {
+            background: linear-gradient(135deg, #0f172a 0%, #1e2937 100%);
+            color: white;
+        }
+
+        .nav-active {
+            color: #0f172a;
+            font-weight: 600;
+        }
+
+        .usage-step {
+            position: relative;
+        }
+        
+        .usage-step:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            left: 13px;
+            top: 42px;
+            bottom: -12px;
+            width: 2px;
+            background-color: #e2e8f0;
+        }
+
+        .highlight-box {
+            background-color: #f8fafc;
+            border: 1px solid #e0e7ff;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800">
+    <!-- Top Navigation -->
+    <nav class="bg-white border-b border-slate-200">
+        <div class="max-w-screen-xl mx-auto">
+            <div class="px-8 py-4 flex items-center justify-between">
+                <div class="flex items-center gap-x-3">
+                    <div class="w-9 h-9 bg-slate-900 rounded-xl flex items-center justify-center">
+                        <i class="fa-solid fa-gavel text-white text-xl"></i>
+                    </div>
+                    <div>
+                        <span class="font-semibold text-2xl tracking-tight">Estate Planning Engine</span>
+                    </div>
+                </div>
+                <div class="flex items-center gap-x-8 text-sm">
+                    <a href="#" class="text-slate-600 hover:text-slate-900">Overview</a>
+                    <a href="#" class="text-slate-600 hover:text-slate-900">For Attorneys</a>
+                    <a href="#" class="text-slate-600 hover:text-slate-900">For Clients</a>
+                    <a href="#" class="px-4 py-2 bg-slate-900 text-white text-sm font-medium rounded-xl hover:bg-slate-800 transition-colors">Request Demo</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero -->
+    <div class="max-w-screen-xl mx-auto px-8 pt-12 pb-8">
+        <div class="max-w-3xl">
+            <div class="inline-flex items-center gap-x-2 bg-white border border-slate-200 rounded-full px-4 py-1.5 mb-6">
+                <div class="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>
+                <span class="text-sm font-medium text-slate-700">Built for attorneys who value control and fidelity</span>
+            </div>
+            
+            <h1 class="text-5xl font-semibold tracking-tighter leading-none text-slate-900">How the Estate Planning Engine Works</h1>
+            <p class="mt-4 text-xl text-slate-600 max-w-2xl">A modern, attorney-controlled platform that removes mechanical friction while preserving 100% of your voice, formatting, and professional judgment.</p>
+            
+            <div class="mt-8 flex items-center gap-x-4">
+                <a href="#attorneys" 
+                   class="inline-flex items-center gap-x-2 px-6 py-3 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-2xl transition-all">
+                    <span>For Attorneys</span>
+                    <i class="fa-solid fa-arrow-right"></i>
+                </a>
+                <a href="#clients" 
+                   class="inline-flex items-center gap-x-2 px-6 py-3 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 font-semibold rounded-2xl transition-all">
+                    <span>For Clients</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Key Principles -->
+    <div class="max-w-screen-xl mx-auto px-8 pb-10">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div class="bg-white border border-slate-200 rounded-3xl p-6">
+                <div class="flex items-center gap-x-3">
+                    <i class="fa-solid fa-shield-halved text-emerald-600 text-2xl"></i>
+                    <div>
+                        <div class="font-semibold">Exact Fidelity</div>
+                        <div class="text-sm text-slate-600 mt-0.5">Your templates. Your language. Your formatting. Never altered.</div>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white border border-slate-200 rounded-3xl p-6">
+                <div class="flex items-center gap-x-3">
+                    <i class="fa-solid fa-user-tie text-blue-600 text-2xl"></i>
+                    <div>
+                        <div class="font-semibold">Attorney Control</div>
+                        <div class="text-sm text-slate-600 mt-0.5">Every document is marked <span class="font-medium text-amber-600">DRAFT</span>. You decide when it's ready.</div>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-white border border-slate-200 rounded-3xl p-6">
+                <div class="flex items-center gap-x-3">
+                    <i class="fa-solid fa-lock text-violet-600 text-2xl"></i>
+                    <div>
+                        <div class="font-semibold">Secure &amp; Private</div>
+                        <div class="text-sm text-slate-600 mt-0.5">Client data stays within your firm. Full multi-tenant security.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ATTORNEY PERSPECTIVE -->
+    <div id="attorneys" class="max-w-screen-xl mx-auto px-8 pt-8 pb-16 scroll-mt-8">
+        <div class="flex items-center gap-x-4 mb-8">
+            <div class="w-11 h-11 bg-slate-900 rounded-2xl flex items-center justify-center flex-shrink-0">
+                <i class="fa-solid fa-briefcase text-white text-2xl"></i>
+            </div>
+            <div>
+                <div class="uppercase tracking-[1.5px] text-xs font-semibold text-slate-500">For Law Firms</div>
+                <h2 class="text-4xl font-semibold tracking-tight text-slate-900">Attorney Workflow</h2>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            <!-- Left Column: Overview -->
+            <div class="lg:col-span-5">
+                <div class="sticky top-8">
+                    <div class="bg-white border border-slate-200 shadow-sm rounded-3xl p-8">
+                        <h3 class="font-semibold text-2xl tracking-tight mb-3">The Attorney Experience</h3>
+                        <p class="text-slate-600 leading-relaxed">You stay in complete control. The platform removes the repetitive work of data entry and document assembly while ensuring every output matches your exact standards.</p>
+                        
+                        <div class="mt-6 pt-6 border-t border-slate-100">
+                            <div class="text-xs font-semibold tracking-widest text-slate-500 mb-3">KEY BENEFITS</div>
+                            <div class="space-y-2.5 text-sm">
+                                <div class="flex items-center gap-x-2.5">
+                                    <i class="fa-solid fa-check text-emerald-500"></i>
+                                    <span class="text-slate-700">Save 60–80% of mechanical drafting time</span>
+                                </div>
+                                <div class="flex items-center gap-x-2.5">
+                                    <i class="fa-solid fa-check text-emerald-500"></i>
+                                    <span class="text-slate-700">Maintain 100% of your template language</span>
+                                </div>
+                                <div class="flex items-center gap-x-2.5">
+                                    <i class="fa-solid fa-check text-emerald-500"></i>
+                                    <span class="text-slate-700">Consistent, coordinated 8-document packages</span>
+                                </div>
+                                <div class="flex items-center gap-x-2.5">
+                                    <i class="fa-solid fa-check text-emerald-500"></i>
+                                    <span class="text-slate-700">Full audit trail of all client data and generations</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: Steps -->
+            <div class="lg:col-span-7">
+                <div class="space-y-3">
+                    
+                    <!-- Step 1 -->
+                    <div class="usage-step bg-white border border-slate-200 rounded-3xl p-6">
+                        <div class="flex gap-x-4">
+                            <div>
+                                <div class="step-number bg-slate-900 text-white rounded-2xl font-mono text-sm">01</div>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="font-semibold text-lg">Set up your firm &amp; templates</div>
+                                <div class="text-slate-600 mt-1 text-[15px]">
+                                    Upload your existing Word templates (revocable trust, pour-over will, POAs, healthcare directive, etc.). 
+                                    The system never modifies your language — it only injects client data.
+                                </div>
+                                <div class="mt-3 text-xs text-slate-500">
+                                    <i class="fa-solid fa-info-circle mr-1.5"></i> One-time setup per document type
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step 2 -->
+                    <div class="usage-step bg-white border border-slate-200 rounded-3xl p-6">
+                        <div class="flex gap-x-4">
+                            <div>
+                                <div class="step-number bg-slate-900 text-white rounded-2xl font-mono text-sm">02</div>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="font-semibold text-lg">Invite a client</div>
+                                <div class="text-slate-600 mt-1 text-[15px]">
+                                    Send a secure, branded invitation via email. The client receives a magic link and completes the intake at their own pace.
+                                </div>
+                                <div class="mt-3 flex flex-wrap gap-2">
+                                    <span class="text-xs bg-slate-100 text-slate-600 px-3 py-1 rounded-full">Magic link</span>
+                                    <span class="text-xs bg-slate-100 text-slate-600 px-3 py-1 rounded-full">Auto-save progress</span>
+                                    <span class="text-xs bg-slate-100 text-slate-600 px-3 py-1 rounded-full">Mobile friendly</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step 3 -->
+                    <div class="usage-step bg-white border border-slate-200 rounded-3xl p-6">
+                        <div class="flex gap-x-4">
+                            <div>
+                                <div class="step-number bg-slate-900 text-white rounded-2xl font-mono text-sm">03</div>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="font-semibold text-lg">Review client answers</div>
+                                <div class="text-slate-600 mt-1 text-[15px]">
+                                    All answers appear in your dashboard in a clean, organized view. You can see progress, flag issues, and add internal notes before generating documents.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step 4 -->
+                    <div class="usage-step bg-white border border-slate-200 rounded-3xl p-6">
+                        <div class="flex gap-x-4">
+                            <div>
+                                <div class="step-number bg-slate-900 text-white rounded-2xl font-mono text-sm">04</div>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="font-semibold text-lg">Generate the full estate plan</div>
+                                <div class="text-slate-600 mt-1 text-[15px]">
+                                    With one click, generate a complete, coordinated package of 8 documents using your exact templates:
+                                </div>
+                                <div class="mt-3 grid grid-cols-2 gap-x-3 gap-y-1 text-sm">
+                                    <div class="flex items-center gap-x-2 text-slate-700"><i class="fa-solid fa-file-lines w-4 text-slate-400"></i> Revocable Living Trust</div>
+                                    <div class="flex items-center gap-x-2 text-slate-700"><i class="fa-solid fa-file-lines w-4 text-slate-400"></i> Pour-Over Will</div>
+                                    <div class="flex items-center gap-x-2 text-slate-700"><i class="fa-solid fa-file-lines w-4 text-slate-400"></i> Durable Financial POA</div>
+                                    <div class="flex items-center gap-x-2 text-slate-700"><i class="fa-solid fa-file-lines w-4 text-slate-400"></i> Advance Healthcare Directive</div>
+                                    <div class="flex items-center gap-x-2 text-slate-700"><i class="fa-solid fa-file-lines w-4 text-slate-400"></i> HIPAA Authorization</div>
+                                    <div class="flex items-center gap-x-2 text-slate-700"><i class="fa-solid fa-file-lines w-4 text-slate-400"></i> Certificate of Trust</div>
+                                    <div class="flex items-center gap-x-2 text-slate-700"><i class="fa-solid fa-file-lines w-4 text-slate-400"></i> Personal Property Memo</div>
+                                    <div class="flex items-center gap-x-2 text-slate-700"><i class="fa-solid fa-file-lines w-4 text-slate-400"></i> Trust Funding Instructions</div>
+                                </div>
+                                <div class="mt-3 text-xs bg-amber-50 border border-amber-200 text-amber-700 px-3 py-1.5 rounded-2xl inline-flex items-center gap-x-2">
+                                    <i class="fa-solid fa-exclamation-triangle"></i>
+                                    <span class="font-medium">All documents clearly marked <strong>DRAFT – For Attorney Review Only</strong></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step 5 -->
+                    <div class="usage-step bg-white border border-slate-200 rounded-3xl p-6">
+                        <div class="flex gap-x-4">
+                            <div>
+                                <div class="step-number bg-slate-900 text-white rounded-2xl font-mono text-sm">05</div>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="font-semibold text-lg">Review, download, and deliver</div>
+                                <div class="text-slate-600 mt-1 text-[15px]">
+                                    Review the generated package in your dashboard. Download the full ZIP or individual documents. Make any final professional adjustments in Word (as you normally would), then deliver to the client.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CLIENT PERSPECTIVE -->
+    <div id="clients" class="max-w-screen-xl mx-auto px-8 pt-4 pb-16 bg-white border-y border-slate-200 scroll-mt-8">
+        <div class="flex items-center gap-x-4 mb-8">
+            <div class="w-11 h-11 bg-blue-600 rounded-2xl flex items-center justify-center flex-shrink-0">
+                <i class="fa-solid fa-user text-white text-2xl"></i>
+            </div>
+            <div>
+                <div class="uppercase tracking-[1.5px] text-xs font-semibold text-blue-600">For Your Clients</div>
+                <h2 class="text-4xl font-semibold tracking-tight text-slate-900">Client Experience</h2>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            
+            <!-- Left -->
+            <div class="lg:col-span-5">
+                <div class="bg-blue-50 border border-blue-100 rounded-3xl p-8">
+                    <h3 class="font-semibold text-2xl tracking-tight mb-3 text-slate-900">A guided, respectful process</h3>
+                    <p class="text-slate-600 leading-relaxed">Clients complete a modern, adaptive questionnaire instead of a confusing 20-page PDF. The experience feels modern and supportive while still being thorough.</p>
+                    
+                    <div class="mt-6">
+                        <div class="text-xs font-semibold text-blue-700 tracking-wider mb-2">WHAT CLIENTS APPRECIATE</div>
+                        <ul class="text-sm text-slate-700 space-y-2">
+                            <li class="flex items-start gap-x-2"><i class="fa-solid fa-check mt-1 text-emerald-500"></i> Save progress and return anytime</li>
+                            <li class="flex items-start gap-x-2"><i class="fa-solid fa-check mt-1 text-emerald-500"></i> Clear, conversational language</li>
+                            <li class="flex items-start gap-x-2"><i class="fa-solid fa-check mt-1 text-emerald-500"></i> Smart branching (only relevant questions)</li>
+                            <li class="flex items-start gap-x-2"><i class="fa-solid fa-check mt-1 text-emerald-500"></i> Optional chat mode for those who prefer it</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Client Flow -->
+            <div class="lg:col-span-7">
+                <div class="space-y-3">
+                    
+                    <div class="bg-white border border-slate-200 rounded-3xl p-6">
+                        <div class="flex gap-x-4">
+                            <div>
+                                <div class="step-number bg-blue-600 text-white rounded-2xl font-mono text-sm">01</div>
+                            </div>
+                            <div>
+                                <div class="font-semibold">Receive invitation</div>
+                                <div class="text-sm text-slate-600 mt-1">The attorney sends a secure, personalized link via email. No account creation required.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white border border-slate-200 rounded-3xl p-6">
+                        <div class="flex gap-x-4">
+                            <div>
+                                <div class="step-number bg-blue-600 text-white rounded-2xl font-mono text-sm">02</div>
+                            </div>
+                            <div>
+                                <div class="font-semibold">Complete the guided questionnaire</div>
+                                <div class="text-sm text-slate-600 mt-1 leading-relaxed">
+                                    Clients move through an adaptive, intelligent form. The system only asks relevant questions based on previous answers (marital status, children, residency, etc.). 
+                                    <span class="block mt-1.5 text-blue-700 text-xs font-medium">Primary mode: Clean step-by-step wizard &nbsp;•&nbsp; Optional mode: Conversational chat</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white border border-slate-200 rounded-3xl p-6">
+                        <div class="flex gap-x-4">
+                            <div>
+                                <div class="step-number bg-blue-600 text-white rounded-2xl font-mono text-sm">03</div>
+                            </div>
+                            <div>
+                                <div class="font-semibold">Review and submit</div>
+                                <div class="text-sm text-slate-600 mt-1">Clients can review all answers before submitting. The platform saves progress automatically.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white border border-slate-200 rounded-3xl p-6">
+                        <div class="flex gap-x-4">
+                            <div>
+                                <div class="step-number bg-blue-600 text-white rounded-2xl font-mono text-sm">04</div>
+                            </div>
+                            <div>
+                                <div class="font-semibold">Wait for attorney review</div>
+                                <div class="text-sm text-slate-600 mt-1">After submission, the client is notified that their attorney will prepare the documents and contact them to review.</div>
+                                <div class="mt-3 text-xs px-3 py-2 bg-amber-50 text-amber-700 rounded-2xl inline-block">
+                                    <strong>Important:</strong> Clients do not receive documents directly from the system. All communication and document delivery happens through the attorney.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Final Note -->
+    <div class="max-w-screen-xl mx-auto px-8 pb-16">
+        <div class="max-w-3xl mx-auto text-center bg-slate-900 text-white rounded-3xl p-10">
+            <h3 class="text-2xl font-semibold tracking-tight">The Core Promise</h3>
+            <p class="mt-3 text-slate-300 max-w-md mx-auto">
+                The attorney stays in full professional control. The client gets a modern, respectful experience. 
+                Every document remains unmistakably <span class="font-semibold text-amber-300">yours</span>.
+            </p>
+            <div class="mt-6 flex justify-center">
+                <a href="#" class="inline-flex items-center gap-x-2 text-sm font-medium px-5 py-2.5 bg-white text-slate-900 rounded-2xl hover:bg-slate-100 transition-colors">
+                    <span>Request a private walkthrough</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Simple smooth scroll for nav links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    e.preventDefault();
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            });
+        });
+
+        // Tailwind script (in case CDN needs runtime config)
+        console.log('%c[Estate Planning Engine] Usage guide HTML loaded successfully.', 'color:#64748b');
+    </script>
+</body>
+</html>

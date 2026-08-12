@@ -1,0 +1,162 @@
+- generic:
+  - banner:
+    - generic:
+      - generic: Estate Planning Engine
+      - generic: Multi-tenant legal intake platform
+    - generic:
+      - generic:
+        - button:
+          - generic:
+            - generic:
+              - generic:
+                - img
+            - generic:
+              - generic: Firm 12
+          - img
+      - generic:
+        - generic: "Firm:"
+        - generic: Firm 12
+        - generic: owner
+      - generic:
+        - button:
+          - generic:
+            - generic:
+              - img
+  - generic:
+    - generic:
+      - complementary:
+        - navigation:
+          - link:
+            - /url: /dashboard
+            - img
+            - generic: Overview
+          - link:
+            - /url: /dashboard/clients
+            - img
+            - generic: Clients
+          - link:
+            - /url: /dashboard/intakes
+            - img
+            - generic: Intakes
+          - link:
+            - /url: /dashboard/documents
+            - img
+            - generic: Documents
+          - link:
+            - /url: /dashboard/templates
+            - img
+            - generic: Templates
+        - generic:
+          - generic:
+            - generic: Firm 12
+            - generic: owner
+            - generic: Switch via header OrgSwitcher
+      - generic:
+        - generic:
+          - generic:
+            - heading [level=1]: Clients
+          - generic: Attorney Dashboard
+        - main:
+          - generic:
+            - generic:
+              - generic:
+                - status:
+                  - generic: ⚠️
+                  - generic:
+                    - strong: LIVE DATA + Demo Actions.
+                    - text: Showing real, firm-scoped client records. Key flows (starting intakes + generating full estate plan packages) are now fully functional on live rows. Most other actions remain demo/visual. The mock infrastructure is intentionally preserved for non-seeded firms and historical E2E testing.
+                - generic:
+                  - generic:
+                    - heading [level=2]: Client Matters
+                    - paragraph: 1 live client(s) for this firm (REAL DB data via server action). Search, filter, and explore.
+                  - button: + New Client (Scaffold)
+                  - button: + New Client
+                - generic:
+                  - generic:
+                    - generic:
+                      - searchbox
+                  - tablist:
+                    - tab: All
+                    - tab: Intake In Progress
+                    - tab: Documents Ready
+                    - tab: Needs Attention
+                  - generic:
+                    - generic:
+                      - text: Showing 1 of 1 clients
+                      - generic: (LIVE DB)
+                    - generic: Client-side filtering only
+                - generic:
+                  - generic:
+                    - table:
+                      - rowgroup:
+                        - row:
+                          - columnheader: Client
+                          - columnheader: Intake
+                          - columnheader: Documents
+                          - columnheader: Last Activity
+                          - columnheader: Actions
+                      - rowgroup:
+                        - row:
+                          - cell:
+                            - generic: Testing
+                            - generic: test@test.com
+                          - cell:
+                            - generic:
+                              - generic: 0%
+                          - cell:
+                            - generic: No Documents
+                          - cell: "-2 days ago"
+                          - cell:
+                            - generic:
+                              - button: View
+                              - button: Intake
+                              - button: Generate
+                - generic:
+                  - generic: Clicking View opens a rich detail dialog with more real + mock-derived context and action buttons.
+                  - generic: REAL_SOURCE=prisma
+                - generic:
+                  - group:
+                    - generic: "Quick demo: open detail for first client (Elena Vargas)"
+              - paragraph: "Data source note: (live: 1 for firm cmpowdnl...)"
+          - generic:
+            - text: All generated documents are
+            - strong: DRAFT
+            - text: — for attorney professional review only. This tool does not provide legal advice and does not create an attorney-client relationship.
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e37] [cursor=pointer]:
+    - img [ref=e38]
+  - alert
+  - dialog "Create New Client / Matter" [ref=e43]:
+    - generic [ref=e44]:
+      - heading "Create New Client / Matter" [level=2] [ref=e45]
+      - paragraph [ref=e46]: This client will be persisted for your firm only (multi-tenant). All subsequent intakes and documents will be scoped to your organization.
+    - generic [ref=e47]:
+      - generic [ref=e48]:
+        - generic [ref=e49]:
+          - generic [ref=e50]: Display Name *
+          - textbox "Display Name *" [active] [ref=e51]:
+            - /placeholder: e.g. Smith Family Revocable Living Trust
+        - generic [ref=e52]:
+          - generic [ref=e53]: Primary Email *
+          - textbox "Primary Email *" [ref=e54]:
+            - /placeholder: client@example.com
+        - generic [ref=e55]:
+          - generic [ref=e56]: First Name
+          - textbox "First Name" [ref=e57]
+        - generic [ref=e58]:
+          - generic [ref=e59]: Last Name
+          - textbox "Last Name" [ref=e60]
+        - generic [ref=e61]:
+          - generic [ref=e62]: Phone
+          - textbox "Phone" [ref=e63]
+        - generic [ref=e64]:
+          - generic [ref=e65]: Matter Notes (internal)
+          - textbox "Matter Notes (internal)" [ref=e66]:
+            - /placeholder: Key facts, referrals, special instructions...
+      - generic [ref=e67]:
+        - button "Cancel" [ref=e68]
+        - button "Create Client" [disabled]
+      - paragraph [ref=e69]: Real DB write via Server Action. Firm-scoped. Mock infrastructure untouched.
+    - button "Close" [ref=e70]:
+      - img
+      - generic [ref=e71]: Close

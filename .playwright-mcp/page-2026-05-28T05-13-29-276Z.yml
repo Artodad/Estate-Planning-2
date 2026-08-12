@@ -1,0 +1,195 @@
+- generic [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]: Estate Planning Engine
+      - generic [ref=e5]: Multi-tenant legal intake platform
+    - generic [ref=e43]:
+      - button "Open organization switcher" [ref=e45] [cursor=pointer]:
+        - generic [ref=e46]:
+          - img "Firm 12's logo" [ref=e49]
+          - generic "Firm 12" [ref=e52]
+        - img [ref=e53]
+      - generic [ref=e55]:
+        - generic [ref=e56]: "Firm:"
+        - generic [ref=e57]: Firm 12
+        - 'generic "Your role in this firm (authoritative value from server / useRole): owner" [ref=e58]': owner
+      - button "Open user menu" [ref=e60] [cursor=pointer]:
+        - img "Chase's logo" [ref=e63]
+  - generic [ref=e7]:
+    - complementary "Dashboard navigation" [ref=e8]:
+      - navigation [ref=e9]:
+        - link "Overview" [ref=e65] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e66]
+          - generic [ref=e71]: Overview
+        - link "Clients" [ref=e72] [cursor=pointer]:
+          - /url: /dashboard/clients
+          - img [ref=e73]
+          - generic [ref=e78]: Clients
+        - link "Intakes" [ref=e79] [cursor=pointer]:
+          - /url: /dashboard/intakes
+          - img [ref=e80]
+          - generic [ref=e83]: Intakes
+        - link "Documents" [ref=e84] [cursor=pointer]:
+          - /url: /dashboard/documents
+          - img [ref=e85]
+          - generic [ref=e88]: Documents
+        - link "Templates" [ref=e89] [cursor=pointer]:
+          - /url: /dashboard/templates
+          - img [ref=e90]
+          - generic [ref=e103]: Templates
+      - generic [ref=e17]:
+        - generic [ref=e104]: Firm 12
+        - generic [ref=e105]: owner
+        - generic [ref=e106]: Switch via header OrgSwitcher
+    - generic [ref=e18]:
+      - generic [ref=e19]:
+        - heading "Intakes" [level=1] [ref=e21]
+        - generic [ref=e22]: Attorney Dashboard
+      - main [ref=e23]:
+        - generic [ref=e25]:
+          - generic [ref=e26]:
+            - generic [ref=e27]: Intake Session · cmpowqf8...
+            - generic [ref=e28]: Firm-scoped • Loaded 10:13 PM
+          - generic [ref=e29]:
+            - generic [ref=e107]:
+              - generic [ref=e108]:
+                - generic [ref=e109]:
+                  - generic [ref=e110]:
+                    - heading "Intake Questionnaire" [level=1] [ref=e111]
+                    - generic [ref=e112]: DRAFT
+                  - paragraph [ref=e113]: Testing • family
+                - generic [ref=e114]:
+                  - status [ref=e115]:
+                    - img [ref=e116]
+                    - generic [ref=e119]: Restored from local draft
+                  - button "Switch to chat mode" [ref=e120]:
+                    - img
+                    - text: Switch to Chat Mode
+                  - button "Save & Exit" [ref=e121]:
+                    - img
+                    - text: Save & Exit
+              - generic [ref=e122]:
+                - generic [ref=e123]:
+                  - generic [ref=e124]: Overall Progress
+                  - generic [ref=e125]: 30% complete
+                - progressbar [ref=e126]
+            - generic [ref=e128]:
+              - complementary [ref=e129]:
+                - generic [ref=e130]: Sections
+                - navigation [ref=e131]:
+                  - button "Personal Information" [ref=e258]:
+                    - generic [ref=e133]:
+                      - img [ref=e134]
+                      - text: Personal Information
+                  - button "Family & Relationships current" [ref=e259]:
+                    - generic [ref=e139]:
+                      - img [ref=e140]
+                      - text: Family & Relationships
+                    - generic [ref=e260]: current
+                  - button "Assets" [disabled] [ref=e143]:
+                    - generic [ref=e144]:
+                      - img [ref=e145]
+                      - text: Assets
+                  - button "Liabilities" [disabled] [ref=e148]:
+                    - generic [ref=e149]:
+                      - img [ref=e150]
+                      - text: Liabilities
+                  - button "Decision Makers" [disabled] [ref=e153]:
+                    - generic [ref=e154]:
+                      - img [ref=e155]
+                      - text: Decision Makers
+                  - button "Specific Gifts & Bequests" [disabled] [ref=e158]:
+                    - generic [ref=e159]:
+                      - img [ref=e160]
+                      - text: Specific Gifts & Bequests
+                  - button "Distribution Wishes" [disabled] [ref=e163]:
+                    - generic [ref=e164]:
+                      - img [ref=e165]
+                      - text: Distribution Wishes
+                  - button "Charitable Intent" [disabled] [ref=e168]:
+                    - generic [ref=e169]:
+                      - img [ref=e170]
+                      - text: Charitable Intent
+                  - button "Healthcare & End-of-Life" [disabled] [ref=e173]:
+                    - generic [ref=e174]:
+                      - img [ref=e175]
+                      - text: Healthcare & End-of-Life
+                  - button "Prior Planning" [disabled] [ref=e178]:
+                    - generic [ref=e179]:
+                      - img [ref=e180]
+                      - text: Prior Planning
+                  - button "Review & Complete" [disabled] [ref=e183]:
+                    - generic [ref=e184]:
+                      - img [ref=e185]
+                      - text: Review & Complete
+              - generic [ref=e188]:
+                - generic [ref=e189]:
+                  - generic [ref=e190]:
+                    - heading "Family & Relationships" [level=2] [ref=e261]
+                    - paragraph [ref=e192]: All changes are saved automatically.
+                  - generic [ref=e194]:
+                    - img [ref=e195]
+                    - text: Section complete
+                - generic [ref=e262]:
+                  - generic [ref=e263]:
+                    - generic [ref=e264]:
+                      - generic [ref=e265]: Children & Dependents
+                      - button "Add Child" [ref=e266]:
+                        - img
+                        - text: Add Child
+                    - generic [ref=e268]:
+                      - generic [ref=e269]:
+                        - generic [ref=e270]:
+                          - text: First Name
+                          - generic [ref=e271]: "*"
+                        - textbox "First Name *" [ref=e272]: Sofia
+                      - generic [ref=e273]:
+                        - generic [ref=e274]:
+                          - text: Last Name
+                          - generic [ref=e275]: "*"
+                        - textbox "Last Name *" [ref=e276]: Vargas
+                      - generic [ref=e277]:
+                        - generic [ref=e278]: Date of Birth
+                        - textbox "Date of Birth" [ref=e279]: 2018-07-04
+                      - generic [ref=e280]:
+                        - generic [ref=e281]: Relationship
+                        - textbox "Relationship" [ref=e282]:
+                          - /placeholder: son, daughter, stepchild...
+                          - text: Daughter
+                      - generic [ref=e283]:
+                        - generic [ref=e284]:
+                          - checkbox "Minor (under 18)" [checked] [ref=e285]
+                          - generic [ref=e286]: Minor (under 18)
+                        - generic [ref=e287]:
+                          - generic [ref=e288]: Guardian preference / notes
+                          - textbox "Guardian preference / notes" [ref=e289]: Marcus Vargas (spouse) and Elena Vargas (self) as co-guardians
+                        - button [ref=e290]:
+                          - img
+                  - generic [ref=e292]:
+                    - generic [ref=e293]: Pets (Care Wishes)
+                    - button "Add Pet" [ref=e294]:
+                      - img
+                      - text: Add Pet
+                  - button "Save Family Information & Continue" [ref=e296]
+                - generic [ref=e252]:
+                  - button "Previous" [ref=e297]:
+                    - img
+                    - text: Previous
+                  - generic [ref=e254]: Firm-scoped • Attorney control retained
+                  - button "Continue" [active] [ref=e255]:
+                    - text: Continue
+                    - img
+                - paragraph [ref=e256]:
+                  - text: Your answers are private to this firm. You can return anytime using the link in your invitation or dashboard. All documents generated later will be clearly marked
+                  - strong [ref=e257]: DRAFT
+                  - text: for attorney review.
+          - paragraph [ref=e30]: "Real IntakeSession • answers persisted to JSONB via saveIntakeAnswers + intakeSessionHelpers • Audit: intake.* events"
+        - generic [ref=e31]:
+          - text: All generated documents are
+          - strong [ref=e32]: DRAFT
+          - text: — for attorney professional review only. This tool does not provide legal advice and does not create an attorney-client relationship.
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e38] [cursor=pointer]:
+    - img [ref=e39]
+  - alert [ref=e42]

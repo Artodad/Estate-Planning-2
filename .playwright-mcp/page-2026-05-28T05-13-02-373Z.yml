@@ -1,0 +1,27 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]: Estate Planning Engine
+      - generic [ref=e5]: Multi-tenant legal intake platform
+  - generic [ref=e7]:
+    - complementary "Dashboard navigation" [ref=e8]:
+      - navigation [ref=e9]
+    - generic [ref=e18]:
+      - generic [ref=e19]:
+        - heading "Intakes" [level=1] [ref=e21]
+        - generic [ref=e22]: Loading...
+      - main [ref=e23]:
+        - generic [ref=e25]:
+          - generic [ref=e26]:
+            - generic [ref=e27]: Intake Session · cmpowqf8...
+            - generic [ref=e28]: Firm-scoped • Loaded 10:13 PM
+          - generic [ref=e29]: Loading attorney context...
+          - paragraph [ref=e30]: "Real IntakeSession • answers persisted to JSONB via saveIntakeAnswers + intakeSessionHelpers • Audit: intake.* events"
+        - generic [ref=e31]:
+          - text: All generated documents are
+          - strong [ref=e32]: DRAFT
+          - text: — for attorney professional review only. This tool does not provide legal advice and does not create an attorney-client relationship.
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e38] [cursor=pointer]:
+    - img [ref=e39]
+  - alert [ref=e42]

@@ -1,0 +1,22 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]: Estate Planning Engine
+      - generic [ref=e5]: Multi-tenant legal intake platform
+  - generic [ref=e7]:
+    - complementary "Dashboard navigation" [ref=e8]:
+      - navigation [ref=e9]
+    - generic [ref=e18]:
+      - generic [ref=e19]:
+        - heading "Clients" [level=1] [ref=e21]
+        - generic [ref=e22]: Loading...
+      - main [ref=e23]:
+        - paragraph [ref=e29]: "Data source note: (live: 2 for firm cmpowdnl...)"
+        - generic [ref=e30]:
+          - text: All generated documents are
+          - strong [ref=e31]: DRAFT
+          - text: — for attorney professional review only. This tool does not provide legal advice and does not create an attorney-client relationship.
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e37] [cursor=pointer]:
+    - img [ref=e38]
+  - alert [ref=e41]

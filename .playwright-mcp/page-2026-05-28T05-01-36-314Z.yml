@@ -1,0 +1,136 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]: Estate Planning Engine
+      - generic [ref=e5]: Multi-tenant legal intake platform
+    - generic [ref=e73]:
+      - button "Open organization switcher" [ref=e75] [cursor=pointer]:
+        - generic [ref=e76]:
+          - img "Firm 12's logo" [ref=e79]
+          - generic "Firm 12" [ref=e82]
+        - img [ref=e83]
+      - generic [ref=e85]:
+        - generic [ref=e86]: "Firm:"
+        - generic [ref=e87]: Firm 12
+        - 'generic "Your role in this firm (authoritative value from server / useRole): owner" [ref=e88]': owner
+      - button "Open user menu" [ref=e90] [cursor=pointer]:
+        - img "Chase's logo" [ref=e93]
+  - generic [ref=e7]:
+    - complementary "Dashboard navigation" [ref=e8]:
+      - navigation [ref=e9]:
+        - link "Overview" [ref=e95] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e96]
+          - generic [ref=e101]: Overview
+        - link "Clients" [ref=e102] [cursor=pointer]:
+          - /url: /dashboard/clients
+          - img [ref=e103]
+          - generic [ref=e108]: Clients
+        - link "Intakes" [ref=e109] [cursor=pointer]:
+          - /url: /dashboard/intakes
+          - img [ref=e110]
+          - generic [ref=e113]: Intakes
+        - link "Documents" [ref=e114] [cursor=pointer]:
+          - /url: /dashboard/documents
+          - img [ref=e115]
+          - generic [ref=e118]: Documents
+        - link "Templates" [ref=e119] [cursor=pointer]:
+          - /url: /dashboard/templates
+          - img [ref=e120]
+          - generic [ref=e133]: Templates
+      - generic [ref=e17]:
+        - generic [ref=e134]: Firm 12
+        - generic [ref=e135]: owner
+        - generic [ref=e136]: Switch via header OrgSwitcher
+    - generic [ref=e18]:
+      - generic [ref=e19]:
+        - heading "Clients" [level=1] [ref=e21]
+        - generic [ref=e22]: Attorney Dashboard
+      - main [ref=e23]:
+        - generic [ref=e25]:
+          - generic [ref=e26]:
+            - status [ref=e137]:
+              - generic [ref=e138]: ⚠️
+              - generic [ref=e139]:
+                - strong [ref=e140]: LIVE DATA + Demo Actions.
+                - text: Showing real, firm-scoped client records. Key flows (starting intakes + generating full estate plan packages) are now fully functional on live rows. Most other actions remain demo/visual. The mock infrastructure is intentionally preserved for non-seeded firms and historical E2E testing.
+            - generic [ref=e141]:
+              - generic [ref=e142]:
+                - heading "Client Matters" [level=2] [ref=e143]
+                - paragraph [ref=e144]: 2 live client(s) for this firm (REAL DB data via server action). Search, filter, and explore.
+              - button "+ New Client (Scaffold)" [ref=e145]
+              - button "+ New Client" [ref=e146]
+            - status [ref=e147]:
+              - strong [ref=e148]: "SCAFFOLD ACTION:"
+              - text: Created real client for Test Client for Full Intake Flow. This is a visual prototype only. In a future phase this would open the adaptive questionnaire, trigger document generation, or send an email.
+            - generic [ref=e149]:
+              - searchbox "Search clients" [ref=e152]
+              - tablist "Filter clients" [ref=e153]:
+                - tab "All" [ref=e154]
+                - tab "Intake In Progress" [ref=e155]
+                - tab "Documents Ready" [ref=e156]
+                - tab "Needs Attention" [ref=e157]
+              - generic [ref=e158]:
+                - generic [ref=e159]:
+                  - text: Showing 2 of 2 clients
+                  - generic [ref=e160]: (LIVE DB)
+                - generic [ref=e161]: Client-side filtering only
+            - table [ref=e164]:
+              - rowgroup [ref=e165]:
+                - row "Client Intake Documents Last Activity Actions" [ref=e166]:
+                  - columnheader "Client" [ref=e167]
+                  - columnheader "Intake" [ref=e168]
+                  - columnheader "Documents" [ref=e169]
+                  - columnheader "Last Activity" [ref=e170]
+                  - columnheader "Actions" [ref=e171]
+              - rowgroup [ref=e172]:
+                - row "Test Client for Full Intake Flow testclient@example.com 0% No Documents -2 days ago View Intake Generate" [ref=e173] [cursor=pointer]:
+                  - cell "Test Client for Full Intake Flow testclient@example.com" [ref=e174]:
+                    - generic [ref=e175]: Test Client for Full Intake Flow
+                    - generic [ref=e176]: testclient@example.com
+                  - cell "0%" [ref=e177]:
+                    - generic [ref=e179]: 0%
+                  - cell "No Documents" [ref=e181]:
+                    - generic [ref=e182]: No Documents
+                  - cell "-2 days ago" [ref=e183]
+                  - cell "View Intake Generate" [ref=e184]:
+                    - generic [ref=e185]:
+                      - button "View" [ref=e186]
+                      - button "Intake" [ref=e187]
+                      - button "Generate" [ref=e188]
+                - row "Testing test@test.com 0% No Documents -2 days ago View Intake Generate" [ref=e189] [cursor=pointer]:
+                  - cell "Testing test@test.com" [ref=e190]:
+                    - generic [ref=e191]: Testing
+                    - generic [ref=e192]: test@test.com
+                  - cell "0%" [ref=e193]:
+                    - generic [ref=e195]: 0%
+                  - cell "No Documents" [ref=e197]:
+                    - generic [ref=e198]: No Documents
+                  - cell "-2 days ago" [ref=e199]
+                  - cell "View Intake Generate" [ref=e200]:
+                    - generic [ref=e201]:
+                      - button "View" [ref=e202]
+                      - button "Intake" [ref=e203]
+                      - button "Generate" [ref=e204]
+            - generic [ref=e205]:
+              - generic [ref=e206]: Clicking View opens a rich detail dialog with more real + mock-derived context and action buttons.
+              - generic [ref=e207]: REAL_SOURCE=prisma
+            - group [ref=e209]:
+              - 'generic "Quick demo: open detail for first client (Elena Vargas)" [ref=e210] [cursor=pointer]'
+          - paragraph [ref=e29]: "Data source note: (live: 2 for firm cmpowdnl...)"
+        - generic [ref=e30]:
+          - text: All generated documents are
+          - strong [ref=e31]: DRAFT
+          - text: — for attorney professional review only. This tool does not provide legal advice and does not create an attorney-client relationship.
+  - region "Notifications alt+T":
+    - list:
+      - listitem [ref=e211]:
+        - button "Close toast" [ref=e212] [cursor=pointer]:
+          - img [ref=e213]
+        - img [ref=e217]
+        - generic [ref=e219]:
+          - generic [ref=e220]: "Client created: Test Client for Full Intake Flow"
+          - generic [ref=e221]: The client is now available for intakes and document generation.
+  - button "Open Next.js Dev Tools" [ref=e37] [cursor=pointer]:
+    - img [ref=e38]
+  - alert [ref=e41]

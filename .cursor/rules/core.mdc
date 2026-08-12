@@ -5,6 +5,12 @@ alwaysApply: true
 
 You are building The Estate Planning Engine — a production-grade, attorney-centric SaaS for estate planning.
 
+**Testing Priority:**
+- Always write Playwright E2E tests for new major features (especially intake flow and document generation)
+- UI components should have tests for key user flows
+- Never consider a feature "done" until relevant tests are written and passing
+- Prioritize document fidelity tests and conditional questionnaire logic tests
+
 **Non-negotiable priorities (in order):**
 1. **Document Fidelity** — 100% preservation of attorney template formatting, voice, and structure using docxtemplater only.
 2. **Attorney Control** — Every output is a draft for professional review. Never generate final legal documents or advice.

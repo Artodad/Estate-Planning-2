@@ -1,0 +1,7 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]: Estate Planning Engine
+      - generic [ref=e5]: Multi-tenant legal intake platform
+  - main [ref=e6]
+  - alert [ref=e7]

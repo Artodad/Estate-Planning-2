@@ -1,0 +1,52 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]: Estate Planning Engine
+      - generic [ref=e5]: Multi-tenant legal intake platform
+  - generic [ref=e7]:
+    - complementary "Dashboard navigation" [ref=e8]:
+      - navigation [ref=e9]
+    - generic [ref=e18]:
+      - generic [ref=e19]:
+        - heading "Intakes" [level=1] [ref=e21]
+        - generic [ref=e22]: Loading...
+      - main [ref=e23]:
+        - generic [ref=e25]:
+          - status [ref=e26]:
+            - generic [ref=e27]: ⚠️
+            - generic [ref=e28]: Real IntakeSession data from the adaptive questionnaire is live. Resume any session to continue the wizard. Additional history, bulk actions, and advanced filtering are planned for post-Phase 5 polish.
+          - generic [ref=e29]:
+            - generic [ref=e30]:
+              - generic [ref=e31]: Intakes
+              - generic [ref=e32]: Active and recent client intake sessions (LIVE from IntakeSession).
+            - generic [ref=e33]:
+              - generic [ref=e34]:
+                - link "Test Client for Full Intake Flow in_progress • testclient@example.com 0%" [ref=e35] [cursor=pointer]:
+                  - /url: /dashboard/intakes/cmpp10146000ed8wb90hklgip
+                  - generic [ref=e36]:
+                    - generic [ref=e37]: Test Client for Full Intake Flow
+                    - generic [ref=e38]: in_progress • testclient@example.com
+                  - generic [ref=e39]: 0%
+                - link "Testing in_progress • test@test.com 0%" [ref=e40] [cursor=pointer]:
+                  - /url: /dashboard/intakes/cmpowqf84000anhwbs8319a3j
+                  - generic [ref=e41]:
+                    - generic [ref=e42]: Testing
+                    - generic [ref=e43]: in_progress • test@test.com
+                  - generic [ref=e44]: 0%
+                - link "Testing in_progress • test@test.com 0%" [ref=e45] [cursor=pointer]:
+                  - /url: /dashboard/intakes/cmpowqdqf0008nhwbd3uqrlrc
+                  - generic [ref=e46]:
+                    - generic [ref=e47]: Testing
+                    - generic [ref=e48]: in_progress • test@test.com
+                  - generic [ref=e49]: 0%
+              - link "← Back to Overview" [ref=e51] [cursor=pointer]:
+                - /url: /dashboard
+              - paragraph [ref=e52]: "Owner/Staff only (enforced via requireRole + sidebar filtering via useDashboardNav). Real adaptive questionnaire + session state from Phase 3. (live: 3 for firm)"
+        - generic [ref=e53]:
+          - text: All generated documents are
+          - strong [ref=e54]: DRAFT
+          - text: — for attorney professional review only. This tool does not provide legal advice and does not create an attorney-client relationship.
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e60] [cursor=pointer]:
+    - img [ref=e61]
+  - alert [ref=e64]

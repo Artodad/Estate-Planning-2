@@ -1,0 +1,25 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]: Estate Planning Engine
+      - generic [ref=e5]: Multi-tenant legal intake platform
+  - main [ref=e6]:
+    - generic [ref=e7]:
+      - paragraph [ref=e8]: Phase 0 foundation
+      - generic [ref=e9]:
+        - heading "Estate Planning Engine" [level=1] [ref=e10]
+        - paragraph [ref=e11]: A modern intake and document platform for estate planning attorneys. Sign in to start testing Clerk authentication and firm context.
+    - generic [ref=e12]:
+      - generic [ref=e14]:
+        - generic [ref=e15]: Firm-ready auth
+        - generic [ref=e16]: Clerk Organizations map cleanly to law firms, with roles for owners, staff, and clients.
+      - generic [ref=e18]:
+        - generic [ref=e19]: Adaptive intake
+        - generic [ref=e20]: XState-powered questionnaires adapt to each client's family, assets, and planning goals.
+      - generic [ref=e22]:
+        - generic [ref=e23]: Document fidelity
+        - generic [ref=e24]: Generate attorney-branded .docx packages from existing templates with docxtemplater.
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e30] [cursor=pointer]:
+    - img [ref=e31]
+  - alert [ref=e34]

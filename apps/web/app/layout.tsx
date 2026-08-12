@@ -1,10 +1,12 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
-import { ClerkProvider } from "@clerk/nextjs";
+import { ClerkProvider, Show } from "@clerk/nextjs";
 import { shadcn } from "@clerk/ui/themes";
+import { Toaster } from "sonner";
 
 import { AuthHeader } from "@/components/auth-header";
+import { GlobalFirmHydrator } from "@/features/auth";
 
 const geist = Geist({ subsets: ["latin"] });
 
@@ -23,7 +25,11 @@ export default function RootLayout({
       <body className={geist.className}>
         <ClerkProvider appearance={{ theme: shadcn }}>
           <AuthHeader />
+          <Show when="signed-in">
+            <GlobalFirmHydrator />
+          </Show>
           {children}
+          <Toaster position="top-center" richColors closeButton />
         </ClerkProvider>
       </body>
     </html>

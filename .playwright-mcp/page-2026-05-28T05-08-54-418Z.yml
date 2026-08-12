@@ -1,0 +1,220 @@
+- generic [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e4]: Estate Planning Engine
+      - generic [ref=e5]: Multi-tenant legal intake platform
+    - generic [ref=e43]:
+      - button "Open organization switcher" [ref=e45] [cursor=pointer]:
+        - generic [ref=e46]:
+          - img "Firm 12's logo" [ref=e49]
+          - generic "Firm 12" [ref=e52]
+        - img [ref=e53]
+      - generic [ref=e55]:
+        - generic [ref=e56]: "Firm:"
+        - generic [ref=e57]: Firm 12
+        - 'generic "Your role in this firm (authoritative value from server / useRole): owner" [ref=e58]': owner
+      - button "Open user menu" [ref=e60] [cursor=pointer]:
+        - img "Chase's logo" [ref=e63]
+  - generic [ref=e7]:
+    - complementary "Dashboard navigation" [ref=e8]:
+      - navigation [ref=e9]:
+        - link "Overview" [ref=e65] [cursor=pointer]:
+          - /url: /dashboard
+          - img [ref=e66]
+          - generic [ref=e71]: Overview
+        - link "Clients" [ref=e72] [cursor=pointer]:
+          - /url: /dashboard/clients
+          - img [ref=e73]
+          - generic [ref=e78]: Clients
+        - link "Intakes" [ref=e79] [cursor=pointer]:
+          - /url: /dashboard/intakes
+          - img [ref=e80]
+          - generic [ref=e83]: Intakes
+        - link "Documents" [ref=e84] [cursor=pointer]:
+          - /url: /dashboard/documents
+          - img [ref=e85]
+          - generic [ref=e88]: Documents
+        - link "Templates" [ref=e89] [cursor=pointer]:
+          - /url: /dashboard/templates
+          - img [ref=e90]
+          - generic [ref=e103]: Templates
+      - generic [ref=e17]:
+        - generic [ref=e104]: Firm 12
+        - generic [ref=e105]: owner
+        - generic [ref=e106]: Switch via header OrgSwitcher
+    - generic [ref=e18]:
+      - generic [ref=e19]:
+        - heading "Intakes" [level=1] [ref=e21]
+        - generic [ref=e22]: Attorney Dashboard
+      - main [ref=e23]:
+        - generic [ref=e25]:
+          - generic [ref=e26]:
+            - generic [ref=e27]: Intake Session · cmpowqf8...
+            - generic [ref=e28]: Firm-scoped • Loaded 10:08 PM
+          - generic [ref=e29]:
+            - generic [ref=e107]:
+              - generic [ref=e108]:
+                - generic [ref=e109]:
+                  - generic [ref=e110]:
+                    - heading "Intake Questionnaire" [level=1] [ref=e111]
+                    - generic [ref=e112]: DRAFT
+                  - paragraph [ref=e113]: Testing • personal
+                - generic [ref=e114]:
+                  - status [ref=e115]:
+                    - img [ref=e116]
+                    - generic [ref=e119]: Restored from local draft
+                  - button "Switch to chat mode" [ref=e120]:
+                    - img
+                    - text: Switch to Chat Mode
+                  - button "Save & Exit" [ref=e121]:
+                    - img
+                    - text: Save & Exit
+              - generic [ref=e122]:
+                - generic [ref=e123]:
+                  - generic [ref=e124]: Overall Progress
+                  - generic [ref=e125]: 0% complete
+                - progressbar [ref=e126]
+            - generic [ref=e128]:
+              - complementary [ref=e129]:
+                - generic [ref=e130]: Sections
+                - navigation [ref=e131]:
+                  - button "Personal Information current" [ref=e132]:
+                    - generic [ref=e133]:
+                      - img [ref=e260]
+                      - text: Personal Information
+                    - generic [ref=e136]: current
+                  - button "Family & Relationships" [disabled] [ref=e137]:
+                    - generic [ref=e138]:
+                      - img [ref=e139]
+                      - text: Family & Relationships
+                  - button "Assets" [disabled] [ref=e142]:
+                    - generic [ref=e143]:
+                      - img [ref=e144]
+                      - text: Assets
+                  - button "Liabilities" [disabled] [ref=e147]:
+                    - generic [ref=e148]:
+                      - img [ref=e149]
+                      - text: Liabilities
+                  - button "Decision Makers" [disabled] [ref=e152]:
+                    - generic [ref=e153]:
+                      - img [ref=e154]
+                      - text: Decision Makers
+                  - button "Specific Gifts & Bequests" [disabled] [ref=e157]:
+                    - generic [ref=e158]:
+                      - img [ref=e159]
+                      - text: Specific Gifts & Bequests
+                  - button "Distribution Wishes" [disabled] [ref=e162]:
+                    - generic [ref=e163]:
+                      - img [ref=e164]
+                      - text: Distribution Wishes
+                  - button "Charitable Intent" [disabled] [ref=e167]:
+                    - generic [ref=e168]:
+                      - img [ref=e169]
+                      - text: Charitable Intent
+                  - button "Healthcare & End-of-Life" [disabled] [ref=e172]:
+                    - generic [ref=e173]:
+                      - img [ref=e174]
+                      - text: Healthcare & End-of-Life
+                  - button "Prior Planning" [disabled] [ref=e177]:
+                    - generic [ref=e178]:
+                      - img [ref=e179]
+                      - text: Prior Planning
+                  - button "Review & Complete" [disabled] [ref=e182]:
+                    - generic [ref=e183]:
+                      - img [ref=e184]
+                      - text: Review & Complete
+              - generic [ref=e187]:
+                - generic [ref=e188]:
+                  - generic [ref=e189]:
+                    - heading "Personal Information" [level=2] [ref=e190]
+                    - paragraph [ref=e191]: All changes are saved automatically.
+                  - generic [ref=e192]: In progress
+                - generic [ref=e195]:
+                  - generic [ref=e196]:
+                    - generic [ref=e197]:
+                      - generic [ref=e198]:
+                        - text: Client First Name
+                        - generic [ref=e199]: "*"
+                      - textbox "Client First Name *" [ref=e200]:
+                        - /placeholder: Jane
+                        - text: Elena
+                    - generic [ref=e201]:
+                      - generic [ref=e202]:
+                        - text: Client Last Name
+                        - generic [ref=e203]: "*"
+                      - textbox "Client Last Name *" [ref=e204]:
+                        - /placeholder: Doe
+                        - text: Vargas
+                    - generic [ref=e205]:
+                      - generic [ref=e206]: Date of Birth
+                      - textbox "Date of Birth" [ref=e207]: 1982-03-15
+                      - paragraph [ref=e208]: YYYY-MM-DD — used for age calculations only
+                    - generic [ref=e209]:
+                      - generic [ref=e210]: Email
+                      - textbox "Email" [ref=e211]:
+                        - /placeholder: jane@example.com
+                        - text: elena.vargas@example.com
+                    - generic [ref=e212]:
+                      - generic [ref=e213]: Phone
+                      - textbox "Phone" [ref=e214]:
+                        - /placeholder: (555) 123-4567
+                        - text: (415) 555-0192
+                  - generic [ref=e215]:
+                    - generic [ref=e216]:
+                      - generic [ref=e217]: Marital / Partner Status *
+                      - combobox [ref=e218]:
+                        - option "Single"
+                        - option "Married" [selected]
+                        - option "Partnered (Domestic / Civil)"
+                        - option "Divorced"
+                        - option "Widowed"
+                    - generic [ref=e247]:
+                      - generic [ref=e248]:
+                        - generic [ref=e249]: Spouse / Partner First Name
+                        - textbox "Spouse / Partner First Name" [ref=e250]
+                      - generic [ref=e251]:
+                        - generic [ref=e252]: Spouse / Partner Last Name
+                        - textbox "Spouse / Partner Last Name" [ref=e253]
+                      - generic [ref=e254]:
+                        - generic [ref=e255]: Spouse / Partner DOB
+                        - textbox "Spouse / Partner DOB" [ref=e256]
+                      - generic [ref=e257]:
+                        - generic [ref=e258]: Spouse / Partner Email
+                        - textbox "Spouse / Partner Email" [ref=e259]
+                  - generic [ref=e219]:
+                    - generic [ref=e220]:
+                      - generic [ref=e221]: California Resident?
+                      - generic [ref=e222]:
+                        - checkbox "Yes — important for community property rules" [checked] [active] [ref=e223]
+                        - generic [ref=e224]: Yes — important for community property rules
+                    - generic [ref=e225]:
+                      - generic [ref=e226]: County of Residence (optional)
+                      - textbox "County of Residence (optional)" [ref=e227]:
+                        - /placeholder: Los Angeles
+                        - text: San Francisco
+                  - generic [ref=e228]:
+                    - generic [ref=e229]: Citizenship / Immigration Notes (optional, minimized PII)
+                    - textbox "Citizenship / Immigration Notes (optional, minimized PII)" [ref=e230]
+                    - paragraph [ref=e231]: Attorney notes only — never stored in generated documents unless explicitly mapped.
+                  - button "Save & Continue" [ref=e233]
+                - generic [ref=e234]:
+                  - button "Previous" [disabled]:
+                    - img
+                    - text: Previous
+                  - generic [ref=e236]: Firm-scoped • Attorney control retained
+                  - button "Continue" [disabled]:
+                    - text: Continue
+                    - img
+                - paragraph [ref=e237]:
+                  - text: Your answers are private to this firm. You can return anytime using the link in your invitation or dashboard. All documents generated later will be clearly marked
+                  - strong [ref=e238]: DRAFT
+                  - text: for attorney review.
+          - paragraph [ref=e30]: "Real IntakeSession • answers persisted to JSONB via saveIntakeAnswers + intakeSessionHelpers • Audit: intake.* events"
+        - generic [ref=e31]:
+          - text: All generated documents are
+          - strong [ref=e32]: DRAFT
+          - text: — for attorney professional review only. This tool does not provide legal advice and does not create an attorney-client relationship.
+  - region "Notifications alt+T"
+  - button "Open Next.js Dev Tools" [ref=e38] [cursor=pointer]:
+    - img [ref=e39]
+  - alert [ref=e42]

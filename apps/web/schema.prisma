@@ -1,0 +1,174 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Firm {
+  id          String   @id @default(cuid())
+  clerkOrgId  String?  @unique // Maps to Clerk Organization ID
+  name        String
+  slug        String?  // Optional URL-friendly identifier from Clerk
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  users       User[]
+  invitations Invitation[]
+  auditLogs   AuditLog[]
+
+  // Phase 2 relations (additive only; inserted per Sub-agent A Design §1 Reconciled Schema.
+  // All new models (Client, IntakeSession, Template, GeneratedDocument) include explicit firmId + @relation to Firm for multi-tenancy.
+  // See progress-phase-2-database-models.md §1 and .cursor/rules/multi-tenancy-security.mdc)
+  clients          Client[]
+  templates        Template[]
+  intakeSessions   IntakeSession[]
+  documents        GeneratedDocument[]
+}
+
+model User {
+  id        String   @id @default(cuid())
+  clerkId   String   @unique
+  email     String
+  role      String
+  firmId    String
+  firm      Firm     @relation(fields: [firmId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+model Invitation {
+  id        String   @id @default(cuid())
+  firmId    String
+  firm      Firm     @relation(fields: [firmId], references: [id])
+  email     String
+  role      String   // "client" (future-proof)
+  token     String   @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+}
+
+model AuditLog {
+  id           String   @id @default(cuid())
+  firmId       String
+  firm         Firm     @relation(fields: [firmId], references: [id], onDelete: Cascade)
+
+  actorClerkId String?  // Clerk user ID performing the action (null for system/webhook-triggered)
+  action       String   // e.g. "invitation.created", "user.role_assigned_via_invite", "firm.created", "user.added_to_firm_via_clerk_membership"
+  targetType   String?  // "invitation" | "user" | "firm" | "membership"
+  targetId     String?  // Prisma cuid or Clerk ID (prefer clerkId for users where stable cross-ref is useful)
+  metadata     Json?    // Arbitrary but small. Examples: { email, role, clerkRole: "org:member", via: "invite_claim", svixId? }. NEVER full client answers, generated docs, or secrets.
+  createdAt    DateTime @default(now())
+
+  @@index([firmId])
+  @@index([firmId, createdAt(sort: Desc)])
+  @@index([actorClerkId])
+  @@index([action])
+  @@index([targetType, targetId])
+}
+
+// ============================================================
+// PHASE 2 CORE MODELS (Sub-agent A finalized — 2026-05-26)
+// Reconciled from estate-planning-engine-plan/phases/phase-2-database.md + current prod schema.prisma
+// 
+// NON-NEGOTIABLE:
+// - Every model has explicit firmId + Firm relation.
+// - All queries in code MUST scope by firmId (from getCurrentAuthContext + requireRole / checkOwnerOrStaff).
+// - See AGENTS.md §Multi-Tenancy, .cursor/rules/multi-tenancy-security.mdc, apps/web/src/features/auth/server/get-current-auth.ts
+// - Hybrid answers strategy: see detailed §2 in progress-phase-2-database-models.md (JSONB primary this slice).
+// - AuditLog rule applies: NEVER put full answers or doc content in metadata.
+// - Generator + datasource + existing Firm/User/Invitation/AuditLog blocks preserved verbatim (no alterations).
+// ============================================================
+
+model Client {
+  id            String   @id @default(cuid())
+  firmId        String
+  firm          Firm     @relation(fields: [firmId], references: [id], onDelete: Cascade)
+
+  // Display + contact fields reconciled to MockClientData.ts contract (name → displayName for trust/matter titles;
+  // email as primary contact; notes for detail view). Structured name fields retained from vision for future profile use.
+  displayName   String   // e.g. "Elena M. Vargas Revocable Living Trust", "Robert Chen & Lisa Patel (Joint Estate Plan)"
+  firstName     String?
+  lastName      String?
+  email         String
+  phone         String?
+  dateOfBirth   DateTime?
+  notes         String?  // Matter notes / summary (powers mock "notes" in ClientDetailDialog)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  intakeSessions IntakeSession[]
+
+  @@index([firmId])
+  @@index([firmId, createdAt(sort: Desc)])
+  @@index([email]) // within-firm contact lookups (always combined with firmId in app queries)
+}
+
+model IntakeSession {
+  id            String   @id @default(cuid())
+  clientId      String
+  client        Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  firmId        String   // Explicit denorm (non-negotiable for efficient firm-scoped dashboard/intake queries without extra joins)
+  firm          Firm     @relation(fields: [firmId], references: [id], onDelete: Cascade)
+
+  status        String   @default("in_progress") // "in_progress" | "completed" | "abandoned"
+  progress      Int      @default(0)             // 0-100 denormalized (powers UI progress bars/filters; avoids JSON parse on lists)
+  answers       Json?                            // **HYBRID PRIMARY STORAGE (this slice)**: full dynamic questionnaire tree. See §2 below.
+
+  startedAt     DateTime @default(now())
+  completedAt   DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  generatedDocuments GeneratedDocument[]
+
+  @@index([firmId, status])
+  @@index([clientId])
+  @@index([firmId, clientId])
+  @@index([firmId, createdAt(sort: Desc)])
+}
+
+model Template {
+  id            String   @id @default(cuid())
+  firmId        String
+  firm          Firm     @relation(fields: [firmId], references: [id], onDelete: Cascade)
+
+  name          String
+  description   String?
+  fileKey       String   // Secure storage key (Supabase/S3/etc.) for the attorney's original .docx template. NEVER store file content in DB.
+  documentType  String   // "revocable_trust" | "pour_over_will" | "durable_poa" | "healthcare_directive" | "hipaa" | "certificate_of_trust" | "personal_property_memo" | "trust_funding"
+  isActive      Boolean  @default(true)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  generatedDocuments GeneratedDocument[]
+
+  @@index([firmId])
+  @@index([firmId, documentType])
+}
+
+model GeneratedDocument {
+  id              String   @id @default(cuid())
+  intakeSessionId String
+  intakeSession   IntakeSession @relation(fields: [intakeSessionId], references: [id], onDelete: Cascade)
+  firmId          String
+  firm            Firm     @relation(fields: [firmId], references: [id], onDelete: Cascade)
+  templateId      String?
+  template        Template? @relation(fields: [templateId], references: [id])
+
+  documentType    String   // Snapshot of type at generation time (for filtering/history)
+  fileKey         String   // Storage key for the generated DRAFT .docx (PDF via Word/LibreOffice export only — see docs/attorney-guide.md; never auto-converted for fidelity)
+  status          String   @default("pending") // "pending" | "generated" | "failed"
+  generatedAt     DateTime?
+
+  createdAt       DateTime @default(now())
+  // (point-in-time artifact; updatedAt omitted for this slice)
+
+  @@index([firmId, createdAt(sort: Desc)])
+  @@index([intakeSessionId])
+  @@index([firmId, status])
+}
+
