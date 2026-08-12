@@ -21,6 +21,7 @@ export {
   repairParagraphXml,
   repairXmlPart,
   repairDocxRuns,
+  buildTextRun,
 } from "./repair-runs";
 
 export {

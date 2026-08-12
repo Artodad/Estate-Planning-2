@@ -21,7 +21,7 @@ input.docx
 
 | Step | Module | What it does |
 |------|--------|----------------|
-| 1 | `template-normalize/repair-runs.ts` | Opens the zip with PizZip; for `word/document.xml` and headers/footers, merges placeholders split across runs; trims spaces inside tags; collapses `{{tag}}` → `{tag}` when the inner text looks like a tag |
+| 1 | `template-normalize/repair-runs.ts` | Opens the zip with PizZip; for `word/document.xml` and headers/footers, merges placeholders split across `<w:r>`/`<w:t>` runs (including mid-tag bold/italic); trims spaces inside tags; collapses `{{tag}}` → `{tag}` when the inner text looks like a tag |
 | 2 | `template-normalize/normalize-tags.ts` | Applies an alias table (`client_name` → `client_full_name`, `{#child}` → `{#children}`, etc.) and records every rename |
 | 3 | `template-normalize/validate-template.ts` | Loads the buffer with Docxtemplater (same options as `generator.ts`) and dry-runs compile/render with empty-safe fixture variables |
 
@@ -31,11 +31,22 @@ Orchestrator: `normalizeTemplate()` / `normalizeTemplateBuffer()` in `template-n
 
 ## What is automated today
 
-- Split-run healing for likely `{placeholder}` tags
+- Split-run healing for likely `{placeholder}` tags — including fragments split by mid-tag bold/italic/underline or spellcheck across consecutive `<w:r>` runs
 - Safe tag-shape fixes (inner whitespace, double braces)
 - Alias renames toward the mapper contract (reported)
 - Conservative warnings for ambiguous braces in legal prose (left unchanged)
 - Validation errors for broken syntax (unclosed loops, etc.)
+
+### Run-property strategy (conflicting `w:rPr`)
+
+When `{client_full_name}` is broken across runs with different formatting (e.g. `{cli` + bold `ent` + `_full_name}`):
+
+1. Detect the placeholder across consecutive runs (formatting differences ignored for detection).
+2. Replace the fragment span with a **single** `<w:r>` whose text is the intact `{tag}`.
+3. **Inherit `w:rPr` from the first fragment run.** Mid-tag bold/italic/underline on later fragment runs is dropped so the tag is one readable style in Word.
+4. Any text **after** the closing `}` that lived in the last fragment run is kept in a separate run using that **last** run’s `w:rPr` (suffix is outside the placeholder).
+
+This prefers human-readable, docxtemplater-safe tags over preserving accidental mid-tag character formatting.
 
 ## What is **not** automated yet (next slice)
 

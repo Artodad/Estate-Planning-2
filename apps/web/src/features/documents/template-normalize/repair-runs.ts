@@ -1,8 +1,18 @@
 /**
  * Deterministic Word XML repair for split docxtemplater placeholders.
  *
- * Word often splits `{client_full_name}` across multiple `<w:t>` runs.
- * We heal those (and a few safe tag-shape issues) without rewriting legal text.
+ * Word often splits `{client_full_name}` across multiple `<w:r>` / `<w:t>` runs
+ * because of mid-tag bold/italic/underline or spellcheck — e.g.
+ * `{cli` + bold `ent` + `_full` + `_name}`. That breaks docxtemplater and makes
+ * tags unreadable in Word.
+ *
+ * Strategy for conflicting run properties (w:rPr):
+ *   Inherit formatting from the **first** run of the fragment. The healed
+ *   `{tag}` is rewritten as a single `<w:r>` using that first run's `<w:rPr>`
+ *   (or none if the first run had none). Mid-tag bold/italic differences are
+ *   dropped so the placeholder is one visually contiguous token. Text after
+ *   the tag (suffix in the last fragment run) keeps the **last** run's rPr,
+ *   since it is outside the placeholder.
  *
  * Conservative: only treat `{...}` as a tag when the inner content matches a
  * known placeholder shape. Ambiguous braces in prose emit warnings and are left alone.
@@ -17,7 +27,9 @@ const XML_PART_RE =
   /^word\/(document\.xml|header\d*\.xml|footer\d*\.xml|footnotes\.xml|endnotes\.xml)$/;
 
 const WT_RE = /<w:t(\s[^>]*)?>([\s\S]*?)<\/w:t>/g;
-const PARAGRAPH_RE = /<w:p[\s\S]*?<\/w:p>/g;
+const RUN_RE = /<w:r\b[^>]*>[\s\S]*?<\/w:r>/g;
+const PARAGRAPH_RE = /<w:p\b[\s\S]*?<\/w:p>/g;
+const RPR_RE = /<w:rPr\b[\s\S]*?<\/w:rPr>/;
 
 /**
  * Inner forms we treat as tags (after optional whitespace trim):
@@ -47,11 +59,15 @@ export function normalizePlaceholderInner(inner: string): string {
   return compact;
 }
 
-interface TextSegment {
+interface RunInfo {
   fullStart: number;
   fullEnd: number;
-  attrs: string;
+  xml: string;
+  /** Full `<w:rPr>...</w:rPr>` or empty string */
+  rPr: string;
   text: string;
+  /** True when the run is only rPr + w:t (safe to coalesce) */
+  simple: boolean;
 }
 
 interface TagSpan {
@@ -64,19 +80,44 @@ interface TagSpan {
   healedInner: string;
 }
 
-function findWtSegments(paragraphXml: string): TextSegment[] {
-  const segments: TextSegment[] = [];
+function extractRunText(runXml: string): string {
+  let text = "";
   const re = new RegExp(WT_RE.source, "g");
   let m: RegExpExecArray | null;
+  while ((m = re.exec(runXml)) !== null) {
+    text += m[2];
+  }
+  return text;
+}
+
+function isSimpleTextRun(runXml: string): boolean {
+  const stripped = runXml
+    .replace(/<w:r\b[^>]*>/, "")
+    .replace(/<\/w:r>/, "")
+    .replace(RPR_RE, "")
+    .replace(/<w:t(\s[^>]*)?>[\s\S]*?<\/w:t>/g, "")
+    .replace(/<w:lastRenderedPageBreak\s*\/>/g, "")
+    .trim();
+  return stripped === "";
+}
+
+function findRuns(paragraphXml: string): RunInfo[] {
+  const runs: RunInfo[] = [];
+  const re = new RegExp(RUN_RE.source, "g");
+  let m: RegExpExecArray | null;
   while ((m = re.exec(paragraphXml)) !== null) {
-    segments.push({
+    const xml = m[0];
+    const rPrMatch = xml.match(RPR_RE);
+    runs.push({
       fullStart: m.index,
-      fullEnd: m.index + m[0].length,
-      attrs: m[1] ?? "",
-      text: m[2],
+      fullEnd: m.index + xml.length,
+      xml,
+      rPr: rPrMatch ? rPrMatch[0] : "",
+      text: extractRunText(xml),
+      simple: isSimpleTextRun(xml),
     });
   }
-  return segments;
+  return runs;
 }
 
 function findTagSpans(concat: string): { tags: TagSpan[]; warnings: NormalizeReportItem[] } {
@@ -156,25 +197,39 @@ function findTagSpans(concat: string): { tags: TagSpan[]; warnings: NormalizeRep
   return { tags, warnings };
 }
 
-/** Map a concatenated offset to segment index + offset within that segment's text */
+/** Map a concatenated offset to run index + offset within that run's text */
 function locate(
-  segments: TextSegment[],
+  runs: RunInfo[],
   concatOffset: number,
-): { segIndex: number; offsetInSeg: number } {
+): { runIndex: number; offsetInRun: number } {
   let cursor = 0;
-  for (let s = 0; s < segments.length; s += 1) {
-    const len = segments[s].text.length;
+  for (let s = 0; s < runs.length; s += 1) {
+    const len = runs[s].text.length;
     if (concatOffset < cursor + len) {
-      return { segIndex: s, offsetInSeg: concatOffset - cursor };
+      return { runIndex: s, offsetInRun: concatOffset - cursor };
     }
-    if (concatOffset === cursor + len && s < segments.length - 1) {
-      // Boundary: prefer start of next segment (exclusive-end friendly)
-      return { segIndex: s + 1, offsetInSeg: 0 };
+    if (concatOffset === cursor + len && s < runs.length - 1) {
+      return { runIndex: s + 1, offsetInRun: 0 };
     }
     cursor += len;
   }
-  const last = Math.max(0, segments.length - 1);
-  return { segIndex: last, offsetInSeg: segments[last]?.text.length ?? 0 };
+  const last = Math.max(0, runs.length - 1);
+  return { runIndex: last, offsetInRun: runs[last]?.text.length ?? 0 };
+}
+
+function escapeXmlText(text: string): string {
+  // Run texts are taken from existing XML captures (entities preserved).
+  // Only escape raw specials if somehow present.
+  return text
+    .replace(/&(?!(amp|lt|gt|quot|apos);)/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+/** Build a simple text run, optionally with inherited rPr. */
+export function buildTextRun(text: string, rPr: string = ""): string {
+  const space = text === "" || /^\s|\s$/.test(text) ? ` xml:space="preserve"` : "";
+  return `<w:r>${rPr}<w:t${space}>${escapeXmlText(text)}</w:t></w:r>`;
 }
 
 function repairCodeFor(original: string, replacement: string, spannedRuns: number): string {
@@ -184,18 +239,30 @@ function repairCodeFor(original: string, replacement: string, spannedRuns: numbe
   return "TAG_NOOP";
 }
 
+function runsHaveConflictingRPr(runs: RunInfo[], from: number, to: number): boolean {
+  const first = runs[from].rPr;
+  for (let i = from + 1; i <= to; i += 1) {
+    if (runs[i].rPr !== first) return true;
+  }
+  return false;
+}
+
 /**
  * Heal split runs + tag shape issues inside one paragraph's XML.
- * Preserves run structure (rPr etc.); only rewrites `<w:t>` text nodes.
+ *
+ * Cross-run placeholders (including mixed bold/italic mid-tag) are coalesced into
+ * a single `<w:r>` inheriting the first fragment run's `w:rPr`.
  */
 export function repairParagraphXml(paragraphXml: string): XmlPartRepairResult {
   const items: NormalizeReportItem[] = [];
-  const segments = findWtSegments(paragraphXml);
-  if (segments.length === 0) {
+  let runs = findRuns(paragraphXml);
+  if (runs.length === 0) {
     return { xml: paragraphXml, items };
   }
 
-  const concat = segments.map((s) => s.text).join("");
+  // Work on a mutable paragraph string; re-scan runs after each multi-run coalesce
+  // (right-to-left single-pass on stable indices when only text in-place edits happen).
+  const concat = runs.map((r) => r.text).join("");
   const { tags, warnings } = findTagSpans(concat);
   items.push(...warnings);
 
@@ -203,74 +270,128 @@ export function repairParagraphXml(paragraphXml: string): XmlPartRepairResult {
     return { xml: paragraphXml, items };
   }
 
-  const texts = segments.map((s) => s.text);
-
-  // Right-to-left so earlier string offsets remain valid relative to original concat/segments
+  // Right-to-left so earlier offsets stay valid until we rewrite the paragraph.
   const ordered = [...tags].sort((a, b) => b.start - a.start);
+  let result = paragraphXml;
+  // Track text overrides for same-run edits before a structural rewrite invalidates indices.
+  // Simpler approach: apply all tags right-to-left with structural replace each time,
+  // re-parsing runs from `result` after each multi-run merge; for same-run, edit in place.
 
   for (const tag of ordered) {
-    const replacement = `{${tag.healedInner}}`;
-    const startLoc = locate(segments, tag.start);
-    const endLoc = locate(segments, tag.end);
-    const i0 = startLoc.segIndex;
-    let i1 = endLoc.segIndex;
-    let endOffset = endLoc.offsetInSeg;
+    runs = findRuns(result);
+    if (runs.length === 0) break;
 
-    // If exclusive end sits at offset 0 of a segment, the tag ended at the previous boundary
+    const currentConcat = runs.map((r) => r.text).join("");
+    // Re-find this tag in current concat by healed/original forms
+    const replacement = `{${tag.healedInner}}`;
+    const candidates = [tag.original, `{${tag.healedInner}}`];
+    let start = -1;
+    let end = -1;
+    for (const cand of candidates) {
+      const idx = currentConcat.lastIndexOf(cand);
+      if (idx !== -1) {
+        start = idx;
+        end = idx + cand.length;
+        break;
+      }
+    }
+    // Also try scanning with findTagSpans for this healed inner
+    if (start === -1) {
+      const again = findTagSpans(currentConcat).tags.find(
+        (t) => t.healedInner === tag.healedInner || t.original === tag.original,
+      );
+      if (!again) continue;
+      start = again.start;
+      end = again.end;
+    }
+
+    const startLoc = locate(runs, start);
+    const endLoc = locate(runs, end);
+    let i0 = startLoc.runIndex;
+    let i1 = endLoc.runIndex;
+    let endOffset = endLoc.offsetInRun;
+
     if (endOffset === 0 && i1 > i0) {
       i1 -= 1;
-      endOffset = texts[i1].length;
+      endOffset = runs[i1].text.length;
     }
 
     const spannedRuns = i1 - i0 + 1;
+    const prefix = runs[i0].text.slice(0, startLoc.offsetInRun);
+    const suffix = runs[i1].text.slice(endOffset);
+    const originalSlice = currentConcat.slice(start, end);
 
-    if (i0 === i1) {
-      const seg = texts[i0];
-      const before = seg.slice(0, startLoc.offsetInSeg);
-      const after = seg.slice(endOffset);
-      texts[i0] = before + replacement + after;
+    if (spannedRuns === 1) {
+      // In-place text heal inside one run (keep that run's rPr as-is)
+      const run = runs[i0];
+      const newText = prefix + replacement + suffix;
+      const newRun = buildTextRun(newText, run.rPr);
+      result = result.slice(0, run.fullStart) + newRun + result.slice(run.fullEnd);
     } else {
-      const prefix = texts[i0].slice(0, startLoc.offsetInSeg);
-      const suffix = texts[i1].slice(endOffset);
-      texts[i0] = prefix + replacement;
-      for (let k = i0 + 1; k < i1; k += 1) {
-        texts[k] = "";
+      // Multi-run fragment (possibly mixed bold/italic): coalesce into one tag run.
+      const spanSimple = runs.slice(i0, i1 + 1).every((r) => r.simple);
+      if (!spanSimple) {
+        items.push({
+          kind: "warning",
+          code: "SPLIT_RUN_COMPLEX",
+          message:
+            `Placeholder ${replacement} spans ${spannedRuns} runs that include non-text content; ` +
+            `attempted conservative coalesce using first-run formatting`,
+          before: originalSlice,
+          after: replacement,
+        });
       }
-      texts[i1] = suffix;
+
+      const conflicting = runsHaveConflictingRPr(runs, i0, i1);
+      // Inherit first fragment run's rPr for the whole tag (documented strategy).
+      const tagRPr = runs[i0].rPr;
+      const suffixRPr = runs[i1].rPr;
+
+      let replacementXml = buildTextRun(prefix + replacement, tagRPr);
+      if (suffix) {
+        replacementXml += buildTextRun(suffix, suffixRPr);
+      }
+
+      const spanStart = runs[i0].fullStart;
+      const spanEnd = runs[i1].fullEnd;
+      result = result.slice(0, spanStart) + replacementXml + result.slice(spanEnd);
+
+      items.push({
+        kind: "repair",
+        code: "SPLIT_RUN_MERGED",
+        message:
+          `Merged placeholder split across ${spannedRuns} runs into one contiguous tag` +
+          (conflicting ? " (inherited w:rPr from first fragment run; dropped mid-tag formatting)" : "") +
+          `: ${replacement}`,
+        before: originalSlice,
+        after: replacement,
+        details: {
+          spannedRuns,
+          inheritedRPrFrom: "first_fragment_run",
+          droppedMidTagFormatting: conflicting,
+        },
+      });
+      continue;
     }
 
-    const code = repairCodeFor(tag.original, replacement, spannedRuns);
+    const code = repairCodeFor(originalSlice, replacement, spannedRuns);
     if (code !== "TAG_NOOP") {
       items.push({
         kind: "repair",
         code,
         message:
-          code === "SPLIT_RUN_MERGED"
-            ? `Merged placeholder split across ${spannedRuns} text runs: ${replacement}`
-            : code === "DOUBLE_TO_SINGLE_BRACES"
-              ? `Normalized double braces to single: ${replacement}`
-              : `Normalized whitespace inside tag: ${replacement}`,
-        before: tag.original,
+          code === "DOUBLE_TO_SINGLE_BRACES"
+            ? `Normalized double braces to single: ${replacement}`
+            : `Normalized whitespace inside tag: ${replacement}`,
+        before: originalSlice,
         after: replacement,
       });
     }
   }
 
-  const healedConcat = texts.join("");
+  const finalRuns = findRuns(result);
+  const healedConcat = finalRuns.map((r) => r.text).join("");
   items.push(...detectUnmatchedLoops(healedConcat));
-
-  // Reconstruct paragraph XML by replacing w:t nodes in reverse order
-  let result = paragraphXml;
-  for (let s = segments.length - 1; s >= 0; s -= 1) {
-    const seg = segments[s];
-    let attrs = seg.attrs;
-    const newText = texts[s];
-    if ((newText === "" || /^\s|\s$/.test(newText)) && !/\bxml:space=/.test(attrs)) {
-      attrs = `${attrs} xml:space="preserve"`;
-    }
-    const replacement = `<w:t${attrs}>${newText}</w:t>`;
-    result = result.slice(0, seg.fullStart) + replacement + result.slice(seg.fullEnd);
-  }
 
   return { xml: result, items };
 }
@@ -283,7 +404,6 @@ function detectUnmatchedLoops(text: string): NormalizeReportItem[] {
   );
   const genericCloseCount = (text.match(/\{\/\}/g) || []).length;
 
-  // Pair opens with closes conservatively within this paragraph only
   const closeCounts = new Map<string, number>();
   for (const name of closes) {
     closeCounts.set(name, (text.match(new RegExp(`\\{\\/${name}\\}`, "g")) || []).length);
