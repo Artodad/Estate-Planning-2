@@ -12,3 +12,4 @@ export * from "./draft-watermark-module";
 export * from "./mapper";
 export * from "./generator";
 export * from "./package";
+export * from "./template-normalize";
