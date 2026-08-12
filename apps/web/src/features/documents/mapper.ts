@@ -158,6 +158,39 @@ function findDecisionMakerByRole(answers: PartialIntake, role: string) {
   };
 }
 
+/** Second successor: 2nd `successor_trustee`, else `alternate` linked to that role. */
+function findSecondSuccessorTrustee(answers: PartialIntake) {
+  const list = answers.decisionMakers ?? [];
+  const successors = list.filter((dm: any) => dm?.role === "successor_trustee");
+  if (successors.length >= 2) {
+    const p = (successors[1]?.person || {}) as any;
+    return {
+      full_name: fullName(p.firstName, p.lastName),
+      first_name: safeStr(p.firstName),
+      last_name: safeStr(p.lastName),
+      email: safeStr(p.email),
+      phone: safeStr(p.phone),
+    };
+  }
+  const primary = successors[0];
+  const alt = list.find((dm: any) => {
+    if (dm?.role !== "alternate") return false;
+    const af = safeStr(dm?.alternateFor);
+    if (!af) return true;
+    if (primary?.id && af === primary.id) return true;
+    return /successor/i.test(af);
+  });
+  if (!alt) return undefined;
+  const p = (alt.person || {}) as any;
+  return {
+    full_name: fullName(p.firstName, p.lastName),
+    first_name: safeStr(p.firstName),
+    last_name: safeStr(p.lastName),
+    email: safeStr(p.email),
+    phone: safeStr(p.phone),
+  };
+}
+
 // -----------------------------
 // Core mapper
 // -----------------------------
@@ -220,6 +253,7 @@ export function mapIntakeToDocVariables(
   // Role-specific convenience vars (common in trust/will/POA templates)
   const executor = findDecisionMakerByRole(a, "executor");
   const successorTrustee = findDecisionMakerByRole(a, "successor_trustee");
+  const secondSuccessorTrustee = findSecondSuccessorTrustee(a);
   const financialPoa = findDecisionMakerByRole(a, "financial_poa");
   const healthcareAgent = findDecisionMakerByRole(a, "healthcare_agent");
   const guardianMinor = findDecisionMakerByRole(a, "guardian_minor");
@@ -255,6 +289,8 @@ export function mapIntakeToDocVariables(
     spouse_full_name: spouseFull,
     spouse_first_name: safeStr(spouse.firstName),
     spouse_last_name: safeStr(spouse.lastName),
+    marriage_city_state: safeStr(a.personal?.marriageCityState),
+    marriage_date: safeStr(a.personal?.marriageDate),
 
     // CA / residency
     is_ca_resident: IntakeSchemas.isCAResident(a),
@@ -276,9 +312,12 @@ export function mapIntakeToDocVariables(
     decision_makers,
     executor_full_name: executor?.full_name || "",
     successor_trustee_full_name: successorTrustee?.full_name || "",
+    second_successor_trustee_full_name: secondSuccessorTrustee?.full_name || "",
     financial_poa_full_name: financialPoa?.full_name || "",
     healthcare_agent_full_name: resolvedHealthcareAgent?.full_name || "",
     guardian_of_minor_full_name: guardianMinor?.full_name || "",
+    // Simultaneous-death named survivor — intake does not collect yet; empty until then.
+    deemed_survivor_full_name: "",
 
     // Gifts / distribution
     specific_gifts,
@@ -286,6 +325,12 @@ export function mapIntakeToDocVariables(
     minor_trust_provisions: safeStr(a.distribution?.minorTrustProvisions),
     spendthrift_clause: !!a.distribution?.spendthrift,
     contingent_beneficiaries: (a.distribution?.contingentBeneficiaries ?? []).map(normalizeBeneficiary),
+    // Staggered / young-person age blanks — structured intake not collected yet (empty-safe).
+    young_person_retention_age: "",
+    first_distribution_age: "",
+    second_distribution_age: "",
+    third_distribution_age: "",
+    outright_distribution_age: "",
 
     // Charitable
     charitable_organizations,

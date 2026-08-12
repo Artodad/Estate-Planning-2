@@ -1,0 +1,889 @@
+{
+  "ok": true,
+  "items": [
+    {
+      "kind": "repair",
+      "code": "SPLIT_RUN_MERGED",
+      "message": "Merged placeholder split across 3 runs into one contiguous tag: {county_of_residence}",
+      "before": "{county_of_residence}",
+      "after": "{county_of_residence}",
+      "details": {
+        "spannedRuns": 3,
+        "inheritedRPrFrom": "first_fragment_run",
+        "droppedMidTagFormatting": false,
+        "preservedLeadingChrome": false
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SPLIT_RUN_MERGED",
+      "message": "Merged placeholder split across 3 runs into one contiguous tag: {/has_spouse}",
+      "before": "{/has_spouse}",
+      "after": "{/has_spouse}",
+      "details": {
+        "spannedRuns": 3,
+        "inheritedRPrFrom": "first_fragment_run",
+        "droppedMidTagFormatting": false,
+        "preservedLeadingChrome": false
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SPLIT_RUN_MERGED",
+      "message": "Merged placeholder split across 3 runs into one contiguous tag: {spouse_full_name}",
+      "before": "{spouse_full_name}",
+      "after": "{spouse_full_name}",
+      "details": {
+        "spannedRuns": 3,
+        "inheritedRPrFrom": "first_fragment_run",
+        "droppedMidTagFormatting": false,
+        "preservedLeadingChrome": false
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SPLIT_RUN_MERGED",
+      "message": "Merged placeholder split across 3 runs into one contiguous tag: {^has_spouse}",
+      "before": "{^has_spouse}",
+      "after": "{^has_spouse}",
+      "details": {
+        "spannedRuns": 3,
+        "inheritedRPrFrom": "first_fragment_run",
+        "droppedMidTagFormatting": false,
+        "preservedLeadingChrome": false
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SPLIT_RUN_MERGED",
+      "message": "Merged placeholder split across 3 runs into one contiguous tag: {client_full_name}",
+      "before": "{client_full_name}",
+      "after": "{client_full_name}",
+      "details": {
+        "spannedRuns": 3,
+        "inheritedRPrFrom": "first_fragment_run",
+        "droppedMidTagFormatting": false,
+        "preservedLeadingChrome": true
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SPLIT_RUN_MERGED",
+      "message": "Merged placeholder split across 3 runs into one contiguous tag: {successor_trustee_full_name}",
+      "before": "{successor_trustee_full_name}",
+      "after": "{successor_trustee_full_name}",
+      "details": {
+        "spannedRuns": 3,
+        "inheritedRPrFrom": "first_fragment_run",
+        "droppedMidTagFormatting": false,
+        "preservedLeadingChrome": false
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "warning",
+      "code": "UNMATCHED_LOOP_OPEN",
+      "message": "Loop opener {#children} has no matching {/children} or {/} in this paragraph; left unchanged",
+      "before": "{#children}",
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SPLIT_RUN_MERGED",
+      "message": "Merged placeholder split across 3 runs into one contiguous tag: {full_name}",
+      "before": "{full_name}",
+      "after": "{full_name}",
+      "details": {
+        "spannedRuns": 3,
+        "inheritedRPrFrom": "first_fragment_run",
+        "droppedMidTagFormatting": false,
+        "preservedLeadingChrome": true
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SPLIT_RUN_MERGED",
+      "message": "Merged placeholder split across 3 runs into one contiguous tag: {client_full_name}",
+      "before": "{client_full_name}",
+      "after": "{client_full_name}",
+      "details": {
+        "spannedRuns": 3,
+        "inheritedRPrFrom": "first_fragment_run",
+        "droppedMidTagFormatting": false,
+        "preservedLeadingChrome": true
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "warning",
+      "code": "UNMATCHED_LOOP_OPEN",
+      "message": "Loop opener {#distribution_residuary} has no matching {/distribution_residuary} or {/} in this paragraph; left unchanged",
+      "before": "{#distribution_residuary}",
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SPLIT_RUN_MERGED",
+      "message": "Merged placeholder split across 3 runs into one contiguous tag: {contingent_on}",
+      "before": "{contingent_on}",
+      "after": "{contingent_on}",
+      "details": {
+        "spannedRuns": 3,
+        "inheritedRPrFrom": "first_fragment_run",
+        "droppedMidTagFormatting": false,
+        "preservedLeadingChrome": false
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SPLIT_RUN_MERGED",
+      "message": "Merged placeholder split across 3 runs into one contiguous tag: {share_percent}",
+      "before": "{share_percent}",
+      "after": "{share_percent}",
+      "details": {
+        "spannedRuns": 3,
+        "inheritedRPrFrom": "first_fragment_run",
+        "droppedMidTagFormatting": false,
+        "preservedLeadingChrome": true
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SPLIT_RUN_MERGED",
+      "message": "Merged placeholder split across 3 runs into one contiguous tag: {/distribution_residuary}",
+      "before": "{/distribution_residuary}",
+      "after": "{/distribution_residuary}",
+      "details": {
+        "spannedRuns": 3,
+        "inheritedRPrFrom": "first_fragment_run",
+        "droppedMidTagFormatting": false,
+        "preservedLeadingChrome": true
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "detection",
+      "code": "REPAIR_PASS_COMPLETE",
+      "message": "Split-run repair applied 11 repair(s)"
+    },
+    {
+      "kind": "repair",
+      "code": "SAMPLE_VALUE_TAGGED",
+      "message": "Tagged sample/blank as {trust_name} (blank_name_of_trust)",
+      "before": "_[Name of Trust]_ _",
+      "after": "{trust_name}",
+      "details": {
+        "ruleId": "blank_name_of_trust"
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SAMPLE_VALUE_TAGGED",
+      "message": "Tagged sample/blank as {trust_name} (blank_name_before_trust)",
+      "before": "_[Name]_ _ ",
+      "after": "{trust_name}",
+      "details": {
+        "ruleId": "blank_name_before_trust"
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SAMPLE_VALUE_TAGGED",
+      "message": "Tagged sample/blank as {second_successor_trustee_full_name} (blank_second_successor_trustee)",
+      "before": "_[name of second successor trustee]_ _",
+      "after": "{second_successor_trustee_full_name}",
+      "details": {
+        "ruleId": "blank_second_successor_trustee"
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SAMPLE_VALUE_TAGGED",
+      "message": "Tagged sample/blank as {marriage_date} (blank_date_of_marriage)",
+      "before": "_[date of marriage]_ _",
+      "after": "{marriage_date}",
+      "details": {
+        "ruleId": "blank_date_of_marriage"
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SAMPLE_VALUE_TAGGED",
+      "message": "Tagged sample/blank as {marriage_city_state} (blank_city_state_marriage)",
+      "before": "_[city and state of marriage]_ _",
+      "after": "{marriage_city_state}",
+      "details": {
+        "ruleId": "blank_city_state_marriage"
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SAMPLE_VALUE_TAGGED",
+      "message": "Tagged sample/blank as {client_full_name} (blank_name_of_settlor)",
+      "before": "_[Name of settlor]_ _",
+      "after": "{client_full_name}",
+      "details": {
+        "ruleId": "blank_name_of_settlor"
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SAMPLE_VALUE_TAGGED",
+      "message": "Tagged sample/blank as {client_full_name} (blank_name_of_settlor)",
+      "before": "_[Name of settlor]_ _",
+      "after": "{client_full_name}",
+      "details": {
+        "ruleId": "blank_name_of_settlor"
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SAMPLE_VALUE_TAGGED",
+      "message": "Tagged sample/blank as {deemed_survivor_full_name} (blank_deemed_survivor)",
+      "before": "_[name of deemed survivor]_ _",
+      "after": "{deemed_survivor_full_name}",
+      "details": {
+        "ruleId": "blank_deemed_survivor"
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "detection",
+      "code": "SAMPLE_VALUE_SUGGESTION",
+      "message": "Low-confidence blank/sample not auto-tagged: \"_[Description of distribution.]_ _\" — Free-text distribution description — keep attorney-authored; not auto-tagged",
+      "before": "_[Description of distribution.]_ _",
+      "details": {
+        "ruleId": "blank_distribution_description",
+        "confidence": "low",
+        "mapperKey": null
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "detection",
+      "code": "SAMPLE_VALUE_SUGGESTION",
+      "message": "Low-confidence blank/sample not auto-tagged: \"_[Description of distribution.]_ _\" — Free-text distribution description — keep attorney-authored; not auto-tagged",
+      "before": "_[Description of distribution.]_ _",
+      "details": {
+        "ruleId": "blank_distribution_description",
+        "confidence": "low",
+        "mapperKey": null
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "detection",
+      "code": "SAMPLE_VALUE_SUGGESTION",
+      "message": "Low-confidence blank/sample not auto-tagged: \"_[do/do not]_ _\" — Choice language blank — do not invent conditional legal text",
+      "before": "_[do/do not]_ _",
+      "details": {
+        "ruleId": "blank_do_do_not",
+        "confidence": "low",
+        "mapperKey": null
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SAMPLE_VALUE_TAGGED",
+      "message": "Tagged sample/blank as {young_person_retention_age} (blank_young_person_retention_age)",
+      "before": "_[age]_ _",
+      "after": "{young_person_retention_age}",
+      "details": {
+        "ruleId": "blank_young_person_retention_age"
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SAMPLE_VALUE_TAGGED",
+      "message": "Tagged sample/blank as {third_distribution_age} (blank_third_distribution_age)",
+      "before": "_[third age]_ _",
+      "after": "{third_distribution_age}",
+      "details": {
+        "ruleId": "blank_third_distribution_age"
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SAMPLE_VALUE_TAGGED",
+      "message": "Tagged sample/blank as {second_distribution_age} (blank_second_distribution_age)",
+      "before": "_[second age]_ _",
+      "after": "{second_distribution_age}",
+      "details": {
+        "ruleId": "blank_second_distribution_age"
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SAMPLE_VALUE_TAGGED",
+      "message": "Tagged sample/blank as {first_distribution_age} (blank_first_distribution_age)",
+      "before": "_[first age]_ _",
+      "after": "{first_distribution_age}",
+      "details": {
+        "ruleId": "blank_first_distribution_age"
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SAMPLE_VALUE_TAGGED",
+      "message": "Tagged sample/blank as {outright_distribution_age} (blank_outright_distribution_age)",
+      "before": "_[age]_ _",
+      "after": "{outright_distribution_age}",
+      "details": {
+        "ruleId": "blank_outright_distribution_age"
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "detection",
+      "code": "SAMPLE_VALUE_SUGGESTION",
+      "message": "Low-confidence blank/sample not auto-tagged: \"_[Can Choose a Specific Person if Beneficiary Dies Before Distribution] __\" — Attorney drafting / CEB choice note — not a mapper scalar",
+      "before": "_[Can Choose a Specific Person if Beneficiary Dies Before Distribution] __",
+      "details": {
+        "ruleId": "blank_ceb_appoint_person",
+        "confidence": "low",
+        "mapperKey": null
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "detection",
+      "code": "SAMPLE_VALUE_SUGGESTION",
+      "message": "Low-confidence blank/sample not auto-tagged: \"_[age]_ _\" — Bare [age] blank without a high-confidence prose anchor (e.g. educational trust ages) — not auto-tagged",
+      "before": "_[age]_ _",
+      "details": {
+        "ruleId": "blank_age_ambiguous",
+        "confidence": "low",
+        "mapperKey": null
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "detection",
+      "code": "SAMPLE_VALUE_SUGGESTION",
+      "message": "Low-confidence blank/sample not auto-tagged: \"_[age]_ _\" — Bare [age] blank without a high-confidence prose anchor (e.g. educational trust ages) — not auto-tagged",
+      "before": "_[age]_ _",
+      "details": {
+        "ruleId": "blank_age_ambiguous",
+        "confidence": "low",
+        "mapperKey": null
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "detection",
+      "code": "SAMPLE_VALUE_SUGGESTION",
+      "message": "Low-confidence blank/sample not auto-tagged: \"_[age]_ _\" — Bare [age] blank without a high-confidence prose anchor (e.g. educational trust ages) — not auto-tagged",
+      "before": "_[age]_ _",
+      "details": {
+        "ruleId": "blank_age_ambiguous",
+        "confidence": "low",
+        "mapperKey": null
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SAMPLE_VALUE_TAGGED",
+      "message": "Tagged sample/blank as {county_of_residence} (filled_county_of)",
+      "before": "San Diego",
+      "after": "{county_of_residence}",
+      "details": {
+        "ruleId": "filled_county_of"
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "detection",
+      "code": "SAMPLE_DETECT_PASS_COMPLETE",
+      "message": "Sample/blank detection tagged 14 value(s); 7 low-confidence suggestion(s)",
+      "details": {
+        "tagged": 14,
+        "suggestions": 7
+      }
+    },
+    {
+      "kind": "detection",
+      "code": "ALIAS_PASS_COMPLETE",
+      "message": "Alias rename applied 0 rename(s)"
+    },
+    {
+      "kind": "detection",
+      "code": "VALIDATION_COMPLETE",
+      "message": "Validation dry-run passed",
+      "details": {
+        "missingTags": [],
+        "syntaxErrors": []
+      }
+    }
+  ],
+  "repairs": [
+    {
+      "kind": "repair",
+      "code": "SPLIT_RUN_MERGED",
+      "message": "Merged placeholder split across 3 runs into one contiguous tag: {county_of_residence}",
+      "before": "{county_of_residence}",
+      "after": "{county_of_residence}",
+      "details": {
+        "spannedRuns": 3,
+        "inheritedRPrFrom": "first_fragment_run",
+        "droppedMidTagFormatting": false,
+        "preservedLeadingChrome": false
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SPLIT_RUN_MERGED",
+      "message": "Merged placeholder split across 3 runs into one contiguous tag: {/has_spouse}",
+      "before": "{/has_spouse}",
+      "after": "{/has_spouse}",
+      "details": {
+        "spannedRuns": 3,
+        "inheritedRPrFrom": "first_fragment_run",
+        "droppedMidTagFormatting": false,
+        "preservedLeadingChrome": false
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SPLIT_RUN_MERGED",
+      "message": "Merged placeholder split across 3 runs into one contiguous tag: {spouse_full_name}",
+      "before": "{spouse_full_name}",
+      "after": "{spouse_full_name}",
+      "details": {
+        "spannedRuns": 3,
+        "inheritedRPrFrom": "first_fragment_run",
+        "droppedMidTagFormatting": false,
+        "preservedLeadingChrome": false
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SPLIT_RUN_MERGED",
+      "message": "Merged placeholder split across 3 runs into one contiguous tag: {^has_spouse}",
+      "before": "{^has_spouse}",
+      "after": "{^has_spouse}",
+      "details": {
+        "spannedRuns": 3,
+        "inheritedRPrFrom": "first_fragment_run",
+        "droppedMidTagFormatting": false,
+        "preservedLeadingChrome": false
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SPLIT_RUN_MERGED",
+      "message": "Merged placeholder split across 3 runs into one contiguous tag: {client_full_name}",
+      "before": "{client_full_name}",
+      "after": "{client_full_name}",
+      "details": {
+        "spannedRuns": 3,
+        "inheritedRPrFrom": "first_fragment_run",
+        "droppedMidTagFormatting": false,
+        "preservedLeadingChrome": true
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SPLIT_RUN_MERGED",
+      "message": "Merged placeholder split across 3 runs into one contiguous tag: {successor_trustee_full_name}",
+      "before": "{successor_trustee_full_name}",
+      "after": "{successor_trustee_full_name}",
+      "details": {
+        "spannedRuns": 3,
+        "inheritedRPrFrom": "first_fragment_run",
+        "droppedMidTagFormatting": false,
+        "preservedLeadingChrome": false
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SPLIT_RUN_MERGED",
+      "message": "Merged placeholder split across 3 runs into one contiguous tag: {full_name}",
+      "before": "{full_name}",
+      "after": "{full_name}",
+      "details": {
+        "spannedRuns": 3,
+        "inheritedRPrFrom": "first_fragment_run",
+        "droppedMidTagFormatting": false,
+        "preservedLeadingChrome": true
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SPLIT_RUN_MERGED",
+      "message": "Merged placeholder split across 3 runs into one contiguous tag: {client_full_name}",
+      "before": "{client_full_name}",
+      "after": "{client_full_name}",
+      "details": {
+        "spannedRuns": 3,
+        "inheritedRPrFrom": "first_fragment_run",
+        "droppedMidTagFormatting": false,
+        "preservedLeadingChrome": true
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SPLIT_RUN_MERGED",
+      "message": "Merged placeholder split across 3 runs into one contiguous tag: {contingent_on}",
+      "before": "{contingent_on}",
+      "after": "{contingent_on}",
+      "details": {
+        "spannedRuns": 3,
+        "inheritedRPrFrom": "first_fragment_run",
+        "droppedMidTagFormatting": false,
+        "preservedLeadingChrome": false
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SPLIT_RUN_MERGED",
+      "message": "Merged placeholder split across 3 runs into one contiguous tag: {share_percent}",
+      "before": "{share_percent}",
+      "after": "{share_percent}",
+      "details": {
+        "spannedRuns": 3,
+        "inheritedRPrFrom": "first_fragment_run",
+        "droppedMidTagFormatting": false,
+        "preservedLeadingChrome": true
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SPLIT_RUN_MERGED",
+      "message": "Merged placeholder split across 3 runs into one contiguous tag: {/distribution_residuary}",
+      "before": "{/distribution_residuary}",
+      "after": "{/distribution_residuary}",
+      "details": {
+        "spannedRuns": 3,
+        "inheritedRPrFrom": "first_fragment_run",
+        "droppedMidTagFormatting": false,
+        "preservedLeadingChrome": true
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SAMPLE_VALUE_TAGGED",
+      "message": "Tagged sample/blank as {trust_name} (blank_name_of_trust)",
+      "before": "_[Name of Trust]_ _",
+      "after": "{trust_name}",
+      "details": {
+        "ruleId": "blank_name_of_trust"
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SAMPLE_VALUE_TAGGED",
+      "message": "Tagged sample/blank as {trust_name} (blank_name_before_trust)",
+      "before": "_[Name]_ _ ",
+      "after": "{trust_name}",
+      "details": {
+        "ruleId": "blank_name_before_trust"
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SAMPLE_VALUE_TAGGED",
+      "message": "Tagged sample/blank as {second_successor_trustee_full_name} (blank_second_successor_trustee)",
+      "before": "_[name of second successor trustee]_ _",
+      "after": "{second_successor_trustee_full_name}",
+      "details": {
+        "ruleId": "blank_second_successor_trustee"
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SAMPLE_VALUE_TAGGED",
+      "message": "Tagged sample/blank as {marriage_date} (blank_date_of_marriage)",
+      "before": "_[date of marriage]_ _",
+      "after": "{marriage_date}",
+      "details": {
+        "ruleId": "blank_date_of_marriage"
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SAMPLE_VALUE_TAGGED",
+      "message": "Tagged sample/blank as {marriage_city_state} (blank_city_state_marriage)",
+      "before": "_[city and state of marriage]_ _",
+      "after": "{marriage_city_state}",
+      "details": {
+        "ruleId": "blank_city_state_marriage"
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SAMPLE_VALUE_TAGGED",
+      "message": "Tagged sample/blank as {client_full_name} (blank_name_of_settlor)",
+      "before": "_[Name of settlor]_ _",
+      "after": "{client_full_name}",
+      "details": {
+        "ruleId": "blank_name_of_settlor"
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SAMPLE_VALUE_TAGGED",
+      "message": "Tagged sample/blank as {client_full_name} (blank_name_of_settlor)",
+      "before": "_[Name of settlor]_ _",
+      "after": "{client_full_name}",
+      "details": {
+        "ruleId": "blank_name_of_settlor"
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SAMPLE_VALUE_TAGGED",
+      "message": "Tagged sample/blank as {deemed_survivor_full_name} (blank_deemed_survivor)",
+      "before": "_[name of deemed survivor]_ _",
+      "after": "{deemed_survivor_full_name}",
+      "details": {
+        "ruleId": "blank_deemed_survivor"
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SAMPLE_VALUE_TAGGED",
+      "message": "Tagged sample/blank as {young_person_retention_age} (blank_young_person_retention_age)",
+      "before": "_[age]_ _",
+      "after": "{young_person_retention_age}",
+      "details": {
+        "ruleId": "blank_young_person_retention_age"
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SAMPLE_VALUE_TAGGED",
+      "message": "Tagged sample/blank as {third_distribution_age} (blank_third_distribution_age)",
+      "before": "_[third age]_ _",
+      "after": "{third_distribution_age}",
+      "details": {
+        "ruleId": "blank_third_distribution_age"
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SAMPLE_VALUE_TAGGED",
+      "message": "Tagged sample/blank as {second_distribution_age} (blank_second_distribution_age)",
+      "before": "_[second age]_ _",
+      "after": "{second_distribution_age}",
+      "details": {
+        "ruleId": "blank_second_distribution_age"
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SAMPLE_VALUE_TAGGED",
+      "message": "Tagged sample/blank as {first_distribution_age} (blank_first_distribution_age)",
+      "before": "_[first age]_ _",
+      "after": "{first_distribution_age}",
+      "details": {
+        "ruleId": "blank_first_distribution_age"
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SAMPLE_VALUE_TAGGED",
+      "message": "Tagged sample/blank as {outright_distribution_age} (blank_outright_distribution_age)",
+      "before": "_[age]_ _",
+      "after": "{outright_distribution_age}",
+      "details": {
+        "ruleId": "blank_outright_distribution_age"
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "repair",
+      "code": "SAMPLE_VALUE_TAGGED",
+      "message": "Tagged sample/blank as {county_of_residence} (filled_county_of)",
+      "before": "San Diego",
+      "after": "{county_of_residence}",
+      "details": {
+        "ruleId": "filled_county_of"
+      },
+      "part": "word/document.xml"
+    }
+  ],
+  "renames": [],
+  "detections": [
+    {
+      "kind": "detection",
+      "code": "REPAIR_PASS_COMPLETE",
+      "message": "Split-run repair applied 11 repair(s)"
+    },
+    {
+      "kind": "detection",
+      "code": "SAMPLE_VALUE_SUGGESTION",
+      "message": "Low-confidence blank/sample not auto-tagged: \"_[Description of distribution.]_ _\" — Free-text distribution description — keep attorney-authored; not auto-tagged",
+      "before": "_[Description of distribution.]_ _",
+      "details": {
+        "ruleId": "blank_distribution_description",
+        "confidence": "low",
+        "mapperKey": null
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "detection",
+      "code": "SAMPLE_VALUE_SUGGESTION",
+      "message": "Low-confidence blank/sample not auto-tagged: \"_[Description of distribution.]_ _\" — Free-text distribution description — keep attorney-authored; not auto-tagged",
+      "before": "_[Description of distribution.]_ _",
+      "details": {
+        "ruleId": "blank_distribution_description",
+        "confidence": "low",
+        "mapperKey": null
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "detection",
+      "code": "SAMPLE_VALUE_SUGGESTION",
+      "message": "Low-confidence blank/sample not auto-tagged: \"_[do/do not]_ _\" — Choice language blank — do not invent conditional legal text",
+      "before": "_[do/do not]_ _",
+      "details": {
+        "ruleId": "blank_do_do_not",
+        "confidence": "low",
+        "mapperKey": null
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "detection",
+      "code": "SAMPLE_VALUE_SUGGESTION",
+      "message": "Low-confidence blank/sample not auto-tagged: \"_[Can Choose a Specific Person if Beneficiary Dies Before Distribution] __\" — Attorney drafting / CEB choice note — not a mapper scalar",
+      "before": "_[Can Choose a Specific Person if Beneficiary Dies Before Distribution] __",
+      "details": {
+        "ruleId": "blank_ceb_appoint_person",
+        "confidence": "low",
+        "mapperKey": null
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "detection",
+      "code": "SAMPLE_VALUE_SUGGESTION",
+      "message": "Low-confidence blank/sample not auto-tagged: \"_[age]_ _\" — Bare [age] blank without a high-confidence prose anchor (e.g. educational trust ages) — not auto-tagged",
+      "before": "_[age]_ _",
+      "details": {
+        "ruleId": "blank_age_ambiguous",
+        "confidence": "low",
+        "mapperKey": null
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "detection",
+      "code": "SAMPLE_VALUE_SUGGESTION",
+      "message": "Low-confidence blank/sample not auto-tagged: \"_[age]_ _\" — Bare [age] blank without a high-confidence prose anchor (e.g. educational trust ages) — not auto-tagged",
+      "before": "_[age]_ _",
+      "details": {
+        "ruleId": "blank_age_ambiguous",
+        "confidence": "low",
+        "mapperKey": null
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "detection",
+      "code": "SAMPLE_VALUE_SUGGESTION",
+      "message": "Low-confidence blank/sample not auto-tagged: \"_[age]_ _\" — Bare [age] blank without a high-confidence prose anchor (e.g. educational trust ages) — not auto-tagged",
+      "before": "_[age]_ _",
+      "details": {
+        "ruleId": "blank_age_ambiguous",
+        "confidence": "low",
+        "mapperKey": null
+      },
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "detection",
+      "code": "SAMPLE_DETECT_PASS_COMPLETE",
+      "message": "Sample/blank detection tagged 14 value(s); 7 low-confidence suggestion(s)",
+      "details": {
+        "tagged": 14,
+        "suggestions": 7
+      }
+    },
+    {
+      "kind": "detection",
+      "code": "ALIAS_PASS_COMPLETE",
+      "message": "Alias rename applied 0 rename(s)"
+    },
+    {
+      "kind": "detection",
+      "code": "VALIDATION_COMPLETE",
+      "message": "Validation dry-run passed",
+      "details": {
+        "missingTags": [],
+        "syntaxErrors": []
+      }
+    }
+  ],
+  "warnings": [
+    {
+      "kind": "warning",
+      "code": "UNMATCHED_LOOP_OPEN",
+      "message": "Loop opener {#children} has no matching {/children} or {/} in this paragraph; left unchanged",
+      "before": "{#children}",
+      "part": "word/document.xml"
+    },
+    {
+      "kind": "warning",
+      "code": "UNMATCHED_LOOP_OPEN",
+      "message": "Loop opener {#distribution_residuary} has no matching {/distribution_residuary} or {/} in this paragraph; left unchanged",
+      "before": "{#distribution_residuary}",
+      "part": "word/document.xml"
+    }
+  ],
+  "errors": [],
+  "validation": {
+    "ok": true,
+    "missingTags": [],
+    "syntaxErrors": [],
+    "messages": [
+      "Compile+render dry-run succeeded with fixture variables"
+    ]
+  }
+}
