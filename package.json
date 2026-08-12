@@ -6,6 +6,8 @@
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "check-types": "turbo run check-types",
+    "test": "pnpm --filter web test:unit",
+    "test:unit:intake-fill": "pnpm --filter web test:unit:intake-fill",
     "format": "prettier --write \"**/*.{ts,tsx,md}\""
   },
   "devDependencies": {
