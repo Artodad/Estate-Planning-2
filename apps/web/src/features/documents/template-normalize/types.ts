@@ -71,6 +71,23 @@ export interface NormalizeTemplateResult {
 }
 
 /**
+ * Soft (low-confidence) suggestion row for upload accept/reject UI.
+ * Mirrors `SAMPLE_VALUE_SUGGESTION` report items — not a parallel model.
+ */
+export interface TemplateUploadSoftSuggestion {
+  id: string;
+  ruleId: string;
+  before: string;
+  /** Proposed replacement tag when docxtemplater-safe */
+  after?: string;
+  rationale: string;
+  part?: string;
+  mapperKey?: string | null;
+  /** False when ignore/reject only (no safe proposed tag) */
+  applicable: boolean;
+}
+
+/**
  * Client-safe summary returned from template upload (no buffers / file content).
  * Used by the dashboard TemplateUploadForm and upload Server Action.
  */
@@ -86,6 +103,12 @@ export interface TemplateUploadNormalizeSummary {
   detectionCount: number;
   warningCount: number;
   errorCount: number;
+  /** Soft suggestions awaiting attorney accept/reject (default: none applied). */
+  softSuggestions: TemplateUploadSoftSuggestion[];
+  /** How many soft suggestions were applied on confirm upload. */
+  appliedSuggestionCount: number;
+  /** Soft suggestions left unapplied (rejected/ignored or non-applicable). */
+  leftAsSuggestionCount: number;
   /** Short list for UI (capped). */
   highlights: Array<{
     kind: NormalizeReportItemKind;

@@ -817,7 +817,10 @@ export async function getPackageTemplatesForCurrentFirm(): Promise<
  * - Firm-scoped fileKey via computeTemplateFileKey (namespaced by slug when available).
  * - Runs template normalizer (repair / alias / sample / validate) before persist
  *   unless FormData `skipNormalize` is set (checkbox: template already prepared).
- * - Persists **normalized** bytes as the primary Template.fileKey (what generation uses).
+ * - Soft (low-confidence) suggestions are human-gated: when any exist, the first
+ *   submit returns `needsConfirmation` (nothing persisted). Confirm resubmits with
+ *   `confirmSoftSuggestions=true` and optional `acceptedSuggestionIds`.
+ * - Persists **normalized** (+ accepted soft applies) bytes as Template.fileKey.
  * - Also stores the original bytes as a side file (`*.original.docx`) for audit
  *   when normalize ran (skipped when `skipNormalize` — primary already is raw).
  * - Rejects upload when post-normalize validation has syntax/compile errors (safer
@@ -840,6 +843,11 @@ export async function uploadTemplateForCurrentFirm(
       normalizeReport: TemplateUploadNormalizeSummary;
       /** Present when normalize ran and a `*.original.docx` side file was written. */
       originalFileKey?: string;
+    }
+  | {
+      /** Soft suggestions present — review/accept before persist. */
+      needsConfirmation: true;
+      normalizeReport: TemplateUploadNormalizeSummary;
     }
   | {
       error: string;

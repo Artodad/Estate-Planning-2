@@ -70,7 +70,10 @@ test("detectSampleValuesInParagraph reports low-confidence blanks without rewrit
   const xml = `<w:p><w:r><w:t>_ _[name of second successor trustee]_ _ shall become</w:t></w:r></w:p>`;
   const { xml: out, items } = detectSampleValuesInParagraph(xml);
   assert.match(out, /\[name of second successor trustee\]/);
-  assert.ok(items.some((i) => i.code === "SAMPLE_VALUE_SUGGESTION"));
+  const suggestion = items.find((i) => i.code === "SAMPLE_VALUE_SUGGESTION");
+  assert.ok(suggestion);
+  assert.equal(suggestion!.after, "{second_successor_trustee_full_name}");
+  assert.equal(suggestion!.details?.applicable, true);
   assert.ok(!items.some((i) => i.code === "SAMPLE_VALUE_TAGGED"));
 });
 

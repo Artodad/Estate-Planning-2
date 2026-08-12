@@ -7,6 +7,8 @@
  * Policy (safer attorney-facing option):
  * - Persist only when report.ok (no compile/syntax errors after normalize).
  * - Warnings (missing fixture tags, low-confidence suggestions) do not block upload.
+ * - Soft (low-confidence) suggestions are never auto-applied; attorneys accept
+ *   selected patches at confirm time via `acceptedSuggestionIds`.
  * - Previously the upload path accepted any .docx without compile checks; rejecting
  *   broken templates after normalize prevents silent generation failures.
  *
@@ -16,10 +18,18 @@
  * - Caller should not write a `*.original.docx` side file (primary already is raw).
  */
 
+import {
+  applyAcceptedSuggestions,
+  softSuggestionsFromReportItems,
+} from "./apply-accepted-suggestions";
 import { normalizeTemplateBuffer } from "./normalize-template";
-import type { NormalizeReport, TemplateUploadNormalizeSummary } from "./types";
+import type {
+  NormalizeReport,
+  TemplateUploadNormalizeSummary,
+  TemplateUploadSoftSuggestion,
+} from "./types";
 
-export type { TemplateUploadNormalizeSummary };
+export type { TemplateUploadNormalizeSummary, TemplateUploadSoftSuggestion };
 
 export type PrepareTemplateUploadOptions = {
   /**
@@ -28,6 +38,11 @@ export type PrepareTemplateUploadOptions = {
    * Default: false (normalize on upload).
    */
   skipNormalize?: boolean;
+  /**
+   * Soft suggestion ids to apply after normalize (from a prior preview).
+   * Default: none — soft suggestions stay suggestion-only until accepted.
+   */
+  acceptedSuggestionIds?: readonly string[];
 };
 
 export type PrepareTemplateUploadResult =
@@ -63,14 +78,25 @@ function emptySkippedReport(): NormalizeReport {
 
 function toSummary(
   report: NormalizeReport,
-  opts?: { skipped?: boolean },
+  opts?: {
+    skipped?: boolean;
+    softSuggestions?: TemplateUploadSoftSuggestion[];
+    appliedSuggestionCount?: number;
+    leftAsSuggestionCount?: number;
+  },
 ): TemplateUploadNormalizeSummary {
+  const softSuggestions = opts?.softSuggestions ?? softSuggestionsFromReportItems(report.items);
+  const appliedSuggestionCount = opts?.appliedSuggestionCount ?? 0;
+  const leftAsSuggestionCount =
+    opts?.leftAsSuggestionCount ?? Math.max(0, softSuggestions.length - appliedSuggestionCount);
+
   const highlightSource = [
     ...report.errors,
     ...report.repairs,
     ...report.renames,
     ...report.warnings,
     ...report.detections.filter((d) => d.code === "SAMPLE_VALUE_SUGGESTION"),
+    ...report.detections.filter((d) => d.code === "SAMPLE_VALUE_SUGGESTION_APPLIED"),
   ];
 
   const highlights = highlightSource.slice(0, HIGHLIGHT_CAP).map((item) => ({
@@ -89,6 +115,9 @@ function toSummary(
     detectionCount: report.detections.length,
     warningCount: report.warnings.length,
     errorCount: report.errors.length,
+    softSuggestions,
+    appliedSuggestionCount,
+    leftAsSuggestionCount,
     highlights,
     validation: report.validation
       ? {
@@ -123,6 +152,7 @@ function buildFailureMessage(report: NormalizeReport): string {
 /**
  * Normalize an uploaded template buffer and gate persistence on validation.
  * Pass `{ skipNormalize: true }` to store bytes as uploaded (no pipeline).
+ * Pass `acceptedSuggestionIds` to apply selected soft suggestions before final validate.
  */
 export function prepareTemplateUpload(
   buffer: Buffer,
@@ -135,29 +165,123 @@ export function prepareTemplateUpload(
       normalizedBuffer: buffer,
       originalBuffer: buffer,
       report,
-      summary: toSummary(report, { skipped: true }),
+      summary: toSummary(report, {
+        skipped: true,
+        softSuggestions: [],
+        appliedSuggestionCount: 0,
+        leftAsSuggestionCount: 0,
+      }),
     };
   }
 
   const { buffer: normalizedBuffer, report } = normalizeTemplateBuffer(buffer);
-  const summary = toSummary(report);
+  const softSuggestions = softSuggestionsFromReportItems(report.items);
+  const acceptedIds = options?.acceptedSuggestionIds ?? [];
 
-  if (!report.ok) {
+  if (acceptedIds.length === 0) {
+    const summary = toSummary(report, {
+      softSuggestions,
+      appliedSuggestionCount: 0,
+      leftAsSuggestionCount: softSuggestions.length,
+    });
+
+    if (!report.ok) {
+      return {
+        ok: false,
+        normalizedBuffer,
+        originalBuffer: buffer,
+        report,
+        summary,
+        error: buildFailureMessage(report),
+      };
+    }
+
     return {
-      ok: false,
+      ok: true,
       normalizedBuffer,
       originalBuffer: buffer,
       report,
       summary,
-      error: buildFailureMessage(report),
+    };
+  }
+
+  const appliedResult = applyAcceptedSuggestions(
+    normalizedBuffer,
+    softSuggestions,
+    acceptedIds,
+    { validate: true },
+  );
+
+  const appliedItems = appliedResult.applied;
+  const nextItems = [...report.items, ...appliedItems];
+  for (const skip of appliedResult.skipped) {
+    nextItems.push({
+      kind: "warning",
+      code: "SOFT_SUGGESTION_APPLY_SKIPPED",
+      message: `Could not apply accepted suggestion ${skip.id}: ${skip.reason}`,
+      details: { suggestionId: skip.id, reason: skip.reason },
+    });
+  }
+
+  const validation = appliedResult.validation;
+  if (validation && !validation.ok) {
+    for (const msg of validation.syntaxErrors) {
+      nextItems.push({
+        kind: "error",
+        code: "VALIDATION_SYNTAX",
+        message: msg,
+      });
+    }
+  }
+
+  const repairs = nextItems.filter((i) => i.kind === "repair");
+  const renames = nextItems.filter((i) => i.kind === "rename");
+  const detections = nextItems.filter((i) => i.kind === "detection");
+  const warnings = nextItems.filter((i) => i.kind === "warning");
+  const errors = nextItems.filter((i) => i.kind === "error");
+  const ok = errors.length === 0 && (validation?.ok ?? report.ok);
+
+  const nextReport: NormalizeReport = {
+    ok,
+    items: nextItems,
+    repairs,
+    renames,
+    detections,
+    warnings,
+    errors,
+    validation: validation ?? report.validation,
+  };
+
+  const appliedCount = appliedItems.length;
+  const summary = toSummary(nextReport, {
+    // Keep the pre-apply soft list for the UI (accepted ones counted separately).
+    softSuggestions,
+    appliedSuggestionCount: appliedCount,
+    leftAsSuggestionCount: Math.max(0, softSuggestions.length - appliedCount),
+  });
+
+  if (!ok) {
+    return {
+      ok: false,
+      normalizedBuffer: appliedResult.buffer,
+      originalBuffer: buffer,
+      report: nextReport,
+      summary,
+      error:
+        "Template failed validation after applying accepted soft suggestions. " +
+        "It was not saved. Review the proposed tags or leave those suggestions unchecked.\n" +
+        buildFailureMessage(nextReport).replace(
+          /^Template failed validation after normalization\.\s*/,
+          "",
+        ),
     };
   }
 
   return {
     ok: true,
-    normalizedBuffer,
+    normalizedBuffer: appliedResult.buffer,
     originalBuffer: buffer,
-    report,
+    report: nextReport,
     summary,
   };
 }

@@ -109,6 +109,8 @@ Owner template upload (`/dashboard/templates` → `uploadTemplateForCurrentFirm`
 
 **Opt-out:** FormData `skipNormalize=true` (UI checkbox “Skip auto-normalize (template already prepared)”, default off) stores uploaded bytes as `Template.fileKey` with no normalize report and no `*.original.docx` side file.
 
+**Soft suggestions (human-gated):** Low-confidence blanks (e.g. free-form distribution description, do/do not, CEB appoint-person note) stay suggestion-only. Upload returns `needsConfirmation` with proposed tags/rationale; nothing soft is applied until the attorney multi-selects Accept and confirms. `applyAcceptedSuggestions()` patches only accepted ids, then re-validates — invalid syntax rejects the upload. Summary reports `appliedSuggestionCount` vs `leftAsSuggestionCount`.
+
 Generation always uses the primary `Template.fileKey` bytes. Original side files are not selected by the template resolver.
 
 ---

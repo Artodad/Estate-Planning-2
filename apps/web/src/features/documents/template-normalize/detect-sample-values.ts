@@ -36,10 +36,20 @@ export interface SampleDetectionRule {
   confidence: "high" | "low";
   /** Find all matches in concatenated paragraph text */
   find: (text: string) => Array<{ start: number; end: number; matched: string }>;
-  /** Replacement text when confidence=high (ignored for low) */
+  /**
+   * Replacement tag text.
+   * - high confidence: auto-applied
+   * - low confidence: proposed only (surfaced as `after` on SAMPLE_VALUE_SUGGESTION;
+   *   applied on upload only when the attorney explicitly accepts)
+   */
   replaceWith?: string;
   /** Human-readable reason */
   reason: string;
+}
+
+/** Docxtemplater-safe scalar tag like `{distribution_description}`. */
+export function isDocxtemplaterSafeProposedTag(tag: string): boolean {
+  return /^\{[a-z][a-z0-9_]*\}$/.test(tag);
 }
 
 function extractRunText(runXml: string): string {
@@ -221,53 +231,76 @@ export const SAMPLE_DETECTION_RULES: SampleDetectionRule[] = [
     replaceWith: "{county_of_residence}",
     reason: "Filled notary venue 'County of <Name>' paragraph → county_of_residence",
   },
-  // Low-confidence: report only (no mapper key or ambiguous)
+  // Low-confidence: suggestion only (never auto-applied). replaceWith is a
+  // proposed tag for human accept-at-upload; omit when no safe scalar exists.
   {
     id: "blank_second_successor_trustee",
     confidence: "low",
     find: findUnderscoreBlank("name of second successor trustee"),
+    replaceWith: "{second_successor_trustee_full_name}",
     reason:
-      "Second successor trustee blank — mapper only has successor_trustee_full_name (primary)",
+      "Second successor trustee blank — proposed custom/mapper tag; not auto-tagged",
   },
   {
     id: "blank_city_state_marriage",
     confidence: "low",
     find: findUnderscoreBlank("city and state of marriage"),
-    reason: "Marriage location blank — no mapper key yet",
+    replaceWith: "{marriage_city_state}",
+    reason: "Marriage location blank — proposed tag; not auto-tagged",
   },
   {
     id: "blank_date_of_marriage",
     confidence: "low",
     find: findUnderscoreBlank("date of marriage"),
-    reason: "Marriage date blank — no mapper key yet",
+    replaceWith: "{marriage_date}",
+    reason: "Marriage date blank — proposed tag; not auto-tagged",
   },
   {
     id: "blank_deemed_survivor",
     confidence: "low",
     find: findUnderscoreBlank("name of deemed survivor"),
-    reason: "Deemed survivor blank — no mapper key yet",
+    replaceWith: "{deemed_survivor_full_name}",
+    reason: "Deemed survivor blank — proposed tag; not auto-tagged",
   },
   {
     id: "blank_distribution_description",
     confidence: "low",
     find: findUnderscoreBlank("Description of distribution\\."),
-    reason: "Free-text distribution description — keep attorney-authored; not auto-tagged",
+    replaceWith: "{distribution_description}",
+    reason:
+      "Free-text distribution description — custom tag only if attorney accepts; not auto-tagged",
   },
   {
     id: "blank_age",
     confidence: "low",
     find: findUnderscoreBlank("(?:first |second |third )?age"),
-    reason: "Age / staggered distribution age blanks — no dedicated mapper keys",
+    // No single safe scalar — accepting would force equal ages across distinct blanks.
+    reason: "Age / staggered distribution age blanks — no single safe proposed tag",
   },
   {
     id: "blank_do_do_not",
     confidence: "low",
     find: findUnderscoreBlank("do/do not"),
-    reason: "Choice language blank — do not invent conditional legal text",
+    replaceWith: "{do_or_do_not}",
+    reason:
+      "Choice language blank — scalar placeholder only if accepted; does not invent conditionals",
+  },
+  {
+    id: "blank_ceb_appoint_person",
+    confidence: "low",
+    find: findUnderscoreBlank(
+      "Can Choose a Specific Person if Beneficiary Dies Before Distribution",
+    ),
+    replaceWith: "{ceb_appoint_person_note}",
+    reason: "Attorney drafting / CEB choice note — custom tag only if attorney accepts",
   },
 ];
 
-function applyReplacementsInParagraph(
+/**
+ * Apply offset-based replacements inside one paragraph (run-aware).
+ * Exported for accept-at-upload soft suggestion patches.
+ */
+export function applyReplacementsInParagraph(
   paragraphXml: string,
   replacements: Array<{ start: number; end: number; replacement: string; ruleId: string }>,
 ): { xml: string; items: NormalizeReportItem[] } {
@@ -395,15 +428,23 @@ export function detectSampleValuesInParagraph(paragraphXml: string): XmlPartRepa
         });
         for (let i = match.start; i < match.end; i += 1) covered[i] = true;
       } else {
+        const proposed =
+          rule.replaceWith && isDocxtemplaterSafeProposedTag(rule.replaceWith)
+            ? rule.replaceWith
+            : undefined;
         items.push({
           kind: "detection",
           code: "SAMPLE_VALUE_SUGGESTION",
           message: `Low-confidence blank/sample not auto-tagged: ${JSON.stringify(match.matched)} — ${rule.reason}`,
           before: match.matched,
+          after: proposed,
           details: {
             ruleId: rule.id,
             confidence: rule.confidence,
             mapperKey: rule.mapperKey ?? null,
+            rationale: rule.reason,
+            proposedTag: proposed ?? null,
+            applicable: Boolean(proposed),
           },
         });
         for (let i = match.start; i < match.end; i += 1) covered[i] = true;
