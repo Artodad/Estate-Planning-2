@@ -242,3 +242,63 @@ test("repairDocxRuns still warns UNMATCHED_LOOP_OPEN when a loop has no closer i
     "truly unmatched {#children} must still warn at part level",
   );
 });
+
+test("repairDocxRuns {/} latches the innermost open, not every leftover open", () => {
+  const body = [
+    paragraphWithRuns(["{#children}"]),
+    paragraphWithRuns(["{#distribution_residuary}"]),
+    paragraphWithRuns(["{/}"]),
+  ].join("\n");
+  const input = createDocxFromDocumentXml(wrapDocumentXml(body));
+  const { items } = repairDocxRuns(input);
+  const unmatched = items.filter((i) => i.code === "UNMATCHED_LOOP_OPEN");
+  assert.deepEqual(
+    unmatched.map((i) => i.before),
+    ["{#children}"],
+    "{/} must close distribution_residuary only; leftover {#children} must warn",
+  );
+});
+
+test("repairDocxRuns {#children}{/} is a valid latch pair", () => {
+  const body = [paragraphWithRuns(["{#children}"]), paragraphWithRuns(["{/}"])].join("\n");
+  const input = createDocxFromDocumentXml(wrapDocumentXml(body));
+  const { items } = repairDocxRuns(input);
+  assert.equal(
+    items.filter((i) => i.code === "UNMATCHED_LOOP_OPEN" || i.code === "UNMATCHED_LOOP_CLOSE")
+      .length,
+    0,
+  );
+});
+
+test("repairDocxRuns warns when a closer appears before its opener", () => {
+  const body = [
+    paragraphWithRuns(["{/children}"]),
+    paragraphWithRuns(["{#children}"]),
+  ].join("\n");
+  const input = createDocxFromDocumentXml(wrapDocumentXml(body));
+  const { items } = repairDocxRuns(input);
+  assert.ok(
+    items.some((i) => i.code === "UNMATCHED_LOOP_CLOSE" && i.before === "{/children}"),
+    "closer-before-opener must not count as a pair",
+  );
+  assert.ok(
+    items.some((i) => i.code === "UNMATCHED_LOOP_OPEN" && i.before === "{#children}"),
+    "the later {#children} is still unmatched",
+  );
+});
+
+test("repairDocxRuns warns when two opens share one named close", () => {
+  const body = [
+    paragraphWithRuns(["{#children}"]),
+    paragraphWithRuns(["{#children}"]),
+    paragraphWithRuns(["{/children}"]),
+  ].join("\n");
+  const input = createDocxFromDocumentXml(wrapDocumentXml(body));
+  const { items } = repairDocxRuns(input);
+  const unmatched = items.filter((i) => i.code === "UNMATCHED_LOOP_OPEN");
+  assert.deepEqual(
+    unmatched.map((i) => i.before),
+    ["{#children}"],
+    "one {/children} closes only the innermost {#children}",
+  );
+});
