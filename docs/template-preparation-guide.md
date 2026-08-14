@@ -22,13 +22,13 @@ The wizard collects answers in **sections** (Personal, Family, Assets, etc.). Th
 
 | Intake section | Primary template variables |
 |----------------|--------------------------|
-| Personal Information | `client_*`, `has_spouse`, `spouse_*`, `is_ca_resident`, `is_married_and_ca`, `county_of_residence` |
+| Personal Information | `client_*`, `has_spouse`, `spouse_*`, `marriage_city_state`, `marriage_date`, `deemed_survivor_full_name`, `is_ca_resident`, `is_married_and_ca`, `county_of_residence` |
 | Family & Relationships | `children`, `has_minor_children`, `other_dependents`, `pets` |
 | Assets | `assets`, `has_community_property_assets` |
 | Liabilities | `liabilities` |
-| Decision Makers | `decision_makers`, `executor_full_name`, `successor_trustee_full_name`, etc. |
+| Decision Makers | `decision_makers`, `executor_full_name`, `successor_trustee_full_name`, `second_successor_trustee_full_name`, etc. |
 | Specific Gifts & Bequests | `specific_gifts` |
-| Distribution Wishes | `distribution_residuary`, `contingent_beneficiaries`, `minor_trust_provisions`, `spendthrift_clause` |
+| Distribution Wishes | `distribution_residuary`, `contingent_beneficiaries`, `minor_trust_provisions`, `spendthrift_clause`, `*_distribution_age`, `young_person_retention_age`, `educational_trust_*_age` |
 | Charitable Intent | `charitable_organizations` |
 | Healthcare & End-of-Life | `healthcare_instructions`, `primary_physician`, `anatomical_gifts`, `polst_notes`, `healthcare_agent_full_name` |
 | Prior Planning | `prior_planning_notes`, `beneficiary_designations`, `digital_assets_notes` |
@@ -63,6 +63,8 @@ Derived from marital status (`married` / `partnered`). When not applicable, spou
 | `spouse_full_name` | string | |
 | `spouse_first_name` | string | |
 | `spouse_last_name` | string | |
+| `marriage_city_state` | string | Optional; trust marriage recital venue (`personal.marriageCityState`) |
+| `marriage_date` | string | Optional; trust marriage recital date text (`personal.marriageDate`) |
 
 **Conditional (unmarried):** `{^has_spouse}…{/has_spouse}`
 
@@ -149,9 +151,11 @@ Client resides in {county_of_residence} County, California.
 | `decision_makers` | array | Full list — loop when you need alternates or multiple roles |
 | `executor_full_name` | string | First person with role `executor` |
 | `successor_trustee_full_name` | string | Role `successor_trustee` |
+| `second_successor_trustee_full_name` | string | 2nd `successor_trustee`, else `alternate` for that role |
 | `financial_poa_full_name` | string | Role `financial_poa` |
 | `healthcare_agent_full_name` | string | Role `healthcare_agent` (or cross-ref from healthcare section) |
 | `guardian_of_minor_full_name` | string | Role `guardian_minor` |
+| `deemed_survivor_full_name` | string | Simultaneous-death named survivor (`personal.deemedSurvivorFullName`; never guessed from spouse/client) |
 
 **Inside `{#decision_makers}` loop:**
 
@@ -184,6 +188,12 @@ Use scalar shortcuts (`executor_full_name`, etc.) for one name per role. Use the
 | `contingent_beneficiaries` | array | Same shape as residuary |
 | `minor_trust_provisions` | string | Free text (data notes; template owns legal language) |
 | `spendthrift_clause` | boolean | From intake checkbox |
+| `young_person_retention_age` | string | Young Persons “under the age of …” (`distribution.youngPersonRetentionAge`) |
+| `first_distribution_age` / `second_distribution_age` / `third_distribution_age` | string | Staggered principal ladder |
+| `outright_distribution_age` | string | Single-age principal alternative (“attains the age of …”) |
+| `educational_trust_eligibility_age` | string | Educational Trust “under age …” at surviving settlor’s death |
+| `educational_trust_remainder_age` | string | Educational Trust “has attained the age of …” remainder |
+| `educational_trust_termination_age` | string | Educational Trust “turns … years of age” hold-until |
 
 **Inside `{#distribution_residuary}` / `{#contingent_beneficiaries}` loops:**
 
@@ -391,4 +401,4 @@ If generation fails, read the error message — missing or mismatched variables 
 
 ---
 
-Last updated: May 29, 2026 — synced to `mapIntakeToDocVariables` in `apps/web/src/features/documents/mapper.ts`.
+Last updated: August 12, 2026 — Trust Family soft-blank tags + Educational Trust ages intake-backed in `mapIntakeToDocVariables`.

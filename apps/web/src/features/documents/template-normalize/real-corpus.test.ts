@@ -117,9 +117,24 @@ test("real corpus mprg7y50: orphan notary braces healed and trust_name tagged", 
   assert.ok(!/San Diego\}/.test(joined), "San Diego} orphan must be gone");
   assert.match(joined, /\{trust_name\}/);
   assert.match(joined, /County of \{county_of_residence\}/);
+  assert.match(joined, /\{second_successor_trustee_full_name\}/);
+  assert.match(joined, /\{marriage_city_state\}/);
+  assert.match(joined, /\{marriage_date\}/);
+  assert.match(joined, /\{deemed_survivor_full_name\}/);
+  assert.match(joined, /\{first_distribution_age\}/);
+  assert.match(joined, /\{young_person_retention_age\}/);
+  assert.match(joined, /\{outright_distribution_age\}/);
+  assert.match(joined, /\{educational_trust_eligibility_age\}/);
+  assert.match(joined, /\{educational_trust_remainder_age\}/);
+  assert.match(joined, /\{educational_trust_termination_age\}/);
   assert.ok(report.repairs.some((r) => r.code === "ORPHAN_CLOSER_REMOVED"));
   assert.ok(report.repairs.some((r) => r.code === "SAMPLE_VALUE_TAGGED"));
+  // Remaining soft: do/do not + distribution descriptions (+ optional CEB note).
   assert.ok(report.detections.some((d) => d.code === "SAMPLE_VALUE_SUGGESTION"));
+  const tagged = report.repairs.filter((r) => r.code === "SAMPLE_VALUE_TAGGED").length;
+  const suggestions = report.detections.filter((d) => d.code === "SAMPLE_VALUE_SUGGESTION").length;
+  assert.ok(tagged >= 17, `expected ≥17 sample tags, got ${tagged}`);
+  assert.ok(suggestions <= 4, `expected ≤4 suggestions, got ${suggestions}`);
 });
 
 test("real Trust Family corpus: settlor spouse uses positive {#has_spouse} polarity", (t) => {

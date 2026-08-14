@@ -7,8 +7,11 @@
     "lint": "turbo run lint",
     "check-types": "turbo run check-types",
     "test": "pnpm --filter web test:unit",
+    "test:unit": "pnpm --filter web test:unit",
     "test:unit:intake-fill": "pnpm --filter web test:unit:intake-fill",
     "test:unit:upload-normalize": "pnpm --filter web test:unit:upload-normalize",
+    "test:unit:fidelity-smoke": "pnpm --filter web test:unit:fidelity-smoke",
+    "test:unit:fidelity-corpus": "pnpm --filter web test:unit:fidelity-corpus",
     "format": "prettier --write \"**/*.{ts,tsx,md}\""
   },
   "devDependencies": {
