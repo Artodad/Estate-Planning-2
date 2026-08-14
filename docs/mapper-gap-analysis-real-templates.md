@@ -31,6 +31,8 @@ The mapper lives in `src/features/documents/mapper.ts`.
 - `spouse_full_name`
 - `spouse_first_name`
 - `spouse_last_name`
+- `marriage_city_state`, `marriage_date` (optional intake)
+- `deemed_survivor_full_name` (optional; simultaneous-death named survivor)
 
 **Residency (CA-focused)**
 - `is_ca_resident` (boolean)
@@ -55,6 +57,7 @@ The mapper lives in `src/features/documents/mapper.ts`.
 - Convenience scalars:
   - `executor_full_name`
   - `successor_trustee_full_name`
+  - `second_successor_trustee_full_name`
   - `financial_poa_full_name`
   - `healthcare_agent_full_name`
   - `guardian_of_minor_full_name`
@@ -65,6 +68,7 @@ The mapper lives in `src/features/documents/mapper.ts`.
 - `contingent_beneficiaries`
 - `minor_trust_provisions`
 - `spendthrift_clause` (boolean)
+- Age blanks (optional strings): `young_person_retention_age`, `first_distribution_age`, `second_distribution_age`, `third_distribution_age`, `outright_distribution_age`, `educational_trust_eligibility_age`, `educational_trust_remainder_age`, `educational_trust_termination_age`
 
 **Charitable**
 - `charitable_organizations` (array: `name`, `ein`, `amount_or_percent`, `purpose`)

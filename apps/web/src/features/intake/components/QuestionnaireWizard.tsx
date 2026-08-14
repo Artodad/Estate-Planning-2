@@ -1007,6 +1007,22 @@ function DynamicSectionForm({
                 <Field register={register} errors={errors} name="spouseOrPartner.lastName" label="Spouse / Partner Last Name" />
                 <Field register={register} errors={errors} name="spouseOrPartner.dateOfBirth" label="Spouse / Partner DOB" type="date" />
                 <Field register={register} errors={errors} name="spouseOrPartner.email" label="Spouse / Partner Email" type="email" />
+                <Field
+                  register={register}
+                  errors={errors}
+                  name="marriageCityState"
+                  label="City and State of Marriage (optional)"
+                  placeholder="San Diego, California"
+                  help="Used for trust marriage recital blanks when the template includes them."
+                />
+                <Field
+                  register={register}
+                  errors={errors}
+                  name="marriageDate"
+                  label="Date of Marriage (optional)"
+                  placeholder="June 15, 2005"
+                  help="Attorney-facing text as it should appear in the draft (ISO or written form)."
+                />
               </div>
             )}
           </div>
@@ -1021,6 +1037,15 @@ function DynamicSectionForm({
             </div>
             <Field register={register} errors={errors} name="countyOfResidence" label="County of Residence (optional)" placeholder="Los Angeles" />
           </div>
+
+          <Field
+            register={register}
+            errors={errors}
+            name="deemedSurvivorFullName"
+            label="Deemed Survivor Full Name (optional)"
+            placeholder="Full legal name"
+            help="Simultaneous-death named survivor for trust blanks. Leave blank unless the attorney designates a specific person — do not assume spouse."
+          />
 
           <Field register={register} errors={errors} name="citizenshipImmigrationNotes" label="Citizenship / Immigration Notes (optional, minimized PII)" help="Attorney notes only — never stored in generated documents unless explicitly mapped." />
 
@@ -1206,7 +1231,20 @@ function DynamicSectionForm({
 
                   {currentSection === "decisionMakers" && (
                     <div className="grid gap-4">
-                      <div><Label>Role</Label><select {...register(`${arrayName}.${index}.role`)} className="mt-1 w-full rounded border p-2 text-sm"><option value="executor">Executor</option><option value="successor_trustee">Successor Trustee</option><option value="financial_poa">Financial POA Agent</option><option value="healthcare_agent">Healthcare Agent</option><option value="guardian_minor">Guardian for Minor(s)</option><option value="alternate">Alternate</option></select></div>
+                      <div>
+                        <Label>Role</Label>
+                        <select {...register(`${arrayName}.${index}.role`)} className="mt-1 w-full rounded border p-2 text-sm">
+                          <option value="executor">Executor</option>
+                          <option value="successor_trustee">Successor Trustee</option>
+                          <option value="financial_poa">Financial POA Agent</option>
+                          <option value="healthcare_agent">Healthcare Agent</option>
+                          <option value="guardian_minor">Guardian for Minor(s)</option>
+                          <option value="alternate">Alternate</option>
+                        </select>
+                        <p className="mt-1 text-[11px] text-muted-foreground">
+                          Add a second Successor Trustee (or an Alternate) for the second-successor trust blank.
+                        </p>
+                      </div>
                       <div className="grid grid-cols-2 gap-4"><Field register={register} errors={errors} name={`${arrayName}.${index}.person.firstName`} label="First Name" required /><Field register={register} errors={errors} name={`${arrayName}.${index}.person.lastName`} label="Last Name" required /></div>
                       <Field register={register} errors={errors} name={`${arrayName}.${index}.notes`} label="Notes / Acceptance" />
                     </div>
@@ -1301,6 +1339,47 @@ function DynamicSectionForm({
                 {...register("minorTrustProvisions")}
                 rows={3}
               />
+
+              <div className="space-y-3 rounded-md border p-4">
+                <p className="text-sm font-medium">Distribution ages (optional)</p>
+                <p className="text-[11px] text-muted-foreground">
+                  Short values for trust blanks (e.g. 25). Leave blank when the template clause does not apply — drafts stay empty-safe.
+                </p>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Field register={register} errors={errors} name="youngPersonRetentionAge" label="Young person retention age" placeholder="21" />
+                  <Field register={register} errors={errors} name="outrightDistributionAge" label="Outright distribution age" placeholder="30" />
+                  <Field register={register} errors={errors} name="firstDistributionAge" label="First staggered distribution age" placeholder="25" />
+                  <Field register={register} errors={errors} name="secondDistributionAge" label="Second staggered distribution age" placeholder="30" />
+                  <Field register={register} errors={errors} name="thirdDistributionAge" label="Third staggered distribution age" placeholder="35" />
+                </div>
+              </div>
+
+              <div className="space-y-3 rounded-md border p-4">
+                <p className="text-sm font-medium">Educational Trust ages (optional)</p>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Field
+                    register={register}
+                    errors={errors}
+                    name="educationalTrustEligibilityAge"
+                    label="Eligibility age (under age at death)"
+                    placeholder="25"
+                  />
+                  <Field
+                    register={register}
+                    errors={errors}
+                    name="educationalTrustRemainderAge"
+                    label="Remainder distribution age"
+                    placeholder="25"
+                  />
+                  <Field
+                    register={register}
+                    errors={errors}
+                    name="educationalTrustTerminationAge"
+                    label="Hold-until / turns age"
+                    placeholder="25"
+                  />
+                </div>
+              </div>
             </>
           )}
 

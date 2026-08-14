@@ -89,12 +89,41 @@ test("married CA rich intake → children/assets/distribution arrays and CA flag
   assert.equal(gifts[0].beneficiary, "Sofia Vargas");
   assert.equal(gifts[0].description, "Grandmother's piano");
 
-  assert.equal(decisionMakers.length, 5);
+  assert.equal(decisionMakers.length, 6);
   assert.equal(v.spendthrift_clause, true);
   assert.equal(v.minor_trust_provisions, "Distribute at age 25");
   assert.equal(v.anatomical_gifts, true);
   assert.equal(v.healthcare_instructions, "Prefer comfort care");
   assert.ok(String(v.attorney_notes_for_document).includes("education funding"));
+});
+
+test("married CA rich intake → Trust Family soft-blank tags from intake", () => {
+  const v = mapIntakeToDocVariables(marriedCaRichIntake, "revocable_trust", EXTRA);
+
+  assert.equal(v.marriage_city_state, "San Francisco, California");
+  assert.equal(v.marriage_date, "September 1, 2000");
+  assert.equal(v.deemed_survivor_full_name, "Diego Vargas");
+  assert.equal(v.second_successor_trustee_full_name, "Marco Vargas");
+
+  assert.equal(v.young_person_retention_age, "21");
+  assert.equal(v.first_distribution_age, "25");
+  assert.equal(v.second_distribution_age, "30");
+  assert.equal(v.third_distribution_age, "35");
+  assert.equal(v.outright_distribution_age, "30");
+  assert.equal(v.educational_trust_eligibility_age, "22");
+  assert.equal(v.educational_trust_remainder_age, "25");
+  assert.equal(v.educational_trust_termination_age, "26");
+});
+
+test("missing optional Trust Family fields stay empty-safe strings", () => {
+  const v = mapIntakeToDocVariables(singleNoChildrenIntake, "revocable_trust", EXTRA);
+  assert.equal(v.marriage_city_state, "");
+  assert.equal(v.marriage_date, "");
+  assert.equal(v.deemed_survivor_full_name, "");
+  assert.equal(v.second_successor_trustee_full_name, "");
+  assert.equal(v.first_distribution_age, "");
+  assert.equal(v.educational_trust_eligibility_age, "");
+  assert.equal(v.young_person_retention_age, "");
 });
 
 test("single / no children → empty optional sections, no spouse, empty role gaps", () => {

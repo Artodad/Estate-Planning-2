@@ -21,6 +21,9 @@ export const marriedCaRichIntake: PartialIntake = {
       lastName: "Vargas",
       dateOfBirth: "1974-09-01",
     },
+    marriageCityState: "San Francisco, California",
+    marriageDate: "September 1, 2000",
+    deemedSurvivorFullName: "Diego Vargas",
     isCAResident: true,
     countyOfResidence: "San Francisco",
   },
@@ -89,6 +92,11 @@ export const marriedCaRichIntake: PartialIntake = {
       person: { firstName: "Isabella", lastName: "Vargas" },
     },
     {
+      id: "dm2b",
+      role: "successor_trustee",
+      person: { firstName: "Marco", lastName: "Vargas" },
+    },
+    {
       id: "dm3",
       role: "financial_poa",
       person: { firstName: "Isabella", lastName: "Vargas" },
@@ -121,6 +129,14 @@ export const marriedCaRichIntake: PartialIntake = {
     ],
     minorTrustProvisions: "Distribute at age 25",
     spendthrift: true,
+    youngPersonRetentionAge: "21",
+    firstDistributionAge: "25",
+    secondDistributionAge: "30",
+    thirdDistributionAge: "35",
+    outrightDistributionAge: "30",
+    educationalTrustEligibilityAge: "22",
+    educationalTrustRemainderAge: "25",
+    educationalTrustTerminationAge: "26",
   },
   charitable: {
     organizations: [

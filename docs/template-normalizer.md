@@ -57,7 +57,9 @@ When `{client_full_name}` is broken across runs with different formatting (e.g. 
 
 Word often inserts empty tab-only `<w:r>` runs between prose and a stray `}`. Character offsets must skip those zero-length runs when locating the closer — otherwise repair edits the wrong run and corrupts XML. Covered by unit tests derived from the real notary venue block.
 
-## High-confidence sample/blank mappings (v1)
+## High-confidence sample/blank mappings
+
+### v1
 
 | Pattern | Tag | Notes |
 |---------|-----|-------|
@@ -66,7 +68,29 @@ Word often inserts empty tab-only `<w:r>` runs between prose and a stray `}`. Ch
 | `_[Name of settlor]_` | `{client_full_name}` | Citizenship / settlor blanks |
 | Whole paragraph `County of <Name>` | `{county_of_residence}` | Notary venue sample only |
 
-Low-confidence (suggestion only): second successor trustee, marriage city/date, deemed survivor, distribution descriptions, age ladders, do/do not choice language.
+### v2 (iteration-2 promotions)
+
+| Pattern | Tag | Notes |
+|---------|-----|-------|
+| `_[name of second successor trustee]_` | `{second_successor_trustee_full_name}` | Alternate / 2nd successor from decision makers |
+| `_[city and state of marriage]_` | `{marriage_city_state}` | Optional intake `personal.marriageCityState` |
+| `_[date of marriage]_` | `{marriage_date}` | Optional intake `personal.marriageDate` |
+| `_[name of deemed survivor]_` | `{deemed_survivor_full_name}` | Dedicated key — does **not** guess spouse vs client |
+| `_[first age]_` / `_[second age]_` / `_[third age]_` | `{first_distribution_age}` etc. | Staggered principal ladder |
+| `_[age]_` after “under the age of” | `{young_person_retention_age}` | Young Persons clause only |
+| `_[age]_` after “attains the age of” | `{outright_distribution_age}` | Single-age principal clause (not “has attained”) |
+
+### v3 (Educational Trust ages + intake-backed fills)
+
+| Pattern | Tag | Notes |
+|---------|-----|-------|
+| `_[age]_` after “under age” | `{educational_trust_eligibility_age}` | Distinct from Young Persons “under the age of” |
+| `_[age]_` after “has attained the age of” | `{educational_trust_remainder_age}` | Distinct from outright “attains” |
+| `_[age]_` after “he/she turns” / “they turns” | `{educational_trust_termination_age}` | Hold-until age |
+
+All v2/v3 age + marriage + deemed-survivor + second-successor tags are intake-backed (optional fields; empty-safe when absent).
+
+Low-confidence (suggestion only): free-text `[Description of distribution.]`, `[do/do not]` choice language, CEB “Can Choose a Specific Person…” drafting notes, citizenship OPTION wrappers.
 
 ---
 
@@ -162,10 +186,12 @@ Includes synthetic split-run / bold-split fixtures, notary orphan zero-length-ru
 ## Remaining limitations
 
 - Cross-paragraph loop open/close still warns per-paragraph (`UNMATCHED_LOOP_OPEN`) even when valid under `paragraphLoop: true`
-- Many underscore blanks have **no mapper key** yet (second successor, marriage details, age ladders) — reported as suggestions only
+- `[do/do not]`, free-text distribution descriptions, and CEB appoint-person notes stay suggestions (would invent conditionals / legal text)
 - Filled personal names buried in prose (without labels) are not auto-detected
 - Does not rewrite `<OPTION>` attorney drafting notes or invent conditional legal language
 - Upload stores original as a side file only (no `originalFileKey` column yet); dual-store UX beyond the normalize report is future work
+
+Corpus reports: `docs/template-normalizer-reports/iteration/` (PR #2) and `…/iteration-2/` (soft-blank promotions).
 
 ---
 
