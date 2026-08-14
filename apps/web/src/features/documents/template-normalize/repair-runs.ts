@@ -592,33 +592,63 @@ export function removeOrphanClosers(paragraphXml: string): XmlPartRepairResult {
   return { xml: result, items };
 }
 
+/**
+ * Pair {#name} / {/name} / {/} left-to-right (LIFO), matching docxtemplater:
+ * `{/}` latches the innermost open; a named closer must match that innermost
+ * name. Naive open/close counts miss closer-before-opener, two-opens-one-close,
+ * and a single `{/}` silencing every leftover open.
+ */
 function detectUnmatchedLoops(text: string): NormalizeReportItem[] {
   const items: NormalizeReportItem[] = [];
-  const opens = [...text.matchAll(/\{#([a-zA-Z_][a-zA-Z0-9_.]*)\}/g)].map((m) => m[1]);
-  const closes = new Set(
-    [...text.matchAll(/\{\/([a-zA-Z_][a-zA-Z0-9_.]*)\}/g)].map((m) => m[1]),
-  );
-  const genericCloseCount = (text.match(/\{\/\}/g) || []).length;
+  const tokenRe = /\{#([a-zA-Z_][a-zA-Z0-9_.]*)\}|\{\/([a-zA-Z_][a-zA-Z0-9_.]*)?\}/g;
+  const stack: string[] = [];
 
-  const closeCounts = new Map<string, number>();
-  for (const name of closes) {
-    closeCounts.set(name, (text.match(new RegExp(`\\{\\/${name}\\}`, "g")) || []).length);
-  }
-  const openCounts = new Map<string, number>();
-  for (const name of opens) {
-    openCounts.set(name, (openCounts.get(name) ?? 0) + 1);
-  }
+  for (const match of text.matchAll(tokenRe)) {
+    const openName = match[1];
+    const closeName = match[2];
+    const token = match[0];
 
-  for (const [name, count] of openCounts) {
-    const namedCloses = closeCounts.get(name) ?? 0;
-    if (namedCloses < count && genericCloseCount === 0) {
+    if (openName !== undefined) {
+      stack.push(openName);
+      continue;
+    }
+
+    if (stack.length === 0) {
       items.push({
         kind: "warning",
-        code: "UNMATCHED_LOOP_OPEN",
-        message: `Loop opener {#${name}} has no matching {/${name}} or {/} in this part; left unchanged`,
-        before: `{#${name}}`,
+        code: "UNMATCHED_LOOP_CLOSE",
+        message: `Loop closer ${token} has no matching opener in this part; left unchanged`,
+        before: token,
       });
+      continue;
     }
+
+    if (closeName === undefined) {
+      stack.pop();
+      continue;
+    }
+
+    const inner = stack[stack.length - 1];
+    if (inner === closeName) {
+      stack.pop();
+      continue;
+    }
+
+    items.push({
+      kind: "warning",
+      code: "UNMATCHED_LOOP_CLOSE",
+      message: `Loop closer {/${closeName}} does not match innermost opener {#${inner}}; left unchanged`,
+      before: token,
+    });
+  }
+
+  for (const name of stack) {
+    items.push({
+      kind: "warning",
+      code: "UNMATCHED_LOOP_OPEN",
+      message: `Loop opener {#${name}} has no matching {/${name}} or {/} in this part; left unchanged`,
+      before: `{#${name}}`,
+    });
   }
   return items;
 }
