@@ -21,6 +21,9 @@ export const marriedCaRichIntake: PartialIntake = {
       lastName: "Vargas",
       dateOfBirth: "1974-09-01",
     },
+    marriageCityState: "San Francisco, California",
+    marriageDate: "September 1, 2000",
+    deemedSurvivorFullName: "Diego Vargas",
     isCAResident: true,
     countyOfResidence: "San Francisco",
   },
@@ -89,6 +92,11 @@ export const marriedCaRichIntake: PartialIntake = {
       person: { firstName: "Isabella", lastName: "Vargas" },
     },
     {
+      id: "dm2b",
+      role: "successor_trustee",
+      person: { firstName: "Carmen", lastName: "Vargas" },
+    },
+    {
       id: "dm3",
       role: "financial_poa",
       person: { firstName: "Isabella", lastName: "Vargas" },
@@ -121,6 +129,15 @@ export const marriedCaRichIntake: PartialIntake = {
     ],
     minorTrustProvisions: "Distribute at age 25",
     spendthrift: true,
+    // Distinct ladder ages (avoid colliding with Educational Trust 21/25/30).
+    youngPersonRetentionAge: "18",
+    firstDistributionAge: "23",
+    secondDistributionAge: "28",
+    thirdDistributionAge: "33",
+    outrightDistributionAge: "40",
+    educationalTrustEligibilityAge: "21",
+    educationalTrustRemainderAge: "25",
+    educationalTrustTerminationAge: "30",
   },
   charitable: {
     organizations: [
@@ -256,5 +273,46 @@ export const missingClientNameIntake: PartialIntake = {
     client: { firstName: "", lastName: "" },
     maritalStatus: "single",
     isCAResident: true,
+  },
+};
+
+/**
+ * Married intake with a single primary successor + `alternate` linked to that role.
+ * Covers second_successor_trustee_full_name via alternateFor (not a 2nd successor_trustee).
+ * Ages intentionally distinct from marriedCaRichIntake fidelity fixture (21/25/30 + ladder 23).
+ */
+export const marriedAlternateSuccessorIntake: PartialIntake = {
+  personal: {
+    client: { firstName: "Elena", lastName: "Vargas" },
+    maritalStatus: "married",
+    spouseOrPartner: { firstName: "Diego", lastName: "Vargas" },
+    marriageCityState: "Oakland, California",
+    marriageDate: "2001-08-20",
+    deemedSurvivorFullName: "Nora Chen",
+    isCAResident: true,
+    countyOfResidence: "Alameda",
+  },
+  decisionMakers: [
+    {
+      id: "dm-succ-1",
+      role: "successor_trustee",
+      person: { firstName: "Isabella", lastName: "Vargas" },
+    },
+    {
+      id: "dm-succ-alt",
+      role: "alternate",
+      alternateFor: "dm-succ-1",
+      person: { firstName: "Nora", lastName: "Chen" },
+    },
+  ],
+  distribution: {
+    youngPersonRetentionAge: "18",
+    firstDistributionAge: "21",
+    secondDistributionAge: "25",
+    thirdDistributionAge: "30",
+    outrightDistributionAge: "35",
+    educationalTrustEligibilityAge: "23",
+    educationalTrustRemainderAge: "27",
+    educationalTrustTerminationAge: "28",
   },
 };

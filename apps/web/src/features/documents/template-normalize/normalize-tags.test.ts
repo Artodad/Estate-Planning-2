@@ -7,7 +7,6 @@
 import { strict as assert } from "node:assert";
 import test from "node:test";
 import PizZip from "pizzip";
-
 import Docxtemplater from "docxtemplater";
 
 import {
@@ -104,6 +103,22 @@ test("normalizeTagsInDocx corrects inverted settlor spouse polarity in a .docx",
   assert.ok(items.some((i) => i.code === "SETTLOR_SPOUSE_POLARITY_FIXED"));
 });
 
+test("fixSettlorSpousePolarityInXml handles tags split across adjacent w:t runs", () => {
+  // Mirrors repaired Trust Family XML: intact tags, still in separate runs.
+  const xml =
+    `<w:r><w:t xml:space="preserve"> {^has_spouse}</w:t></w:r>` +
+    `<w:r><w:t xml:space="preserve"> and {spouse_full_name}</w:t></w:r>` +
+    `<w:r><w:t>{/has_spouse}</w:t></w:r>` +
+    `<w:r><w:t>{^has_spouse}[No spouse section]{/has_spouse}</w:t></w:r>`;
+  const { xml: out, items } = fixSettlorSpousePolarityInXml(xml);
+  assert.match(out, /\{#has_spouse\}/);
+  assert.ok(!out.includes("{^has_spouse}</w:t></w:r><w:r><w:t xml:space=\"preserve\"> and {spouse_full_name}"));
+  assert.match(out, /\{\^has_spouse\}\[No spouse section\]\{\/has_spouse\}/);
+  assert.equal(items.length, 1);
+  assert.equal(items[0].code, "SETTLOR_SPOUSE_POLARITY_FIXED");
+});
+
+
 test("normalize → fill: inverted settlor polarity yields spouse name for married fixture", () => {
   // Synthetic mirrors the Trust Family settlor clause bug reported by Tester (PR #3).
   const body = [
@@ -135,7 +150,7 @@ test("normalize → fill: inverted settlor polarity yields spouse name for marri
     },
   });
   doc.render(vars);
-  const filled = (doc.getZip().generate({ type: "nodebuffer" }) as Buffer);
+  const filled = doc.getZip().generate({ type: "nodebuffer" }) as Buffer;
   const text = new PizZip(filled)
     .file("word/document.xml")!
     .asText()
@@ -143,4 +158,74 @@ test("normalize → fill: inverted settlor polarity yields spouse name for marri
 
   assert.match(text, /Elena Vargas\s+and\s+Diego Vargas/);
   assert.ok(!text.includes("[No spouse section]"), "married path must not show no-spouse section");
+});
+
+test("complementary: polarity repair across split w:t + intervening XML — married fill vs single omits and-clause", () => {
+  // Tags intact but split across runs with Word chrome between them (PR #12 regex path).
+  const settlorXml =
+    `<w:p>` +
+    `<w:r><w:t>We, {client_full_name}</w:t></w:r>` +
+    `<w:r><w:rPr><w:i/></w:rPr><w:t xml:space="preserve"> {^has_spouse}</w:t></w:r>` +
+    `<w:r><w:t xml:space="preserve"> and </w:t></w:r>` +
+    `<w:r><w:t>{spouse_full_name}</w:t></w:r>` +
+    `<w:r><w:t>{/has_spouse}</w:t></w:r>` +
+    `<w:r><w:t>, sometimes hereafter called settlors</w:t></w:r>` +
+    `</w:p>` +
+    paragraphWithRuns(["{^has_spouse}[No spouse section]{/has_spouse}"]);
+
+  const inverted = createDocxFromDocumentXml(wrapDocumentXml(settlorXml));
+  const { buffer: normalized, report } = normalizeTemplateBuffer(inverted, {
+    validate: false,
+  });
+  assert.ok(
+    report.repairs.some((r) => r.code === "SETTLOR_SPOUSE_POLARITY_FIXED"),
+    "split-run inverted settlor polarity must be repaired",
+  );
+  const normalizedXml = new PizZip(normalized).file("word/document.xml")!.asText();
+  assert.match(normalizedXml, /\{#has_spouse\}/);
+  assert.ok(
+    !/\{\^has_spouse\}(?:<[^>]+>|\s)*and(?:<[^>]+>|\s)*\{spouse_full_name\}/.test(normalizedXml),
+    "inverted opener around spouse name must be gone after repair",
+  );
+
+  function renderPlain(vars: Record<string, unknown>): string {
+    const zip = new PizZip(normalized);
+    const doc = new Docxtemplater(zip, {
+      paragraphLoop: true,
+      nullGetter() {
+        return "";
+      },
+    });
+    doc.render(vars);
+    return doc
+      .getZip()
+      .file("word/document.xml")!
+      .asText()
+      .replace(/<[^>]+>/g, "");
+  }
+
+  const marriedText = renderPlain(
+    buildFixtureVariables({
+      client_full_name: "Elena Vargas",
+      has_spouse: true,
+      spouse_full_name: "Diego Vargas",
+    }),
+  );
+  assert.match(marriedText, /Elena Vargas\s+and\s+Diego Vargas/);
+  assert.ok(!marriedText.includes("[No spouse section]"));
+
+  const singleText = renderPlain(
+    buildFixtureVariables({
+      client_full_name: "Alex Nguyen",
+      has_spouse: false,
+      spouse_full_name: "",
+    }),
+  );
+  assert.ok(singleText.includes("Alex Nguyen"));
+  assert.ok(
+    !/Alex Nguyen\s+and\s*,/.test(singleText),
+    "single settlor must not render empty and-spouse segment after polarity repair",
+  );
+  assert.match(singleText, /Alex Nguyen\s*,\s*sometimes hereafter called settlors/);
+  assert.ok(singleText.includes("[No spouse section]"));
 });

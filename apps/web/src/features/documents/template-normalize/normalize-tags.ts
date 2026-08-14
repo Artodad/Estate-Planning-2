@@ -30,6 +30,8 @@ export const MAPPER_CONTRACT_KEYS = [
   "spouse_full_name",
   "spouse_first_name",
   "spouse_last_name",
+  "marriage_city_state",
+  "marriage_date",
   // CA
   "is_ca_resident",
   "is_married_and_ca",
@@ -47,15 +49,25 @@ export const MAPPER_CONTRACT_KEYS = [
   "decision_makers",
   "executor_full_name",
   "successor_trustee_full_name",
+  "second_successor_trustee_full_name",
   "financial_poa_full_name",
   "healthcare_agent_full_name",
   "guardian_of_minor_full_name",
+  "deemed_survivor_full_name",
   // Gifts / distribution
   "specific_gifts",
   "distribution_residuary",
   "minor_trust_provisions",
   "spendthrift_clause",
   "contingent_beneficiaries",
+  "young_person_retention_age",
+  "first_distribution_age",
+  "second_distribution_age",
+  "third_distribution_age",
+  "outright_distribution_age",
+  "educational_trust_eligibility_age",
+  "educational_trust_remainder_age",
+  "educational_trust_termination_age",
   // Charitable
   "charitable_organizations",
   // Healthcare
@@ -118,15 +130,24 @@ export const TAG_ALIASES: Record<string, MapperContractKey> = {
   executor_name: "executor_full_name",
   successor_trustee: "successor_trustee_full_name",
   successorTrustee: "successor_trustee_full_name",
+  second_successor_trustee: "second_successor_trustee_full_name",
+  alternate_successor_trustee: "second_successor_trustee_full_name",
   financial_poa: "financial_poa_full_name",
   healthcare_agent: "healthcare_agent_full_name",
   health_care_agent: "healthcare_agent_full_name",
   guardian_of_minor: "guardian_of_minor_full_name",
+  deemed_survivor: "deemed_survivor_full_name",
+  // Marital recital
+  city_and_state_of_marriage: "marriage_city_state",
+  date_of_marriage: "marriage_date",
   // Gifts / distribution
   specificGifts: "specific_gifts",
   residuary: "distribution_residuary",
   residuary_beneficiaries: "distribution_residuary",
   contingentBeneficiaries: "contingent_beneficiaries",
+  first_age: "first_distribution_age",
+  second_age: "second_distribution_age",
+  third_age: "third_distribution_age",
   // Charitable
   charitable: "charitable_organizations",
   charities: "charitable_organizations",
@@ -191,14 +212,16 @@ export function renameTagsInXml(
  * Trust Family settlor clause bug: spouse name was wrapped in inverted
  * `{^has_spouse}` (show when false). Spouse name must use positive polarity.
  *
- * Only rewrites the specific pattern
+ * Rewrites
  *   `{^has_spouse} and {spouse_full_name}{/has_spouse}`
  * → `{#has_spouse} and {spouse_full_name}{/has_spouse}`
  *
+ * Allows intervening Word XML (`</w:t></w:r>…<w:t>`) between the pieces — after
+ * repair-runs the tags are intact but often still live in adjacent runs.
  * Intentional `{^has_spouse}` "no spouse" sections elsewhere are untouched.
  */
 const INVERTED_SETTLOR_SPOUSE_RE =
-  /\{\^has_spouse\}(\s+and\s+)\{spouse_full_name\}(\{\/has_spouse\})/g;
+  /\{\^has_spouse\}((?:<[^>]+>|\s)*)and((?:<[^>]+>|\s)*)\{spouse_full_name\}((?:<[^>]+>|\s)*)\{\/has_spouse\}/g;
 
 export function fixSettlorSpousePolarityInXml(
   xml: string,
@@ -207,9 +230,11 @@ export function fixSettlorSpousePolarityInXml(
   const items: NormalizeReportItem[] = [];
   const next = xml.replace(
     INVERTED_SETTLOR_SPOUSE_RE,
-    (_full, andGap: string, closer: string) => {
-      const before = `{^has_spouse}${andGap}{spouse_full_name}${closer}`;
-      const after = `{#has_spouse}${andGap}{spouse_full_name}${closer}`;
+    (_full, beforeAnd: string, afterAnd: string, beforeCloser: string) => {
+      const before =
+        `{^has_spouse}${beforeAnd}and${afterAnd}{spouse_full_name}${beforeCloser}{/has_spouse}`;
+      const after =
+        `{#has_spouse}${beforeAnd}and${afterAnd}{spouse_full_name}${beforeCloser}{/has_spouse}`;
       items.push({
         kind: "repair",
         code: "SETTLOR_SPOUSE_POLARITY_FIXED",

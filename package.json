@@ -9,6 +9,7 @@
     "test": "pnpm --filter web test:unit",
     "test:unit:intake-fill": "pnpm --filter web test:unit:intake-fill",
     "test:unit:upload-normalize": "pnpm --filter web test:unit:upload-normalize",
+    "test:unit:fidelity-smoke": "pnpm --filter web test:unit:fidelity-smoke",
     "format": "prettier --write \"**/*.{ts,tsx,md}\""
   },
   "devDependencies": {

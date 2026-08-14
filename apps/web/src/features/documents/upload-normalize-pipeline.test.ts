@@ -246,7 +246,7 @@ test("pipeline: warnings / suggestions do not block upload (ok stays true)", () 
   // Cross-paragraph-style unmatched loop openers may also warn; neither should reject.
   const body = [
     paragraphWithRuns(["Client: {client_full_name}"]),
-    paragraphWithRuns(["_[name of second successor trustee]_"]),
+    paragraphWithRuns(["_[do/do not]_"]),
     paragraphWithRuns(["County of San Diego"]),
   ].join("\n");
   const input = createDocxFromDocumentXml(wrapDocumentXml(body));
