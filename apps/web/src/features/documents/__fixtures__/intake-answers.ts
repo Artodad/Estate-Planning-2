@@ -94,7 +94,7 @@ export const marriedCaRichIntake: PartialIntake = {
     {
       id: "dm2b",
       role: "successor_trustee",
-      person: { firstName: "Marco", lastName: "Vargas" },
+      person: { firstName: "Carmen", lastName: "Vargas" },
     },
     {
       id: "dm3",
@@ -129,14 +129,15 @@ export const marriedCaRichIntake: PartialIntake = {
     ],
     minorTrustProvisions: "Distribute at age 25",
     spendthrift: true,
-    youngPersonRetentionAge: "21",
-    firstDistributionAge: "25",
-    secondDistributionAge: "30",
-    thirdDistributionAge: "35",
-    outrightDistributionAge: "30",
-    educationalTrustEligibilityAge: "22",
+    // Distinct ladder ages (avoid colliding with Educational Trust 21/25/30).
+    youngPersonRetentionAge: "18",
+    firstDistributionAge: "23",
+    secondDistributionAge: "28",
+    thirdDistributionAge: "33",
+    outrightDistributionAge: "40",
+    educationalTrustEligibilityAge: "21",
     educationalTrustRemainderAge: "25",
-    educationalTrustTerminationAge: "26",
+    educationalTrustTerminationAge: "30",
   },
   charitable: {
     organizations: [

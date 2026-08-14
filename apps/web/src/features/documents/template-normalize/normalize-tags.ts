@@ -212,14 +212,16 @@ export function renameTagsInXml(
  * Trust Family settlor clause bug: spouse name was wrapped in inverted
  * `{^has_spouse}` (show when false). Spouse name must use positive polarity.
  *
- * Only rewrites the specific pattern
+ * Rewrites
  *   `{^has_spouse} and {spouse_full_name}{/has_spouse}`
  * → `{#has_spouse} and {spouse_full_name}{/has_spouse}`
  *
+ * Allows intervening Word XML (`</w:t></w:r>…<w:t>`) between the pieces — after
+ * repair-runs the tags are intact but often still live in adjacent runs.
  * Intentional `{^has_spouse}` "no spouse" sections elsewhere are untouched.
  */
 const INVERTED_SETTLOR_SPOUSE_RE =
-  /\{\^has_spouse\}(\s+and\s+)\{spouse_full_name\}(\{\/has_spouse\})/g;
+  /\{\^has_spouse\}((?:<[^>]+>|\s)*)and((?:<[^>]+>|\s)*)\{spouse_full_name\}((?:<[^>]+>|\s)*)\{\/has_spouse\}/g;
 
 export function fixSettlorSpousePolarityInXml(
   xml: string,
@@ -228,9 +230,11 @@ export function fixSettlorSpousePolarityInXml(
   const items: NormalizeReportItem[] = [];
   const next = xml.replace(
     INVERTED_SETTLOR_SPOUSE_RE,
-    (_full, andGap: string, closer: string) => {
-      const before = `{^has_spouse}${andGap}{spouse_full_name}${closer}`;
-      const after = `{#has_spouse}${andGap}{spouse_full_name}${closer}`;
+    (_full, beforeAnd: string, afterAnd: string, beforeCloser: string) => {
+      const before =
+        `{^has_spouse}${beforeAnd}and${afterAnd}{spouse_full_name}${beforeCloser}{/has_spouse}`;
+      const after =
+        `{#has_spouse}${beforeAnd}and${afterAnd}{spouse_full_name}${beforeCloser}{/has_spouse}`;
       items.push({
         kind: "repair",
         code: "SETTLOR_SPOUSE_POLARITY_FIXED",

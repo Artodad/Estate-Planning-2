@@ -171,19 +171,19 @@ test("intake → fill (synthetic): married CA rich answers populate party names,
   assert.ok(text.includes("- Sofia Vargas @ 50%"));
   assert.ok(text.includes("- Leo Vargas @ 50%"));
   assert.match(text, /Successor Trustee: Isabella Vargas/);
-  assert.match(text, /Second Successor: Marco Vargas/);
+  assert.match(text, /Second Successor: Carmen Vargas/);
   assert.match(text, /Executor: Elena Vargas/);
   assert.match(text, /Healthcare Agent: Marco Vargas/);
   assert.match(text, /Marriage: San Francisco, California on September 1, 2000/);
   assert.match(text, /Deemed Survivor: Diego Vargas/);
-  assert.match(text, /Young Person Age: 21/);
-  assert.match(text, /First Distribution Age: 25/);
-  assert.match(text, /Second Distribution Age: 30/);
-  assert.match(text, /Third Distribution Age: 35/);
-  assert.match(text, /Outright Age: 30/);
-  assert.match(text, /Educational Eligibility Age: 22/);
+  assert.match(text, /Young Person Age: 18/);
+  assert.match(text, /First Distribution Age: 23/);
+  assert.match(text, /Second Distribution Age: 28/);
+  assert.match(text, /Third Distribution Age: 33/);
+  assert.match(text, /Outright Age: 40/);
+  assert.match(text, /Educational Eligibility Age: 21/);
   assert.match(text, /Educational Remainder Age: 25/);
-  assert.match(text, /Educational Termination Age: 26/);
+  assert.match(text, /Educational Termination Age: 30/);
   assert.ok(text.includes("[Community property assets present]"));
 
   assertNoUnresolvedMapperTags(text, [
@@ -214,7 +214,7 @@ test("intake → fill (synthetic): single / no children omits spouse + minors an
   assert.ok(!text.includes("[Community property assets present]"));
   assert.ok(!text.includes("Sofia"), "prior fixture child names must not leak");
   assert.match(text, /Successor Trustee: Jordan Nguyen/);
-    assert.match(text, /Executor: Jordan Nguyen/);
+  assert.match(text, /Executor: Jordan Nguyen/);
   // Healthcare role absent → empty substitution, tag gone
   assert.match(text, /Healthcare Agent:\s*$/m);
   assert.match(text, /Marriage:\s+on\s*$/m);
@@ -228,7 +228,8 @@ test("intake → fill (synthetic): single / no children omits spouse + minors an
   assert.match(text, /Educational Remainder Age:\s*$/m);
   assert.match(text, /Educational Termination Age:\s*$/m);
   assert.ok(!text.includes("September 1, 2000"), "married marriage_date must not leak");
-  assert.ok(!text.includes("Marco Vargas"), "married second successor must not leak into single fill");
+  assert.ok(!text.includes("Carmen Vargas"), "married second successor must not leak into single fill");
+  assert.ok(!text.includes("Marco Vargas"), "married healthcare agent must not leak into single fill");
   assertNoUnresolvedMapperTags(text, [
     "client_full_name",
     "spouse_full_name",
@@ -324,6 +325,11 @@ for (const entry of TRUST_FAMILY) {
 
     // Core settlor / trust / residency / trustee substitutions
     assert.ok(text.includes("Elena Vargas"), "client_full_name must appear in filled Trust Family doc");
+    assert.match(
+      text,
+      /Elena Vargas\s+and\s+Diego Vargas/,
+      "settlor clause must include spouse_full_name for married intake ({#has_spouse} polarity)",
+    );
     assert.ok(
       text.includes("Vargas Revocable Living Trust"),
       "trust_name must appear in filled Trust Family doc",
@@ -334,7 +340,7 @@ for (const entry of TRUST_FAMILY) {
       "successor_trustee_full_name must appear",
     );
     assert.ok(
-      text.includes("Marco Vargas"),
+      text.includes("Carmen Vargas"),
       "second_successor_trustee_full_name must appear",
     );
     assert.ok(
@@ -342,8 +348,8 @@ for (const entry of TRUST_FAMILY) {
       "marriage_date must appear after normalize→fill",
     );
     assert.ok(
-      text.includes("25"),
-      "first_distribution_age (and related ages) must appear after normalize→fill",
+      text.includes("21") && text.includes("25"),
+      "educational trust ages must appear after normalize→fill",
     );
 
     // Children + residuary loops (tags present on normalized Trust Family docs)
@@ -352,6 +358,7 @@ for (const entry of TRUST_FAMILY) {
 
     assertNoUnresolvedMapperTags(text, [
       "client_full_name",
+      "spouse_full_name",
       "trust_name",
       "county_of_residence",
       "successor_trustee_full_name",
@@ -422,9 +429,10 @@ test("intake → fill (Trust Family mprg7y50): settlor spouse polarity fills mar
     ),
   );
   assert.ok(singleText.includes("Alex Nguyen"));
-  // Positive polarity: spouse clause hidden when has_spouse is false
+  // Positive {#has_spouse} omits the and-spouse segment for single intakes
   assert.ok(
-    !/Alex Nguyen\s+and\s+,/.test(singleText),
-    "single settlor clause must not render empty spouse 'and' gap",
+    !/Alex Nguyen\s+and\s*,/.test(singleText),
+    "single settlor clause must not render empty and-spouse segment",
   );
+  assert.match(singleText, /Alex Nguyen\s*,\s*sometimes hereafter called/);
 });
