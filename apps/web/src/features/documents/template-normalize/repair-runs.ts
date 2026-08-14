@@ -334,10 +334,6 @@ export function repairParagraphXml(paragraphXml: string): XmlPartRepairResult {
     // Still strip orphan closers (notary venue paragraphs often have no tags).
     const orphanOnly = removeOrphanClosers(paragraphXml);
     items.push(...orphanOnly.items);
-    const healedConcat = findRuns(orphanOnly.xml)
-      .map((r) => r.text)
-      .join("");
-    items.push(...detectUnmatchedLoops(healedConcat));
     return { xml: orphanOnly.xml, items };
   }
 
@@ -471,10 +467,6 @@ export function repairParagraphXml(paragraphXml: string): XmlPartRepairResult {
   const orphanResult = removeOrphanClosers(result);
   result = orphanResult.xml;
   items.push(...orphanResult.items);
-
-  const finalRuns = findRuns(result);
-  const healedConcat = finalRuns.map((r) => r.text).join("");
-  items.push(...detectUnmatchedLoops(healedConcat));
 
   return { xml: result, items };
 }
@@ -623,7 +615,7 @@ function detectUnmatchedLoops(text: string): NormalizeReportItem[] {
       items.push({
         kind: "warning",
         code: "UNMATCHED_LOOP_OPEN",
-        message: `Loop opener {#${name}} has no matching {/${name}} or {/} in this paragraph; left unchanged`,
+        message: `Loop opener {#${name}} has no matching {/${name}} or {/} in this part; left unchanged`,
         before: `{#${name}}`,
       });
     }
@@ -643,6 +635,12 @@ export function repairXmlPart(xml: string, partName: string): XmlPartRepairResul
     }
     return result.xml;
   });
+  // paragraphLoop: true matches {#tag}…{/tag} across paragraphs. Per-paragraph
+  // matching falsely warned on Trust Family {#children} / {#distribution_residuary}.
+  const partText = repaired.replace(/<[^>]+>/g, "");
+  for (const item of detectUnmatchedLoops(partText)) {
+    items.push({ ...item, part: partName });
+  }
   return { xml: repaired, items };
 }
 

@@ -209,3 +209,36 @@ test("repairDocxRuns heals bold-split tags in headers and footers", () => {
   assert.ok(items.some((i) => i.part === "word/header1.xml" && i.code === "SPLIT_RUN_MERGED"));
   assert.ok(items.some((i) => i.part === "word/footer1.xml" && i.code === "SPLIT_RUN_MERGED"));
 });
+
+test("repairDocxRuns does not warn UNMATCHED_LOOP_OPEN for paragraphLoop children / residuary", () => {
+  const body = [
+    paragraphWithRuns(["3. Children. The names and birthdates of our children are:"]),
+    paragraphWithRuns(["{#children}"]),
+    paragraphWithRuns(["{full_name} born {dob};"]),
+    paragraphWithRuns(["{/children}"]),
+    paragraphWithRuns(["{#distribution_residuary}"]),
+    paragraphWithRuns(["{name} {share_percent}"]),
+    paragraphWithRuns(["{/distribution_residuary}"]),
+  ].join("\n");
+  const input = createDocxFromDocumentXml(wrapDocumentXml(body));
+  const { items } = repairDocxRuns(input);
+  const unmatched = items.filter((i) => i.code === "UNMATCHED_LOOP_OPEN");
+  assert.equal(
+    unmatched.length,
+    0,
+    `expected no UNMATCHED_LOOP_OPEN, got ${unmatched.map((i) => i.before).join(", ")}`,
+  );
+});
+
+test("repairDocxRuns still warns UNMATCHED_LOOP_OPEN when a loop has no closer in the part", () => {
+  const body = [
+    paragraphWithRuns(["{#children}"]),
+    paragraphWithRuns(["{full_name}"]),
+  ].join("\n");
+  const input = createDocxFromDocumentXml(wrapDocumentXml(body));
+  const { items } = repairDocxRuns(input);
+  assert.ok(
+    items.some((i) => i.code === "UNMATCHED_LOOP_OPEN" && i.before === "{#children}"),
+    "truly unmatched {#children} must still warn at part level",
+  );
+});

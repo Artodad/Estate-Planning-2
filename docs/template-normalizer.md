@@ -193,7 +193,7 @@ Includes synthetic split-run / bold-split fixtures, notary orphan zero-length-ru
 
 ## Remaining limitations
 
-- Cross-paragraph loop open/close still warns per-paragraph (`UNMATCHED_LOOP_OPEN`) for `{#children}` / `{#distribution_residuary}` even when valid under `paragraphLoop: true`. Follow-up — not closed in this PR.
+- Loop open/close is matched per Word XML part (not per paragraph), so `{#children}` / `{#distribution_residuary}` on their own paragraphs no longer emit `UNMATCHED_LOOP_OPEN` when a matching closer exists in the same part. A loop with no closer in the part still warns.
 - Optional soft-blank keys stay empty-safe strings in the mapper when intake omits them
 - `[do/do not]`, free-text distribution descriptions, and CEB appoint-person notes stay suggestions (would invent conditionals / legal text)
 - Filled personal names buried in prose (without labels) are not auto-detected
