@@ -33,6 +33,25 @@ These are the foundational behavioral rules for all coding and agent work on thi
 
 ---
 
+## Orchestration (Main Agent Behavior)
+
+These rules tell the **orchestrator** (main agent) how to plan and delegate work.
+
+- Always start complex multi-file or multi-step work in **Plan Mode**. Propose a clear plan, wait for approval, then execute.
+- For any non-trivial task, decompose into parallel subagents:
+  - One (or more) **developer** / implementor subagent(s) for code changes.
+  - One **tester** subagent that writes/runs tests, checks edge cases, and skeptically reviews the changes.
+  - Optional: explorer/researcher or reviewer as needed.
+- Prefer isolated Git worktrees (`isolation: worktree`) for subagents that edit files.
+- Require verification: tests must pass (or explicit justification) before marking work complete.
+- Use clean, minimal diffs. Prefer small, reviewable changes.
+- After subagents finish, the orchestrator summarizes results, resolves conflicts if any, and presents a final report + next steps.
+- Prefer `/goal` for long-running autonomous objectives that need multiple implement → test → verify rounds.
+- Project personas live in `.grok/personas/` (`developer`, `tester`). Prefer spawning `general-purpose` (or project agents under `.grok/agents/`) and framing the prompt so those behaviors apply; keep capability modes tight (`read-only` / `execute` for research, full access only when implementing).
+- Never relax document fidelity, multi-tenancy, or legal boundaries when delegating — pass those constraints into every subagent prompt.
+
+---
+
 - You have full permission to run shell commands, read logs, edit files, and inspect outputs as needed.
 
 **Project**: Multi-tenant SaaS for estate planning attorneys. Intelligent adaptive questionnaire + exact-fidelity legal document generation from attorney templates. Attorney always retains full professional control.

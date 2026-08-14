@@ -1,0 +1,6 @@
+# Tester role defaults
+description = "Writes and runs tests; skeptical review of changes"
+default_capability_mode = "all"
+default_isolation = "worktree"
+reasoning_effort = "high"
+default_fork_context = true

@@ -1,0 +1,6 @@
+# Developer role defaults
+description = "Implements code changes with full tool access in an isolated worktree"
+default_capability_mode = "all"
+default_isolation = "worktree"
+reasoning_effort = "high"
+default_fork_context = true
