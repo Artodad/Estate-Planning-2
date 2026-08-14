@@ -2,7 +2,7 @@
 
 Wires intake → mapper → template fills for v2 soft-blank promotions, and promotes Educational Trust bare `[age]` ×3 to distinct high-confidence tags.
 
-Does **not** claim the full Trust Family loop is closed: `UNMATCHED_LOOP_OPEN` warnings for `{#children}` / `{#distribution_residuary}` remain a follow-up.
+`UNMATCHED_LOOP_OPEN` for `{#children}` / `{#distribution_residuary}` was a per-paragraph false positive (closers live in later paragraphs). That warning is now scoped to the XML part; those two tags no longer warn when a matching closer exists in the same part.
 
 ## Before → after (per distinct Trust Family doc)
 

@@ -65,6 +65,17 @@ test("Trust Family corpus: normalize → map → render (fail if corpus missing)
     true,
     `normalize must succeed; errors=${report.errors.map((e) => e.message).join(" | ")}`,
   );
+  const unmatchedLoops = report.warnings.filter((w) => w.code === "UNMATCHED_LOOP_OPEN");
+  assert.equal(
+    unmatchedLoops.filter((w) => w.before === "{#children}").length,
+    0,
+    "Trust Family {#children} must not emit UNMATCHED_LOOP_OPEN",
+  );
+  assert.equal(
+    unmatchedLoops.filter((w) => w.before === "{#distribution_residuary}").length,
+    0,
+    "Trust Family {#distribution_residuary} must not emit UNMATCHED_LOOP_OPEN",
+  );
 
   const variables = mapIntakeToDocVariables(marriedCaRichIntake, "revocable_trust");
   assert.equal(variables.educational_trust_eligibility_age, "21");
