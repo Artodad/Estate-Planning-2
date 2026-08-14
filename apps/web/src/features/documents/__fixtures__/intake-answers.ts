@@ -279,6 +279,7 @@ export const missingClientNameIntake: PartialIntake = {
 /**
  * Married intake with a single primary successor + `alternate` linked to that role.
  * Covers second_successor_trustee_full_name via alternateFor (not a 2nd successor_trustee).
+ * Ages intentionally distinct from marriedCaRichIntake fidelity fixture (21/25/30 + ladder 23).
  */
 export const marriedAlternateSuccessorIntake: PartialIntake = {
   personal: {

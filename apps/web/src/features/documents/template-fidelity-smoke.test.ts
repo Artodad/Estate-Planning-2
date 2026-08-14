@@ -24,7 +24,7 @@ import Docxtemplater from "docxtemplater";
 
 import { mapIntakeToDocVariables } from "./mapper";
 import { normalizeTemplateBuffer } from "./template-normalize/normalize-template";
-import { marriedCaRichIntake } from "./__fixtures__/intake-answers";
+import { marriedCaRichIntake, singleNoChildrenIntake } from "./__fixtures__/intake-answers";
 
 const WEB_ROOT = existsSync(path.join(process.cwd(), ".local-document-storage"))
   ? process.cwd()
@@ -172,4 +172,56 @@ test("Phase 7 fidelity smoke: Trust Family normalize → map → render fills sp
       `expected {${tag}} to be substituted in filled Trust Family output`,
     );
   }
+});
+
+/**
+ * Complementary empty-safe / single polarity (does not re-assert filled #12 smoke values).
+ * Proves omitted soft-blanks leave no brace residue and single settlor omits the and-spouse glue.
+ */
+test("complementary fidelity: single / empty soft-blanks — no brace tags, no dangling and-spouse", (t) => {
+  const abs = path.join(WEB_ROOT, TRUST_FAMILY_SMOKE.rel);
+  if (!existsSync(abs)) {
+    t.skip(
+      `missing Trust Family corpus file (gitignored or not vendored): ${TRUST_FAMILY_SMOKE.rel}`,
+    );
+    return;
+  }
+
+  const { buffer: normalized, report } = normalizeTemplateBuffer(readFileSync(abs));
+  assert.equal(report.ok, true, "normalize must succeed before complementary empty-safe fill");
+
+  const variables = mapIntakeToDocVariables(singleNoChildrenIntake, "revocable_trust", {
+    generationDate: "2026-05-26",
+    firmName: "Vargas Law LLP",
+  });
+  assert.equal(variables.has_spouse, false);
+  assert.equal(variables.second_successor_trustee_full_name, "");
+  assert.equal(variables.deemed_survivor_full_name, "");
+  assert.equal(variables.first_distribution_age, "");
+  assert.equal(variables.educational_trust_eligibility_age, "");
+  assert.equal(variables.educational_trust_remainder_age, "");
+  assert.equal(variables.educational_trust_termination_age, "");
+
+  const text = plainTextFromDocx(renderDocx(normalized, variables));
+
+  assert.ok(text.includes("Alex Nguyen"));
+  assert.ok(
+    !/Alex Nguyen\s+and\s*,/.test(text),
+    "single settlor must not leave dangling 'and ,' after empty spouse omission",
+  );
+  assert.match(text, /Alex Nguyen\s*,\s*sometimes hereafter called/);
+
+  // Fidelity soft-blank tags must be substituted away even when empty.
+  for (const tag of FIDELITY_TAGS) {
+    if (tag === "has_spouse") continue;
+    assert.ok(
+      !text.includes(`{${tag}}`),
+      `empty-safe fill must not leave unresolved {${tag}}`,
+    );
+  }
+
+  // Happy-path fixture values from the filled smoke must not leak into single fill.
+  assert.ok(!text.includes("Diego Vargas"));
+  assert.ok(!text.includes("Carmen Vargas"));
+  assert.ok(!text.includes("September 1, 2000"));
 });

@@ -255,8 +255,8 @@ test("healthcareAgentId cross-ref resolves when role shortcut absent", () => {
 });
 
 // ---------------------------------------------------------------------------
-// PR #10 intake-backed soft-blank tags — complementary edge / wrong-role cases
-// (happy-path present values covered above; Dev corpus smoke lives on #10 / upcoming fidelity)
+// Complementary edges for intake-backed soft-blank tags
+// Happy-path filled Trust Family smoke lives in template-fidelity-smoke.test.ts.
 // ---------------------------------------------------------------------------
 
 test("marriage_city_state / marriage_date trim whitespace; omitted when married stays empty (no spouse fallback)", () => {
@@ -367,11 +367,40 @@ test("second_successor_trustee_full_name from alternate linked to primary; unrel
 
 test("young-person / staggered / outright ages map from distribution; trim + empty-safe", () => {
   const present = mapIntakeToDocVariables(marriedCaRichIntake, "revocable_trust");
-  assert.equal(present.young_person_retention_age, "21");
-  assert.equal(present.first_distribution_age, "25");
-  assert.equal(present.second_distribution_age, "30");
-  assert.equal(present.third_distribution_age, "35");
-  assert.equal(present.outright_distribution_age, "30");
+  assert.equal(present.young_person_retention_age, "18");
+  assert.equal(present.first_distribution_age, "23");
+  assert.equal(present.second_distribution_age, "28");
+  assert.equal(present.third_distribution_age, "33");
+  assert.equal(present.outright_distribution_age, "40");
+
+  const whitespaceAges = mapIntakeToDocVariables(
+    {
+      personal: {
+        client: { firstName: "A", lastName: "B" },
+        maritalStatus: "single",
+        isCAResident: true,
+      },
+      distribution: {
+        youngPersonRetentionAge: "   ",
+        firstDistributionAge: "  \t  ",
+        secondDistributionAge: " ",
+        thirdDistributionAge: "\n",
+        outrightDistributionAge: "  ",
+        educationalTrustEligibilityAge: "   ",
+        educationalTrustRemainderAge: "\t",
+        educationalTrustTerminationAge: "  ",
+      },
+    },
+    "revocable_trust",
+  );
+  assert.equal(whitespaceAges.young_person_retention_age, "");
+  assert.equal(whitespaceAges.first_distribution_age, "");
+  assert.equal(whitespaceAges.second_distribution_age, "");
+  assert.equal(whitespaceAges.third_distribution_age, "");
+  assert.equal(whitespaceAges.outright_distribution_age, "");
+  assert.equal(whitespaceAges.educational_trust_eligibility_age, "");
+  assert.equal(whitespaceAges.educational_trust_remainder_age, "");
+  assert.equal(whitespaceAges.educational_trust_termination_age, "");
 
   const trimmed = mapIntakeToDocVariables(
     {
@@ -386,6 +415,9 @@ test("young-person / staggered / outright ages map from distribution; trim + emp
         secondDistributionAge: "  29  ",
         thirdDistributionAge: "  34  ",
         outrightDistributionAge: "  40  ",
+        educationalTrustEligibilityAge: "  20  ",
+        educationalTrustRemainderAge: "  24  ",
+        educationalTrustTerminationAge: "  30  ",
       },
     },
     "revocable_trust",
@@ -395,6 +427,9 @@ test("young-person / staggered / outright ages map from distribution; trim + emp
   assert.equal(trimmed.second_distribution_age, "29");
   assert.equal(trimmed.third_distribution_age, "34");
   assert.equal(trimmed.outright_distribution_age, "40");
+  assert.equal(trimmed.educational_trust_eligibility_age, "20");
+  assert.equal(trimmed.educational_trust_remainder_age, "24");
+  assert.equal(trimmed.educational_trust_termination_age, "30");
 
   const empty = mapIntakeToDocVariables(partneredAdultChildrenNonCaIntake, "revocable_trust");
   assert.equal(empty.young_person_retention_age, "");
@@ -406,9 +441,9 @@ test("young-person / staggered / outright ages map from distribution; trim + emp
 
 test("Educational Trust ages map as distinct intake-backed keys (present + empty-safe)", () => {
   const present = mapIntakeToDocVariables(marriedCaRichIntake, "revocable_trust");
-  assert.equal(present.educational_trust_eligibility_age, "22");
+  assert.equal(present.educational_trust_eligibility_age, "21");
   assert.equal(present.educational_trust_remainder_age, "25");
-  assert.equal(present.educational_trust_termination_age, "26");
+  assert.equal(present.educational_trust_termination_age, "30");
   // Distinct tags must not collapse to one shared value when intake differs
   assert.notEqual(present.educational_trust_eligibility_age, present.educational_trust_termination_age);
 
@@ -437,7 +472,7 @@ test("Educational Trust ages map as distinct intake-backed keys (present + empty
   assert.equal(empty.educational_trust_termination_age, "");
 });
 
-// Still suggestion-only on PR #10 — no intake/mapper scalars; do not invent wiring.
+// Still suggestion-only — no intake/mapper scalars; do not invent wiring.
 test.todo("distribution description blank stays suggestion-only (no intake-backed mapper scalar)");
 test.todo("do/do not blank stays suggestion-only (no intake-backed mapper conditional)");
 test.todo("CEB 'Can Choose a Specific Person…' note stays suggestion-only (no mapper scalar)");

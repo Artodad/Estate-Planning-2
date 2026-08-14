@@ -436,3 +436,112 @@ test("intake → fill (Trust Family mprg7y50): settlor spouse polarity fills mar
   );
   assert.match(singleText, /Alex Nguyen\s*,\s*sometimes hereafter called/);
 });
+
+// ---------------------------------------------------------------------------
+// Complementary empty-safe / wrong-role fill (Phase 7 smoke owns filled happy path)
+// ---------------------------------------------------------------------------
+
+test("complementary intake → fill (synthetic): omitted soft-blanks leave no brace tags / no dangling and", () => {
+  const variables = mapIntakeToDocVariables(singleNoChildrenIntake, "revocable_trust", {
+    generationDate: "2026-05-26",
+  });
+  const text = plainTextFromDocx(renderDocx(createIntakeFillTemplateDocx(), variables));
+
+  // Empty substitutions — tags gone, labels present with blank values.
+  assert.match(text, /Second Successor:\s*$/m);
+  assert.match(text, /Deemed Survivor:\s*$/m);
+  assert.match(text, /First Distribution Age:\s*$/m);
+  assert.match(text, /Educational Eligibility Age:\s*$/m);
+  assert.ok(!text.includes("Carmen Vargas"), "fidelity-fixture second successor must not leak");
+  assert.ok(!text.includes("Diego Vargas"), "married deemed survivor / spouse must not leak");
+  assert.ok(!text.includes("{second_successor_trustee_full_name}"));
+  assert.ok(!text.includes("{deemed_survivor_full_name}"));
+  assert.ok(!text.includes("{first_distribution_age}"));
+  assert.ok(!text.includes("{educational_trust_eligibility_age}"));
+  // Inverted no-spouse section shows; positive spouse block omitted (no "Spouse: and").
+  assert.ok(text.includes("[No spouse section]"));
+  assert.ok(!text.includes("Spouse:"), "positive spouse line must be omitted for single");
+  assert.ok(!/and\s*,/.test(text), "must not leave dangling 'and ,' from empty spouse glue");
+});
+
+test("complementary intake → fill (synthetic): whitespace-only ages render empty (no brace residue)", () => {
+  const variables = mapIntakeToDocVariables(
+    {
+      personal: {
+        client: { firstName: "Pat", lastName: "Lee" },
+        maritalStatus: "single",
+        isCAResident: true,
+        countyOfResidence: "Alameda",
+      },
+      decisionMakers: [
+        {
+          role: "successor_trustee",
+          person: { firstName: "Jordan", lastName: "Lee" },
+        },
+      ],
+      distribution: {
+        firstDistributionAge: "   ",
+        educationalTrustEligibilityAge: "\t  ",
+      },
+    },
+    "revocable_trust",
+  );
+  const text = plainTextFromDocx(renderDocx(createIntakeFillTemplateDocx(), variables));
+
+  assert.match(text, /Client: Pat Lee/);
+  assert.match(text, /First Distribution Age:\s*$/m);
+  assert.match(text, /Educational Eligibility Age:\s*$/m);
+  assert.ok(!text.includes("{first_distribution_age}"));
+  assert.ok(!text.includes("{educational_trust_eligibility_age}"));
+});
+
+test("complementary intake → fill (synthetic): linked alternate fills second successor; unrelated ignored", () => {
+  const viaAlt = plainTextFromDocx(
+    renderDocx(
+      createIntakeFillTemplateDocx(),
+      mapIntakeToDocVariables(marriedAlternateSuccessorIntake, "revocable_trust"),
+    ),
+  );
+  assert.match(viaAlt, /Successor Trustee: Isabella Vargas/);
+  assert.match(viaAlt, /Second Successor: Nora Chen/);
+  assert.match(viaAlt, /Deemed Survivor: Nora Chen/);
+  assert.ok(!viaAlt.includes("Carmen Vargas"), "2nd successor_trustee fixture must not leak");
+
+  const unrelated = plainTextFromDocx(
+    renderDocx(
+      createIntakeFillTemplateDocx(),
+      mapIntakeToDocVariables(
+        {
+          personal: {
+            client: { firstName: "A", lastName: "B" },
+            maritalStatus: "single",
+            isCAResident: true,
+          },
+          decisionMakers: [
+            {
+              id: "dm-exec",
+              role: "executor",
+              person: { firstName: "Exec", lastName: "One" },
+            },
+            {
+              id: "dm-succ",
+              role: "successor_trustee",
+              person: { firstName: "Succ", lastName: "One" },
+            },
+            {
+              id: "dm-alt-exec",
+              role: "alternate",
+              alternateFor: "dm-exec",
+              person: { firstName: "Alt", lastName: "Exec" },
+            },
+          ],
+        },
+        "revocable_trust",
+      ),
+    ),
+  );
+  assert.match(unrelated, /Successor Trustee: Succ One/);
+  assert.match(unrelated, /Second Successor:\s*$/m);
+  assert.ok(!unrelated.includes("Alt Exec"), "executor alternate must not fill second successor");
+  assert.ok(!unrelated.includes("{second_successor_trustee_full_name}"));
+});
