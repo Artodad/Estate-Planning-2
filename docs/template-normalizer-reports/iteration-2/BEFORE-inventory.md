@@ -2,6 +2,8 @@
 
 Source: PR #2 iteration reports (`docs/template-normalizer-reports/iteration/`), Trust Family corpus.
 
+**Historical snapshot** of the iteration-2 promote/keep decisions. Iteration-3 later promoted the three Educational Trust `[age]` blanks to distinct high-confidence tags — see `../iteration-3/SUMMARY.md`. Do not treat the “Keep suggestion” row for Educational Trust ages as current.
+
 ## Baseline counts (per distinct Trust Family doc)
 
 | Metric | mprg7y50 / mprnxupt / mprpud8a |
@@ -27,7 +29,7 @@ Already high-confidence (v1): `_[Name of Trust]_`, `_[Name]_` before TRUST, `_[N
 | 1 | `[third age]` | `blank_age` | No dedicated mapper keys | **Promote** → `{third_distribution_age}` |
 | 1 | `[age]` after “under the age of” (Young Persons) | `blank_age` | Bare age ambiguous across clauses | **Promote** (label-anchored) → `{young_person_retention_age}` |
 | 1 | `[age]` after “attains the age of” (single-age principal) | `blank_age` | Bare age ambiguous across clauses | **Promote** (label-anchored) → `{outright_distribution_age}` |
-| 3 | `[age]` in Educational Trust clauses | `blank_age` | Three distinct educational ages; same tag would force equality | **Keep suggestion** |
+| 3 | `[age]` in Educational Trust clauses | `blank_age` | Three distinct educational ages; same tag would force equality | **Keep suggestion** at iteration-2; **promoted in iteration-3** to `{educational_trust_eligibility_age}` / `{educational_trust_remainder_age}` / `{educational_trust_termination_age}` |
 
 ## Also present in corpus but not yet reported as suggestions
 

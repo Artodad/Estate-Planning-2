@@ -1,6 +1,8 @@
 # Trust Family corpus — iteration-3 (Educational Trust ages + intake loop)
 
-Closes the intake → mapper → template loop for v2 soft-blank promotions, and promotes Educational Trust bare `[age]` ×3 to distinct high-confidence tags.
+Wires intake → mapper → template fills for v2 soft-blank promotions, and promotes Educational Trust bare `[age]` ×3 to distinct high-confidence tags.
+
+Does **not** claim the full Trust Family loop is closed: `UNMATCHED_LOOP_OPEN` warnings for `{#children}` / `{#distribution_residuary}` remain a follow-up.
 
 ## Before → after (per distinct Trust Family doc)
 

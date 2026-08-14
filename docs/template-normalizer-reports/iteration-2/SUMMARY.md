@@ -27,11 +27,11 @@
 - Young Persons “under the age of `[age]`” → `{young_person_retention_age}`
 - single-age “attains the age of `[age]`” → `{outright_distribution_age}`
 
-## Remaining suggestions (7)
+## Remaining suggestions after iteration-2 (7)
 
 - `[Description of distribution.]` ×2
 - `[do/do not]` ×1
-- Educational Trust bare `[age]` ×3
+- Educational Trust bare `[age]` ×3 — **promoted in iteration-3** (distinct tags; see `../iteration-3/SUMMARY.md`)
 - CEB “Can Choose a Specific Person…” ×1
 
 See `BEFORE-inventory.md` for the promote/keep rationale.

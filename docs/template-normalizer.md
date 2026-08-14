@@ -177,18 +177,23 @@ Uses Node’s built-in test runner + `tsx` (same as `machine.test.ts`):
 
 ```bash
 cd apps/web && pnpm test:unit:normalize
+# Default CI smoke — vendored labeled fixture (fails if missing; no skip)
 cd apps/web && pnpm test:unit:fidelity-smoke
+# Real Trust Family corpus — NOT in default CI; fails if the path is missing
+cd apps/web && pnpm test:unit:fidelity-corpus
 ```
 
-Includes synthetic split-run / bold-split fixtures, notary orphan zero-length-run fixtures, sample/blank detection, upload-path adapter tests (`prepare-template-upload.test.ts`), and integration tests against the real corpus paths.
+Includes synthetic split-run / bold-split fixtures, notary orphan zero-length-run fixtures, sample/blank detection, upload-path adapter tests (`prepare-template-upload.test.ts`), and integration tests against the real corpus paths when run via `test:unit:fidelity-corpus`.
 
-**Phase 7 fidelity smoke** (`template-fidelity-smoke.test.ts`): loads a real Trust Family `.docx` from `.local-document-storage` (skips with a clear message if absent), runs `normalizeTemplateBuffer` → `mapIntakeToDocVariables` → docxtemplater render (same options as `generator.ts`), then asserts the filled text/XML contains the spouse name inside the `{#has_spouse}` settlor region, the second successor name, at least two Educational Trust age strings (fixture uses 21/25/30), and marriage date or city when those tags exist after normalize.
+**Default CI fidelity smoke** (`template-fidelity-smoke.test.ts`): fills the vendored labeled fixture `src/features/documents/__fixtures__/trust-family-fidelity-labels.docx`. Asserts labeled distinct values (`Educational Eligibility Age: 21`, `Educational Remainder Age: 25`, `Educational Termination Age: 30`, `First Distribution Age: 23`). Fails if that fixture is missing — no skip-hatch.
+
+**Real-corpus smoke** (`template-fidelity-corpus.test.ts`): `normalizeTemplateBuffer` → map → render on `.local-document-storage/.../Trust-_Family-changed-mprg7y50.docx`. **Not** part of `pnpm test:unit` / GitHub Actions `unit` (that path is a GitHub-hidden dotfolder). Fails if the corpus file is missing — no skip-hatch.
 
 ---
 
 ## Remaining limitations
 
-- Cross-paragraph loop open/close still warns per-paragraph (`UNMATCHED_LOOP_OPEN`) even when valid under `paragraphLoop: true`
+- Cross-paragraph loop open/close still warns per-paragraph (`UNMATCHED_LOOP_OPEN`) for `{#children}` / `{#distribution_residuary}` even when valid under `paragraphLoop: true`. Follow-up — not closed in this PR.
 - Optional soft-blank keys stay empty-safe strings in the mapper when intake omits them
 - `[do/do not]`, free-text distribution descriptions, and CEB appoint-person notes stay suggestions (would invent conditionals / legal text)
 - Filled personal names buried in prose (without labels) are not auto-detected
