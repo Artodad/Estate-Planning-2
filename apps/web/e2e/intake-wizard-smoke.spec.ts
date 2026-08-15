@@ -536,7 +536,7 @@ All other tests (unit + any that don't need real Clerk E2E users) will continue 
         page.locator("form"),
       ).catch(() => {});
 
-      // Distribution UI omits sharePercent — fill optional notes only (empty residuary array is valid)
+      // Residuary is optional (empty array is valid) — fill notes only on this smoke path
       if (sectionLabel.source.includes("Distribution")) {
         await page
           .locator('textarea[name*="minorTrustProvisions"]')

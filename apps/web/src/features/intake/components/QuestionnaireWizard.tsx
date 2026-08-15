@@ -879,7 +879,26 @@ function DynamicSectionForm({
     return { resolverSchema: wrapped, defaults };
   }
 
+  function coerceResiduaryShares(data: any) {
+    if (!data || typeof data !== "object" || !Array.isArray(data.residuary)) return data;
+    return {
+      ...data,
+      residuary: data.residuary.map((b: any) =>
+        b
+          ? {
+              ...b,
+              sharePercent:
+                b.sharePercent == null || b.sharePercent === ""
+                  ? undefined
+                  : Number(b.sharePercent),
+            }
+          : b,
+      ),
+    };
+  }
+
   function extractArrayPayloadForSubmit(section: SectionKey, fullData: any) {
+    if (section === "distribution") return coerceResiduaryShares(fullData);
     if (!isGenericArraySection) return fullData;
 
     const key = section === "gifts" ? "specificGifts" : section;
@@ -907,23 +926,13 @@ function DynamicSectionForm({
     mode: "onChange",
   });
 
-  const { register, handleSubmit, watch, control, getValues, formState: { errors }, reset } = form;
+  const { register, handleSubmit, watch, control, formState: { errors }, reset } = form;
 
   // Reset when the section changes (component remounts thanks to memo + key)
   useEffect(() => {
     const { defaults: resetValue } = getArraySectionConfig(currentSection as SectionKey, rawValue);
     reset(resetValue);
   }, [currentSection]); // reset is stable from RHF
-
-  // Temporary debug visibility when landing on Family (or Assets)
-  useEffect(() => {
-    if (currentSection === 'family' || currentSection === 'assets') {
-      console.log(`[DEBUG] Entered ${currentSection} section`, {
-        currentFormErrors: errors,
-        currentFormValues: typeof getValues === 'function' ? getValues() : 'getValues not available',
-      });
-    }
-  }, [currentSection]);
 
   // ============================================================
   // RULES OF HOOKS COMPLIANCE (Phase 4 blocker fix):
@@ -939,6 +948,7 @@ function DynamicSectionForm({
   const liabilitiesArray = useFieldArray({ control, name: "liabilities" as const });
   const decisionMakersArray = useFieldArray({ control, name: "decisionMakers" as const });
   const specificGiftsArray = useFieldArray({ control, name: "specificGifts" as const });
+  const residuaryArray = useFieldArray({ control, name: "residuary" as const });
 
   // Auto-save subscription — this is what drives re-renders on typing.
   // We use a targeted subscription instead of top-level watch() to reduce unnecessary renders.
@@ -961,13 +971,6 @@ function DynamicSectionForm({
 
   // Submit path for explicit advance (also triggers machine guard)
   const onFormAdvance = (data: any) => {
-    if (currentSection === 'family' || currentSection === 'assets' || currentSection === 'liabilities') {
-      console.groupCollapsed(`[DEBUG] onFormAdvance - ${currentSection}`);
-      console.log('Data passed to handler:', data);
-      console.log('Current form errors at submit time:', errors);
-      console.groupEnd();
-    }
-
     const payload = extractArrayPayloadForSubmit(currentSection as SectionKey, data);
     onSectionSubmit(currentSection, payload);
   };
@@ -1122,29 +1125,9 @@ function DynamicSectionForm({
             </div>
           </div>
 
-          <div className="pt-2 flex gap-3 items-center">
+          <div className="pt-2">
             <Button type="submit">Save Family Information &amp; Continue</Button>
-
-            {/* Temporary debug bypass while we're fixing the family submit stuck state */}
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                const currentValues = getValues();
-                console.log('[DEBUG] FORCE Family submit (bypassing RHF validation)', currentValues);
-                onFormAdvance(currentValues);
-              }}
-            >
-              Force Save &amp; Continue (debug)
-            </Button>
           </div>
-
-          {/* Live error visibility for family */}
-          {Object.keys(errors).length > 0 && (
-            <div className="text-xs text-destructive bg-destructive/10 p-2 rounded">
-              Current form errors: {JSON.stringify(errors, null, 2)}
-            </div>
-          )}
         </form>
       );
     }
@@ -1170,6 +1153,8 @@ function DynamicSectionForm({
         const append = activeArray.append;
         const remove = activeArray.remove;
 
+        const newDecisionMakerId = () =>
+          crypto.randomUUID?.() ?? `dm-${Date.now()}`;
         const sample =
           currentSection === "assets"
             ? { type: "real_estate", description: "", ownership: "community" }
@@ -1177,7 +1162,15 @@ function DynamicSectionForm({
               ? { type: "mortgage", creditor: "" }
               : currentSection === "gifts"
                 ? { beneficiary: "", description: "" }
-                : { name: "", description: "" };
+                : currentSection === "decisionMakers"
+                  ? {
+                      id: newDecisionMakerId(),
+                      role: "executor",
+                      person: { firstName: "", lastName: "" },
+                    }
+                  : { name: "", description: "" };
+        const decisionMakersWatch =
+          currentSection === "decisionMakers" ? (watch(arrayName) ?? []) : [];
 
         return (
           <form onSubmit={handleSubmit(onFormAdvance)} className="space-y-6" noValidate>
@@ -1231,6 +1224,7 @@ function DynamicSectionForm({
 
                   {currentSection === "decisionMakers" && (
                     <div className="grid gap-4">
+                      <input type="hidden" {...register(`${arrayName}.${index}.id`)} />
                       <div>
                         <Label>Role</Label>
                         <select {...register(`${arrayName}.${index}.role`)} className="mt-1 w-full rounded border p-2 text-sm">
@@ -1242,10 +1236,38 @@ function DynamicSectionForm({
                           <option value="alternate">Alternate</option>
                         </select>
                         <p className="mt-1 text-[11px] text-muted-foreground">
-                          Add a second Successor Trustee (or an Alternate) for the second-successor trust blank.
+                          Add a second Successor Trustee, or an Alternate linked to the primary successor, for the second-successor trust blank.
                         </p>
                       </div>
                       <div className="grid grid-cols-2 gap-4"><Field register={register} errors={errors} name={`${arrayName}.${index}.person.firstName`} label="First Name" required /><Field register={register} errors={errors} name={`${arrayName}.${index}.person.lastName`} label="Last Name" required /></div>
+                      {watch(`${arrayName}.${index}.role`) === "alternate" && (
+                        <div>
+                          <Label htmlFor={`${arrayName}.${index}.alternateFor`}>Alternates for</Label>
+                          <select
+                            id={`${arrayName}.${index}.alternateFor`}
+                            {...register(`${arrayName}.${index}.alternateFor`)}
+                            className="mt-1 w-full rounded border p-2 text-sm"
+                          >
+                            <option value="">Select who this person alternates for</option>
+                            <option value="successor_trustee">Successor Trustee (by role)</option>
+                            {(Array.isArray(decisionMakersWatch) ? decisionMakersWatch : []).map(
+                              (dm: { id?: string; role?: string; person?: { firstName?: string; lastName?: string } }, j: number) => {
+                                if (j === index || !dm?.id) return null;
+                                const label = [dm.person?.firstName, dm.person?.lastName].filter(Boolean).join(" ") || `Entry ${j + 1}`;
+                                const roleLabel = (dm.role ?? "").replace(/_/g, " ");
+                                return (
+                                  <option key={dm.id} value={dm.id}>
+                                    {label}{roleLabel ? ` (${roleLabel})` : ""}
+                                  </option>
+                                );
+                              },
+                            )}
+                          </select>
+                          <p className="mt-1 text-[11px] text-muted-foreground">
+                            Required to fill the second-successor blank when using an Alternate instead of a second Successor Trustee.
+                          </p>
+                        </div>
+                      )}
                       <Field register={register} errors={errors} name={`${arrayName}.${index}.notes`} label="Notes / Acceptance" />
                     </div>
                   )}
@@ -1293,31 +1315,9 @@ function DynamicSectionForm({
               ))}
             </div>
 
-            <div className="pt-4 flex gap-3 items-center">
+            <div className="pt-4">
               <Button type="submit">Save &amp; Continue</Button>
-
-              {/* Temporary debug bypass for Assets (same pattern as Family) */}
-              {currentSection === "assets" && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    const currentValues = getValues();
-                    console.log('[DEBUG] FORCE Assets submit (bypassing RHF validation)', currentValues);
-                    onFormAdvance(currentValues);
-                  }}
-                >
-                  Force Save &amp; Continue (debug)
-                </Button>
-              )}
             </div>
-
-            {/* Live error visibility for Assets */}
-            {currentSection === "assets" && Object.keys(errors).length > 0 && (
-              <div className="text-xs text-destructive bg-destructive/10 p-2 rounded">
-                Current form errors: {JSON.stringify(errors, null, 2)}
-              </div>
-            )}
 
             <p className="text-[10px] text-muted-foreground">Complex repeating sections (children, assets, decision makers) support full add/remove + validation. Extend fields in schema + here in lockstep.</p>
           </form>
@@ -1332,6 +1332,80 @@ function DynamicSectionForm({
           {/* Minimal representative fields for remaining sections */}
           {currentSection === "distribution" && (
             <>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-base">Residuary beneficiaries</Label>
+                    <p className="text-[11px] text-muted-foreground">
+                      People who take the residue. Share percent must total as the attorney intends (0–100 each).
+                    </p>
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() =>
+                      residuaryArray.append({ name: "", relationship: "", sharePercent: undefined })
+                    }
+                  >
+                    <Plus className="mr-1 h-4 w-4" /> Add Beneficiary
+                  </Button>
+                </div>
+                {residuaryArray.fields.length === 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    No residuary beneficiaries yet. Leave empty if the residue is not named in this intake.
+                  </p>
+                )}
+                <div className="space-y-3">
+                  {residuaryArray.fields.map((field, index) => (
+                    <div key={field.id} className="grid gap-4 rounded border p-4 md:grid-cols-2">
+                      <Field
+                        register={register}
+                        errors={errors}
+                        name={`residuary.${index}.name`}
+                        label="Name"
+                        required
+                      />
+                      <Field
+                        register={register}
+                        errors={errors}
+                        name={`residuary.${index}.relationship`}
+                        label="Relationship"
+                        placeholder="daughter, son, sibling..."
+                      />
+                      <div className="space-y-1.5">
+                        <Label htmlFor={`residuary.${index}.sharePercent`}>
+                          Share percent <span className="text-destructive">*</span>
+                        </Label>
+                        <Input
+                          id={`residuary.${index}.sharePercent`}
+                          type="number"
+                          min={0}
+                          max={100}
+                          {...register(`residuary.${index}.sharePercent`, { valueAsNumber: true })}
+                        />
+                        {(errors as any)?.residuary?.[index]?.sharePercent && (
+                          <p className="text-xs text-destructive">
+                            {(errors as any).residuary[index].sharePercent?.message}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex items-end">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => residuaryArray.remove(index)}
+                          aria-label="Remove residuary beneficiary"
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               <Label>Minor trust / age-based distribution notes (optional)</Label>
               <textarea
                 className="w-full rounded border p-3 text-sm"

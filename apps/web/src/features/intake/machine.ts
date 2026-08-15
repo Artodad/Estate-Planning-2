@@ -287,6 +287,13 @@ export const actions = {
       const prev = (context.answers as any)[mapKey] ?? {};
       const merged = deepMerge(prev, delta);
 
+      // Wizard number inputs persist sharePercent as strings; coerce so Zod + mapper see numbers.
+      if (mapKey === 'distribution' && merged && Array.isArray(merged.residuary)) {
+        merged.residuary = merged.residuary.map((b: any) =>
+          b ? { ...b, sharePercent: toNumberOrUndef(b.sharePercent) } : b,
+        );
+      }
+
       return {
         ...context.answers,
         [mapKey]: merged,
