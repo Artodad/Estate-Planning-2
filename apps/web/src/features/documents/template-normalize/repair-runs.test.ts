@@ -302,3 +302,70 @@ test("repairDocxRuns warns when two opens share one named close", () => {
     "one {/children} closes only the innermost {#children}",
   );
 });
+
+test("repairDocxRuns named closer ≠ innermost does not pop the outer open", () => {
+  const body = [
+    paragraphWithRuns(["{#children}"]),
+    paragraphWithRuns(["{#distribution_residuary}"]),
+    paragraphWithRuns(["{/children}"]),
+  ].join("\n");
+  const input = createDocxFromDocumentXml(wrapDocumentXml(body));
+  const { items } = repairDocxRuns(input);
+  assert.ok(
+    items.some((i) => i.code === "UNMATCHED_LOOP_CLOSE" && i.before === "{/children}"),
+    "{/children} must not pair with the outer {#children} while residuary is innermost",
+  );
+  assert.deepEqual(
+    items.filter((i) => i.code === "UNMATCHED_LOOP_OPEN").map((i) => i.before),
+    ["{#children}", "{#distribution_residuary}"],
+    "mismatched {/children} must leave both opens on the stack",
+  );
+});
+
+test("repairDocxRuns bare {/} on an empty stack warns UNMATCHED_LOOP_CLOSE", () => {
+  const body = [paragraphWithRuns(["{/}"])].join("\n");
+  const input = createDocxFromDocumentXml(wrapDocumentXml(body));
+  const { items } = repairDocxRuns(input);
+  assert.ok(
+    items.some((i) => i.code === "UNMATCHED_LOOP_CLOSE" && i.before === "{/}"),
+    "bare {/} with no opener must warn",
+  );
+  assert.equal(items.filter((i) => i.code === "UNMATCHED_LOOP_OPEN").length, 0);
+});
+
+test("repairDocxRuns nested different names pair innermost-first", () => {
+  const body = [
+    paragraphWithRuns(["{#children}"]),
+    paragraphWithRuns(["{#distribution_residuary}"]),
+    paragraphWithRuns(["{/distribution_residuary}"]),
+    paragraphWithRuns(["{/children}"]),
+  ].join("\n");
+  const input = createDocxFromDocumentXml(wrapDocumentXml(body));
+  const { items } = repairDocxRuns(input);
+  assert.equal(
+    items.filter((i) => i.code === "UNMATCHED_LOOP_OPEN" || i.code === "UNMATCHED_LOOP_CLOSE")
+      .length,
+    0,
+    "nested {#a}{#b}{/b}{/a} must pair",
+  );
+});
+
+test("repairDocxRuns crossed closers do not steal the wrong open", () => {
+  const body = [
+    paragraphWithRuns(["{#children}"]),
+    paragraphWithRuns(["{#distribution_residuary}"]),
+    paragraphWithRuns(["{/children}"]),
+    paragraphWithRuns(["{/distribution_residuary}"]),
+  ].join("\n");
+  const input = createDocxFromDocumentXml(wrapDocumentXml(body));
+  const { items } = repairDocxRuns(input);
+  assert.ok(
+    items.some((i) => i.code === "UNMATCHED_LOOP_CLOSE" && i.before === "{/children}"),
+    "crossed {/children} must not pop residuary",
+  );
+  assert.deepEqual(
+    items.filter((i) => i.code === "UNMATCHED_LOOP_OPEN").map((i) => i.before),
+    ["{#children}"],
+    "{/distribution_residuary} may latch innermost; leftover outer {#children} must warn",
+  );
+});
