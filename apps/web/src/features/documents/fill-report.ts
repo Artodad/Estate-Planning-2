@@ -118,6 +118,17 @@ export function buildFillReport(args: {
   });
 }
 
+/**
+ * Return the stored fill-report JSON after shape-check.
+ * Does not rebuild from a draft — invalid/missing JSON is null.
+ */
+export function parseStoredFillReport(value: unknown): DocumentFillReport | null {
+  if (documentFillReportSchema.safeParse(value).success) {
+    return value as DocumentFillReport;
+  }
+  return null;
+}
+
 /** Persist the generate result's fill report — never a separately assembled object. */
 export function generatedDocumentPersistFromGenerate(
   result: GenerateDocumentResult,

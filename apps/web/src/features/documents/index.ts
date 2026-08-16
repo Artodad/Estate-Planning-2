@@ -16,6 +16,7 @@ export {
   buildFillReport,
   documentFillReportSchema,
   generatedDocumentPersistFromGenerate,
+  parseStoredFillReport,
   wordPlainTextFromDocx,
 } from "./fill-report";
 export * from "./template-normalize";

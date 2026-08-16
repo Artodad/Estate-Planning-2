@@ -6,6 +6,7 @@
  *   2) upload-time validate and generate-time nullGetter agree on unknown tags
  *   3) the UI helper targets generateDocumentForIntake (revocable_trust), not the 8-doc ZIP
  *   4) fill report (filled / empty / leftover braces / loop counts) comes from that generate
+ *   5) reload UI/API returns the persisted fillReport JSON, not a client-rebuilt report
  *
  * Run: cd apps/web && npx tsx --test src/features/documents/generate-trust-draft.test.ts
  */
@@ -19,7 +20,7 @@ import { fileURLToPath } from "node:url";
 import PizZip from "pizzip";
 
 import { generateDocument } from "./generator";
-import { generatedDocumentPersistFromGenerate } from "./fill-report";
+import { generatedDocumentPersistFromGenerate, parseStoredFillReport } from "./fill-report";
 import { DRAFT_TEXT } from "./draft-watermark-module";
 import { mapIntakeToDocVariables } from "./mapper";
 import { marriedCaRichIntake } from "./__fixtures__/intake-answers";
@@ -31,6 +32,7 @@ import {
 } from "./template-normalize/docx-fixture";
 import { createRecordingNullGetter } from "./docxtemplater-options";
 import { buildGenerateTrustDraftParams } from "../dashboard/components/generate-trust-draft";
+import { trustDraftFromStoredDocuments } from "../dashboard/components/stored-trust-draft";
 
 const FIXTURE_REL = "src/features/documents/__fixtures__/trust-family-fidelity-labels.docx";
 
@@ -303,7 +305,99 @@ test("generateDocument fill report: empty optional, leftover braces, loop counts
       "persisted fill report must be the generate result, not a hand-built object",
     );
     assert.equal(persist.fileKey, result.fileKey);
+
+    const storedRow = {
+      documentType: persist.documentType,
+      fileKey: persist.fileKey,
+      fillReport: persist.fillReport,
+    };
+    const loaded = trustDraftFromStoredDocuments([storedRow]);
+    assert.ok(loaded, "reload path must return the stored Trust draft");
+    assert.equal(loaded.fileKey, persist.fileKey);
+    assert.strictEqual(
+      loaded.fillReport,
+      persist.fillReport,
+      "reload must return the persisted generate report, not a rebuilt object",
+    );
+    assert.strictEqual(
+      parseStoredFillReport(persist.fillReport),
+      persist.fillReport,
+      "stored JSON parse must yield the persisted object",
+    );
   } finally {
     await cleanupKeys(templateFileKey, generatedFileKey ?? "");
   }
+});
+
+test("reload UI/API returns the persisted fillReport JSON, not a client rebuild", () => {
+  const storedReport = {
+    filledScalars: ["only_in_db_scalar"],
+    emptyOptionals: ["only_in_db_empty"],
+    leftoverBraces: ["only_in_db_brace"],
+    loopCounts: { children: 9 },
+  };
+  const newerTrust = {
+    documentType: "revocable_trust",
+    fileKey: "generated/firm/trust-newer-DRAFT.docx",
+    fillReport: storedReport,
+  };
+  const olderTrust = {
+    documentType: "revocable_trust",
+    fileKey: "generated/firm/trust-older-DRAFT.docx",
+    fillReport: {
+      filledScalars: ["stale"],
+      emptyOptionals: [],
+      leftoverBraces: [],
+      loopCounts: {},
+    },
+  };
+  const will = {
+    documentType: "pour_over_will",
+    fileKey: "generated/firm/will-DRAFT.docx",
+    fillReport: {
+      filledScalars: ["will_only"],
+      emptyOptionals: [],
+      leftoverBraces: [],
+      loopCounts: {},
+    },
+  };
+
+  const loaded = trustDraftFromStoredDocuments([will, newerTrust, olderTrust]);
+  assert.ok(loaded);
+  assert.equal(loaded.fileKey, newerTrust.fileKey);
+  assert.strictEqual(
+    loaded.fillReport,
+    storedReport,
+    "UI/API must return the stored JSON object, not a newly assembled report",
+  );
+  assert.deepEqual(loaded.fillReport, {
+    filledScalars: ["only_in_db_scalar"],
+    emptyOptionals: ["only_in_db_empty"],
+    leftoverBraces: ["only_in_db_brace"],
+    loopCounts: { children: 9 },
+  });
+
+  const jsonRoundTrip = JSON.parse(JSON.stringify(storedReport)) as typeof storedReport;
+  const afterReload = trustDraftFromStoredDocuments([
+    { documentType: "revocable_trust", fileKey: newerTrust.fileKey, fillReport: jsonRoundTrip },
+  ]);
+  assert.ok(afterReload);
+  assert.strictEqual(
+    afterReload.fillReport,
+    jsonRoundTrip,
+    "after JSON persist/reload the same stored object is what the API returns",
+  );
+  assert.deepEqual(afterReload.fillReport, storedReport);
+
+  assert.equal(trustDraftFromStoredDocuments([]), null);
+  assert.equal(
+    trustDraftFromStoredDocuments([will]),
+    null,
+    "non-Trust rows must not supply a Trust fill report",
+  );
+  const noReport = trustDraftFromStoredDocuments([
+    { documentType: "revocable_trust", fileKey: "generated/firm/trust-DRAFT.docx", fillReport: { leftover: true } },
+  ]);
+  assert.ok(noReport);
+  assert.equal(noReport.fillReport, null, "invalid stored JSON must not be rebuilt into a report");
 });

@@ -12,6 +12,7 @@ import { logAuditEvent, getRecentAuditLogsForFirm } from "@/features/auth/server
 import { mapIntakeToDocVariables } from "@/features/documents/mapper";
 import { generateDocument } from "@/features/documents/generator";
 import { generatedDocumentPersistFromGenerate } from "@/features/documents/fill-report";
+import { trustDraftFromStoredDocuments } from "@/features/dashboard/components/stored-trust-draft";
 import type { DocumentFillReport, DocumentType } from "@/features/documents/types";
 import {
   generateFullPlanPackage,
@@ -598,7 +599,8 @@ export async function generateDocumentForIntake(params: {
         documentType,
         status: created.status,
         generatedAt: created.generatedAt?.toISOString() ?? new Date().toISOString(),
-        fillReport: genResult.fillReport,
+        fillReport:
+          trustDraftFromStoredDocuments([created])?.fillReport ?? genResult.fillReport,
       },
       firmId,
     };

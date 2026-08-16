@@ -8,22 +8,26 @@ import { ErrorCallout } from "@/components/ui/callouts";
 import { Button } from "@/components/ui/button";
 import { RoleGuard, OWNER_STAFF } from "@/features/auth";
 import { buildGenerateTrustDraftParams } from "./generate-trust-draft";
+import type { StoredTrustDraft } from "./generate-trust-draft";
 import { TrustDraftFillReport } from "./TrustDraftFillReport";
-import type { DocumentFillReport } from "@/features/documents/types";
 
 export { buildGenerateTrustDraftParams, TRUST_DRAFT_DOCUMENT_TYPE } from "./generate-trust-draft";
 
 /**
  * Single-doc Trust Family draft CTA.
  * Calls generateDocumentForIntake (not the 8-doc ZIP package).
+ * `initialDraft` is the stored GeneratedDocument row (reload), not a client-rebuilt report.
  */
-export function GenerateTrustDraftButton({ intakeId }: { intakeId: string }) {
+export function GenerateTrustDraftButton({
+  intakeId,
+  initialDraft = null,
+}: {
+  intakeId: string;
+  initialDraft?: StoredTrustDraft | null;
+}) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<{
-    fileKey: string;
-    fillReport: DocumentFillReport;
-  } | null>(null);
+  const [result, setResult] = useState<StoredTrustDraft | null>(initialDraft);
 
   async function handleGenerate() {
     if (!intakeId) {
@@ -84,7 +88,7 @@ export function GenerateTrustDraftButton({ intakeId }: { intakeId: string }) {
               <p className="mt-2 text-[10px] text-emerald-600">
                 Visible DRAFT watermark. Exact fidelity to your attorney Trust Family template.
               </p>
-              <TrustDraftFillReport report={result.fillReport} />
+              {result.fillReport && <TrustDraftFillReport report={result.fillReport} />}
             </div>
           )}
         </div>
