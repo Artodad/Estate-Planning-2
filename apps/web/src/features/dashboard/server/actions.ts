@@ -11,7 +11,8 @@ import { logAuditEvent, getRecentAuditLogsForFirm } from "@/features/auth/server
 // Phase 4 document generation (Sub-agent C wiring)
 import { mapIntakeToDocVariables } from "@/features/documents/mapper";
 import { generateDocument } from "@/features/documents/generator";
-import type { DocumentType } from "@/features/documents/types";
+import { generatedDocumentPersistFromGenerate } from "@/features/documents/fill-report";
+import type { DocumentFillReport, DocumentType } from "@/features/documents/types";
 import {
   generateFullPlanPackage,
   FULL_PLAN_DOCUMENT_ORDER,
@@ -480,6 +481,7 @@ export async function generateDocumentForIntake(params: {
         documentType: string;
         status: string;
         generatedAt: string;
+        fillReport: DocumentFillReport;
       };
       firmId: string;
     }
@@ -563,14 +565,14 @@ export async function generateDocumentForIntake(params: {
     });
 
     // 5. Persist the GeneratedDocument record (firm-scoped)
-    const created = await generatedDocumentHelpers.createForFirm(firmId, {
-      intakeSessionId: intakeId,
-      templateId: resolvedTemplateId,
-      documentType,
-      fileKey: genResult.fileKey,
-      status: "generated",
-      generatedAt: new Date(),
-    });
+    const created = await generatedDocumentHelpers.createForFirm(
+      firmId,
+      generatedDocumentPersistFromGenerate(genResult, {
+        intakeSessionId: intakeId,
+        templateId: resolvedTemplateId,
+        documentType,
+      }),
+    );
 
     // 6. Audit (minimal, non-PII)
     logAuditEvent({
@@ -596,6 +598,7 @@ export async function generateDocumentForIntake(params: {
         documentType,
         status: created.status,
         generatedAt: created.generatedAt?.toISOString() ?? new Date().toISOString(),
+        fillReport: genResult.fillReport,
       },
       firmId,
     };

@@ -12,4 +12,10 @@ export * from "./draft-watermark-module";
 export * from "./mapper";
 export * from "./generator";
 export * from "./package";
+export {
+  buildFillReport,
+  documentFillReportSchema,
+  generatedDocumentPersistFromGenerate,
+  wordPlainTextFromDocx,
+} from "./fill-report";
 export * from "./template-normalize";

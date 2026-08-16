@@ -5,6 +5,7 @@
  *   1) generateDocument fills the labeled Trust Family fixture (default CI; no real corpus)
  *   2) upload-time validate and generate-time nullGetter agree on unknown tags
  *   3) the UI helper targets generateDocumentForIntake (revocable_trust), not the 8-doc ZIP
+ *   4) fill report (filled / empty / leftover braces / loop counts) comes from that generate
  *
  * Run: cd apps/web && npx tsx --test src/features/documents/generate-trust-draft.test.ts
  */
@@ -18,6 +19,7 @@ import { fileURLToPath } from "node:url";
 import PizZip from "pizzip";
 
 import { generateDocument } from "./generator";
+import { generatedDocumentPersistFromGenerate } from "./fill-report";
 import { DRAFT_TEXT } from "./draft-watermark-module";
 import { mapIntakeToDocVariables } from "./mapper";
 import { marriedCaRichIntake } from "./__fixtures__/intake-answers";
@@ -117,6 +119,19 @@ test("unknown tags: validate warns and generateDocument does not throw", async (
     assert.ok(!text.includes("{not_a_real_mapper_tag}"), "unknown tag must be blanked, not left as braces");
     assert.ok(!text.includes("{client_full_name}"));
     assert.ok(text.includes(DRAFT_TEXT), "generate path must apply DRAFT watermark");
+    assert.ok(result.fillReport, "fill report must come from generateDocument");
+    assert.ok(
+      result.fillReport.filledScalars.includes("client_full_name"),
+      `filledScalars from generate: ${result.fillReport.filledScalars.join(", ")}`,
+    );
+    assert.ok(
+      result.fillReport.emptyOptionals.includes("not_a_real_mapper_tag"),
+      `emptyOptionals from generate: ${result.fillReport.emptyOptionals.join(", ")}`,
+    );
+    assert.ok(
+      !result.fillReport.leftoverBraces.includes("not_a_real_mapper_tag"),
+      "blanked unknown tag is an empty optional, not leftover braces",
+    );
   } finally {
     await cleanupKeys(templateFileKey, generatedFileKey ?? "");
   }
@@ -191,6 +206,103 @@ test("generateDocument fills labeled Trust Family fixture (Trust draft path)", a
     ]) {
       assert.ok(!text.includes(`{${tag}}`), `expected {${tag}} to be substituted`);
     }
+
+    const report = result.fillReport;
+    assert.ok(report, "fill report must be produced by generateDocument, not assembled in the test");
+    assert.notEqual(report, variables, "report is not the mapper bag");
+    for (const tag of [
+      "client_full_name",
+      "spouse_full_name",
+      "first_distribution_age",
+      "educational_trust_eligibility_age",
+      "educational_trust_remainder_age",
+      "educational_trust_termination_age",
+    ]) {
+      assert.ok(
+        report.filledScalars.includes(tag),
+        `generate fill report must list filled {${tag}}, got: ${report.filledScalars.join(", ")}`,
+      );
+    }
+    assert.equal(report.loopCounts.has_spouse, 1, "married fixture {#has_spouse} loop count from generate");
+    for (const leftover of report.leftoverBraces) {
+      assert.ok(
+        text.includes(`{${leftover}}`),
+        `leftover "${leftover}" in the report must still appear in the generated draft`,
+      );
+    }
+    for (const tag of report.filledScalars) {
+      assert.ok(!text.includes(`{${tag}}`), `filled scalar {${tag}} must not remain as braces`);
+    }
+  } finally {
+    await cleanupKeys(templateFileKey, generatedFileKey ?? "");
+  }
+});
+
+test("generateDocument fill report: empty optional, leftover braces, loop counts from a real generate", async () => {
+  const stamp = Date.now();
+  const templateFileKey = `templates/unit-fill-report-${stamp}/fill-buckets.docx`;
+  const body = [
+    paragraphWithRuns(["Client: {client_full_name}"]),
+    paragraphWithRuns(["Optional: {optional_middle_name}"]),
+    paragraphWithRuns(["Children:"]),
+    paragraphWithRuns(["{#children}"]),
+    paragraphWithRuns(["- {full_name}"]),
+    paragraphWithRuns(["{/children}"]),
+    // w:instrText is not substituted; leftover `{unresolved_blank}` remains after generate.
+    `    <w:p><w:r><w:instrText>{unresolved_blank}</w:instrText></w:r></w:p>`,
+  ].join("\n");
+  const buf = createDocxFromDocumentXml(wrapDocumentXml(body));
+
+  await mkdir(path.dirname(resolveStoragePath(templateFileKey)), { recursive: true });
+  await writeFile(resolveStoragePath(templateFileKey), buf);
+
+  let generatedFileKey: string | undefined;
+  try {
+    const result = await generateDocument({
+      templateFileKey,
+      variables: {
+        client_full_name: "Ada Lovelace",
+        optional_middle_name: "",
+        children: [{ full_name: "Byron" }, { full_name: "Annabella" }],
+      },
+      firmId: "firm_unit_fill_report",
+      options: {
+        addDraftWatermark: true,
+        documentType: "revocable_trust",
+        clientLastName: "Lovelace",
+        clientFirstName: "Ada",
+      },
+    });
+    generatedFileKey = result.fileKey;
+    const text = plainTextFromDocx(result.buffer);
+    assert.match(text, /Ada Lovelace/);
+    assert.match(text, /Byron/);
+    assert.match(text, /Annabella/);
+    assert.match(text, /\{unresolved_blank\}/);
+
+    const report = result.fillReport;
+    assert.ok(report.filledScalars.includes("client_full_name"));
+    assert.ok(
+      !report.filledScalars.includes("optional_middle_name"),
+      "empty optional must not be listed as filled",
+    );
+    assert.ok(report.emptyOptionals.includes("optional_middle_name"));
+    assert.ok(
+      report.leftoverBraces.includes("unresolved_blank"),
+      `leftover braces from generate, got: ${report.leftoverBraces.join(", ")}`,
+    );
+    assert.equal(report.loopCounts.children, 2);
+    const persist = generatedDocumentPersistFromGenerate(result, {
+      intakeSessionId: "intake_fill_report",
+      templateId: null,
+      documentType: "revocable_trust",
+    });
+    assert.strictEqual(
+      persist.fillReport,
+      result.fillReport,
+      "persisted fill report must be the generate result, not a hand-built object",
+    );
+    assert.equal(persist.fileKey, result.fileKey);
   } finally {
     await cleanupKeys(templateFileKey, generatedFileKey ?? "");
   }

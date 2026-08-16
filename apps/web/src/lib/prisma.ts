@@ -219,15 +219,23 @@ export const generatedDocumentHelpers = {
       fileKey: string;
       status?: "pending" | "generated" | "failed";
       generatedAt?: Date;
+      fillReport?: {
+        filledScalars: string[];
+        emptyOptionals: string[];
+        leftoverBraces: string[];
+        loopCounts: Record<string, number>;
+      } | null;
     },
   ) {
+    const { fillReport, ...rest } = data;
     return prisma.generatedDocument.create({
       data: {
         firmId,
-        status: data.status ?? "generated",
-        generatedAt: data.generatedAt ?? new Date(),
-        templateId: data.templateId ?? null,
-        ...data,
+        status: rest.status ?? "generated",
+        generatedAt: rest.generatedAt ?? new Date(),
+        templateId: rest.templateId ?? null,
+        ...rest,
+        ...(fillReport ? { fillReport: fillReport as never } : {}),
       },
     });
   },

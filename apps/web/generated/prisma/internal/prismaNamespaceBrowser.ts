@@ -186,6 +186,7 @@ export const GeneratedDocumentScalarFieldEnum = {
   fileKey: 'fileKey',
   status: 'status',
   generatedAt: 'generatedAt',
+  fillReport: 'fillReport',
   createdAt: 'createdAt'
 } as const
 

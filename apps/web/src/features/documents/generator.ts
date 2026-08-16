@@ -46,6 +46,7 @@ import {
   createRecordingNullGetter,
   DOCXTEMPLATER_BASE_OPTIONS,
 } from "./docxtemplater-options";
+import { buildFillReport } from "./fill-report";
 
 // -----------------------------
 // Main production function
@@ -84,6 +85,7 @@ export async function generateDocument(
   // 3. PizZip + docxtemplater setup (exact per Design + fidelity)
   let zip: PizZip;
   let doc: Docxtemplater;
+  const emptyFromNullGetter = new Set<string>();
   try {
     zip = new PizZip(templateBuffer);
 
@@ -94,7 +96,7 @@ export async function generateDocument(
       ...DOCXTEMPLATER_BASE_OPTIONS,
       // Same nullGetter as validate-template: unknown tags render as "" (upload
       // warnings) instead of throwing here after upload already accepted them.
-      nullGetter: createRecordingNullGetter(),
+      nullGetter: createRecordingNullGetter(emptyFromNullGetter),
     });
   } catch (err) {
     const causeMsg = err instanceof Error ? err.message : String(err);
@@ -166,10 +168,18 @@ export async function generateDocument(
   }
 
   // 10. Return for immediate use (download or package ZIP in D) + record in GeneratedDocument (by caller)
+  const fillReport = buildFillReport({
+    templateBuffer,
+    generatedBuffer,
+    variables,
+    emptyFromNullGetter,
+  });
+
   return {
     fileKey,
     buffer: generatedBuffer,
     documentType,
+    fillReport,
   };
 }
 

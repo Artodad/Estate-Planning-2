@@ -163,6 +163,7 @@ model GeneratedDocument {
   fileKey         String   // Storage key for the generated DRAFT .docx/.pdf (exact fidelity to template + injected data only)
   status          String   @default("pending") // "pending" | "generated" | "failed"
   generatedAt     DateTime?
+  fillReport      Json?    // Tag-name snapshot: filledScalars, emptyOptionals, leftoverBraces, loopCounts. Never values.
 
   createdAt       DateTime @default(now())
   // (point-in-time artifact; updatedAt omitted for this slice)
