@@ -20,8 +20,6 @@ interface ClientFiltersProps {
   onFilterChange: (filter: ClientFilter) => void;
   resultCount: number;
   totalCount: number;
-  /** Dynamic label for the count line during mock-to-real transition (D). Defaults to "MOCK DATA" to preserve prior UX. */
-  dataSourceLabel?: string;
 }
 
 const FILTERS: { value: ClientFilter; label: string }[] = [
@@ -38,7 +36,6 @@ export function ClientFilters({
   onFilterChange,
   resultCount,
   totalCount,
-  dataSourceLabel = "MOCK DATA",
 }: ClientFiltersProps) {
   return (
     <div className="space-y-3">
@@ -90,14 +87,9 @@ export function ClientFilters({
         })}
       </div>
 
-      {/* Results count + scaffold note */}
-      <div className="flex items-center justify-between text-xs text-muted-foreground">
-        <span>
-          Showing <span className="font-medium text-foreground">{resultCount}</span> of{" "}
-          <span className="font-medium text-foreground">{totalCount}</span> clients
-          <span className="ml-1">({dataSourceLabel})</span>
-        </span>
-        <span className="hidden sm:inline">Client-side filtering only</span>
+      <div className="text-xs text-muted-foreground">
+        Showing <span className="font-medium text-foreground">{resultCount}</span> of{" "}
+        <span className="font-medium text-foreground">{totalCount}</span> clients
       </div>
     </div>
   );

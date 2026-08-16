@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import { ErrorCallout, InfoCallout } from "@/components/ui/callouts";
+import { ErrorCallout } from "@/components/ui/callouts";
 import { useRole, OWNER_STAFF } from "@/features/auth";
 import { RoleGuard } from "@/features/auth/components/role-guard";
 import type { MockClient, ClientFilter } from "../../types";
@@ -14,9 +14,7 @@ import {
 } from "./MockClientData";
 import { ClientFilters } from "./ClientFilters";
 import { ClientsTable } from "./ClientsTable";
-import { SectionCallout } from "../shared/SectionCallout";
 import { Button } from "@/components/ui/button";
-import { ClientDetailDialog } from "./ClientDetailDialog";
 import {
   Dialog,
   DialogContent,
@@ -28,7 +26,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
-// Real server actions (additive only — existing scaffold paths + banners fully preserved)
 import {
   startIntakeSession,
   createClientForCurrentFirm,
@@ -50,20 +47,9 @@ interface ClientsListProps {
 /**
  * ClientsList
  *
- * The primary, high-value "star" component for the Clients section (Design §3).
- * Owns all client-side state for search + filters.
- * Composes Filters + Table + Dialog + action feedback.
- *
- * - Persistent prominent SCAFFOLD banner at top (non-negotiable).
- * - Empty states excellent.
- * - Every action surfaces clear "MOCK / SCAFFOLD" messaging.
- * - Heavy, correct usage of RoleGuard + useRole (even though page already guards).
- * - Zero real backend calls.
- *
- * Rendered by the thin Server page `/dashboard/clients/page.tsx`.
- *
- * Future: when real data arrives, this becomes the presentation layer over
- * TanStack Query + server-loaded rows (same UX contract).
+ * Search + filters + table + detail dialog for the Clients section.
+ * Real firm rows when provided; otherwise labeled sample matters.
+ * RoleGuard + start-intake / create-client / generate wiring unchanged.
  */
 export function ClientsList({ initialRealClients = [] }: ClientsListProps) {
   const { isHydrated, canManageClients } = useRole();
@@ -113,12 +99,7 @@ export function ClientsList({ initialRealClients = [] }: ClientsListProps) {
 
   const router = useRouter();
 
-  // NOTE: handleAction remains fully compatible. Feedback banner + all SCAFFOLD messaging/behavior
-  // is preserved exactly (fires for every action including Intake). Real navigation for Intake
-  // is purely additive for real-backed clients (opt-in dual flow). No banners, comments, RoleGuards,
-  // or mock infrastructure removed or altered.
   const handleAction = async (action: string, client: MockClient) => {
-    // Always surface the original SCAFFOLD feedback banner (UX/behavior preserved)
     setActionFeedback({ action, clientName: client.name });
     setTimeout(() => setActionFeedback(null), 5000);
 
@@ -150,7 +131,7 @@ export function ClientsList({ initialRealClients = [] }: ClientsListProps) {
         } catch (err) {
           // Non-fatal: real launch failed, user still sees the SCAFFOLD feedback banner
           // (existing behavior). They can retry or use other paths.
-          console.warn("[ClientsList] Real intake launch failed (non-fatal, scaffold path unaffected):", err);
+          console.warn("[ClientsList] Real intake launch failed (non-fatal):", err);
         }
       }
       // For mock clients: do nothing extra — pure scaffold feedback as before.
@@ -237,7 +218,6 @@ export function ClientsList({ initialRealClients = [] }: ClientsListProps) {
   // Additive only. Uses existing createClientForCurrentFirm (Zod + RBAC + firmId from auth + Audit "client.created").
   // On success: router.refresh() so the RSC page re-fetches real data; new row appears via normalizePrismaClientToMock.
   // Re-uses the existing actionFeedback banner for consistent UX during transition.
-  // The SCAFFOLD "+ New Client (Scaffold)" button, all banners, and mock paths are 100% untouched.
   const handleCreateRealClient = async (e: React.FormEvent) => {
     e.preventDefault();
     setCreateError(null);
@@ -319,56 +299,22 @@ export function ClientsList({ initialRealClients = [] }: ClientsListProps) {
 
   return (
     <div className="space-y-6">
-      {/* === MANDATORY SCAFFOLD BANNER (Design §3 + Phase 2 D integration) === */}
-      {/* Preserved and enhanced: always present. Text adapts to data source for clarity. */}
-      <SectionCallout>
-        {isUsingRealData ? (
-          <>
-            <strong>LIVE DATA + Demo Actions.</strong>{" "}
-            Showing real, firm-scoped client records. Key flows (starting intakes + generating full estate plan packages) are now fully functional on live rows. Most other actions remain demo/visual. The mock infrastructure is intentionally preserved for non-seeded firms and historical E2E testing.
-          </>
-        ) : (
-          <>
-            <strong>Demo / Mock Data.</strong> No real records exist yet for this firm (or you are viewing in a demo context).
-            This table, filters, and most actions are for demonstration. Real data appears when you create clients or use the E2E/seed data.
-          </>
-        )}
-      </SectionCallout>
-
-      {/* Wave B: Visible generation-in-progress indicator for real "Generate Full Plan" from the list */}
       {isGenerating && (
-        <div role="status" className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
-          <strong>Generating full estate plan package…</strong> This can take 10–30 seconds. Please keep this tab open. Your intake data is safe.
+        <div role="status" className="rounded-md border bg-muted/40 p-3 text-sm">
+          <strong>Generating estate plan package…</strong> This can take a moment. Keep this tab open.
         </div>
       )}
 
-      {/* Header + primary CTA (owner/staff only) */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-xl font-semibold tracking-tight">Client Matters</h2>
+          <h2 className="text-xl font-semibold tracking-tight">Client matters</h2>
           <p className="text-sm text-muted-foreground">
             {isUsingRealData
-              ? `${baseClients.length} live client(s) for this firm (REAL DB data via server action). Search, filter, and explore.`
-              : "7 fictional clients (MOCK DATA). Search, filter, and explore actions."}
+              ? `${baseClients.length} ${baseClients.length === 1 ? "client" : "clients"}`
+              : "Sample matters — create a client to start a real intake."}
           </p>
         </div>
 
-        <RoleGuard allowed={OWNER_STAFF}>
-          <Button
-            onClick={() =>
-              setActionFeedback({
-                action: "Invite / Onboard New Client",
-                clientName: "New Matter",
-              })
-            }
-            className="w-full sm:w-auto"
-            variant="outline"
-          >
-            + New Client (Scaffold)
-          </Button>
-        </RoleGuard>
-
-        {/* Real production create (additive — scaffold button above left untouched) */}
         <RoleGuard allowed={OWNER_STAFF}>
           <Button
             onClick={() => {
@@ -382,16 +328,20 @@ export function ClientsList({ initialRealClients = [] }: ClientsListProps) {
         </RoleGuard>
       </div>
 
-      {/* Global action feedback banner (appears after any row action) */}
       {actionFeedback && (
         <div
           role="status"
-          className="rounded-md border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800 dark:border-blue-900/50 dark:bg-blue-950/30 dark:text-blue-200"
+          className="rounded-md border bg-muted/40 p-3 text-sm"
         >
-          <strong>SCAFFOLD ACTION:</strong> {actionFeedback.action} for{" "}
+          <span className="font-medium">{actionFeedback.action}</span>
+          {" for "}
           <span className="font-medium">{actionFeedback.clientName}</span>.
-          This is a visual prototype only. In a future phase this would open the
-          adaptive questionnaire, trigger document generation, or send an email.
+          {!isUsingRealData && (
+            <span className="text-muted-foreground">
+              {" "}
+              Sample record — create a client to run this on a real matter.
+            </span>
+          )}
         </div>
       )}
 
@@ -430,12 +380,8 @@ export function ClientsList({ initialRealClients = [] }: ClientsListProps) {
           >
             Dismiss
           </button>
-          <p className="mt-1 text-[10px] text-emerald-600">
-            Every document inside the package carries the visible DRAFT watermark (exact fidelity to your attorney templates).
-          </p>
-          {/* Wave F (PDF fidelity guidance — text only, no converters per document-fidelity.mdc) */}
-          <p className="mt-1 text-[10px] text-emerald-700 dark:text-emerald-300">
-            Need a PDF? Open the .docx in Microsoft Word (or LibreOffice) → File &gt; Save As / Export &gt; PDF. This guarantees 100% fidelity to your original attorney template.
+          <p className="mt-2 text-xs text-emerald-700 dark:text-emerald-300">
+            Every document is watermarked DRAFT. For a PDF, open the Word file and export from Word or LibreOffice.
           </p>
         </div>
       )}
@@ -448,42 +394,14 @@ export function ClientsList({ initialRealClients = [] }: ClientsListProps) {
         onFilterChange={setActiveFilter}
         resultCount={filteredClients.length}
         totalCount={baseClients.length}
-        dataSourceLabel={isUsingRealData ? "LIVE DB" : "MOCK DATA"}
       />
 
       {/* The star of the show: the table */}
       <ClientsTable clients={filteredClients} onAction={handleAction} />
 
-      {/* Bottom context / empty-state help */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4 text-xs text-muted-foreground">
-        <div>
-          Clicking <span className="font-medium">View</span> opens a rich detail
-          dialog with more {isUsingRealData ? "real + mock-derived" : "mock"} context and action buttons.
-        </div>
-        <div className="font-mono text-[10px] opacity-60">
-          {isUsingRealData ? "REAL_SOURCE=prisma" : `MOCK_CLIENT_COUNT=${MOCK_CLIENTS.length}`}
-        </div>
-      </div>
-
-      {/* One persistent "open any" helper for demo (useful on mobile) — uses mock for demo stability */}
-      <div className="pt-2">
-        <details className="text-xs text-muted-foreground">
-          <summary className="cursor-pointer hover:text-foreground">
-            Quick demo: open detail for first client (Elena Vargas)
-          </summary>
-          <div className="mt-2 pl-4">
-            <ClientDetailDialog
-              client={MOCK_CLIENTS[0]}
-              trigger={
-                <Button variant="outline" size="sm">
-                  Open Elena Vargas Detail (demo)
-                </Button>
-              }
-              onAction={handleAction}
-            />
-          </div>
-        </details>
-      </div>
+      <p className="border-t pt-4 text-xs text-muted-foreground">
+        View opens the matter summary. Intake and Generate stay on this list for owners and staff.
+      </p>
 
       {/* Real New Client Dialog (Phase 5 CRUD) — controlled, additive only */}
       <Dialog open={showCreateDialog} onOpenChange={(open) => {
@@ -496,7 +414,7 @@ export function ClientsList({ initialRealClients = [] }: ClientsListProps) {
           <DialogHeader>
             <DialogTitle>Create New Client / Matter</DialogTitle>
             <DialogDescription>
-              This client will be persisted for your firm only (multi-tenant). All subsequent intakes and documents will be scoped to your organization.
+              Visible only to your firm. Intakes and drafts for this matter stay scoped to this organization.
             </DialogDescription>
           </DialogHeader>
 
@@ -579,8 +497,8 @@ export function ClientsList({ initialRealClients = [] }: ClientsListProps) {
               </Button>
             </div>
 
-            <p className="text-center text-[10px] text-muted-foreground">
-              Real DB write via Server Action. Firm-scoped. Mock infrastructure untouched.
+            <p className="text-center text-xs text-muted-foreground">
+              Required fields: display name and email.
             </p>
           </form>
         </DialogContent>

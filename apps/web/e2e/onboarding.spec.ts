@@ -1686,18 +1686,15 @@ test.describe('Dashboard Shell + Navigation + Clients + Role Visibility (Sub-age
     await page.goto('/dashboard/clients');
     await expect(page).toHaveURL(/\/dashboard\/clients/);
 
-    // Non-negotiable per Design
-    await expect(page.getByText('UI SCAFFOLD — Mock client data only.')).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Client matters/i })).toBeVisible();
+    await expect(page.getByText(/Sample matters — create a client to start a real intake/i)).toBeVisible();
+    await expect(page.getByText(/Showing 7 of 7 clients/)).toBeVisible();
+    await expect(page.getByText(/SCAFFOLD|MOCK DATA|LIVE DATA|Phase \d/i)).toHaveCount(0);
 
-    // Result count (ClientFilters)
-    await expect(page.getByText(/Showing 7 of 7 clients \(MOCK DATA\)/)).toBeVisible();
-
-    // Table + realistic data (MockClientData + ClientsTable)
     await expect(page.getByText('Elena M. Vargas Revocable Living Trust')).toBeVisible();
     await expect(page.getByText('Dr. Priya Nair, MD (Physician Estate Plan)')).toBeVisible();
     await expect(page.getByText('Hector & Maria Ruiz Community Property Trust')).toBeVisible();
 
-    // Badges rendered
     await expect(page.getByText('Documents Ready')).toBeVisible();
     await expect(page.locator('table')).toBeVisible();
   });
@@ -1714,11 +1711,10 @@ test.describe('Dashboard Shell + Navigation + Clients + Role Visibility (Sub-age
 
     // Filter chip (Documents Ready)
     await page.getByRole('tab', { name: /Documents Ready/i }).click();
-    await expect(page.getByText(/Showing .* of 7 clients \(MOCK DATA\)/)).toBeVisible();
+    await expect(page.getByText(/Showing .* of 7 clients/)).toBeVisible();
 
-    // Clear
     await page.getByRole('button', { name: /Clear filters/i }).click();
-    await expect(page.getByText(/Showing 7 of 7 clients \(MOCK DATA\)/)).toBeVisible();
+    await expect(page.getByText(/Showing 7 of 7 clients/)).toBeVisible();
 
     // Empty state
     await search.fill('nonexistent-client-zzzz');
@@ -1741,20 +1737,16 @@ test.describe('Dashboard Shell + Navigation + Clients + Role Visibility (Sub-age
 
     // Rich content (ClientDetailDialog)
     await expect(dialog.getByText(/Elena M. Vargas Revocable Living Trust/)).toBeVisible();
-    await expect(dialog.getByText('UI SCAFFOLD — Mock client record')).toBeVisible();
-    await expect(dialog.getByText('Questionnaire Responses (read-only scaffold)')).toBeVisible();
+    await expect(dialog.getByText(/Sample matter/i)).toBeVisible();
+    await expect(dialog.getByText('Sample intake snapshot')).toBeVisible();
     await expect(dialog.getByText('12 of 18 answered')).toBeVisible();
     await expect(dialog.getByText(/Primary residence: 1234 Oak Grove/)).toBeVisible();
 
-    // OWNER_STAFF gated actions visible (owner default)
     await expect(dialog.getByRole('button', { name: /Resume Intake|Generate Full Document Package/i })).toBeVisible();
-
-    // Always-available
     await expect(dialog.getByRole('button', { name: /Send Reminder/i })).toBeVisible();
 
-    // Trigger scaffold action -> bubbles to list banner
     await dialog.getByRole('button', { name: /Generate Full Document Package/i }).click();
-    await expect(page.getByText(/SCAFFOLD ACTION:.*Generate/)).toBeVisible({ timeout: 4000 });
+    await expect(page.getByText(/Generate Full Document Package for/i)).toBeVisible({ timeout: 4000 });
 
     // Close
     await page.getByRole('button', { name: /^Close$/i }).click();
@@ -1779,7 +1771,7 @@ test.describe('Dashboard Shell + Navigation + Clients + Role Visibility (Sub-age
     // Stub nav
     await page.getByRole('link', { name: /^Intakes$/i }).click();
     await expect(page.locator('h1').filter({ hasText: /^Intakes$/ })).toBeVisible();
-    await expect(page.getByText(/UI SCAFFOLD — Full intakes tracking comes in Phase 3/)).toBeVisible();
+    await expect(page.getByText(/Intake sessions/i)).toBeVisible();
 
     // Header + context survive nav
     await expect(page.locator('header')).toBeVisible();
@@ -2088,15 +2080,8 @@ test.describe('Phase 2 Data Models, Seed, Dashboard Clients Real Path + Multi-Te
     await page.waitForLoadState('networkidle', { timeout: 10000 });
     await expect(page).toHaveURL(/\/dashboard\/clients/);
 
-    // Non-negotiable post-D LIVE DATA banner (exact string from ClientsList.tsx)
-    await expect(page.getByText('LIVE DATA (Phase 2 Client / IntakeSession models) + UI SCAFFOLD actions.')).toBeVisible();
-
-    // Real counts + source messaging (from ClientsList header + filters)
-    await expect(page.getByText(/live client\(s\) for this firm \(REAL DB data via server action\)/)).toBeVisible();
-    await expect(page.getByText(/LIVE DB/)).toBeVisible();
-    await expect(page.locator('text=REAL_SOURCE=prisma')).toBeVisible().catch(() => {});
-
-    // Injected client visible via normalize (displayName powers the name column)
+    await expect(page.getByRole('heading', { name: /Client matters/i })).toBeVisible();
+    await expect(page.getByText(/SCAFFOLD|MOCK DATA|LIVE DATA|LIVE DB|Phase \d/i)).toHaveCount(0);
     await expect(page.getByText('E2E-P2-TEST-Alpha Revocable Living Trust')).toBeVisible();
 
     // Cleanup immediately for this test (serial safety)
@@ -4104,7 +4089,7 @@ test.describe('Phase 5: Dashboard Clients CRUD + Generate Full Plan + Detail Flo
     await page.goto('/dashboard/clients');
 
     // The real client list should be reachable for owner/staff
-    await expect(page.getByText(/LIVE DATA \(Phase 2|Clients\)/)).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Client matters/i })).toBeVisible();
 
     // Try to navigate to a plausible detail route (the test will be resilient)
     // In a real seeded env this will hit a real client; in sandbox it gracefully handles 404/redirect
@@ -4262,7 +4247,7 @@ test.describe('Phase 5: Dashboard Clients CRUD + Generate Full Plan + Detail Flo
 
     // We don't fully drive the dialog in this resilient test (to avoid flakiness in sandbox),
     // but we assert the control exists and the LIVE DATA banner is present.
-    await expect(page.getByText(/LIVE DATA \(Phase 2|real client/i)).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Client matters/i })).toBeVisible();
   });
 
   // ---------------------------------------------------------------------------
@@ -4334,8 +4319,8 @@ test.describe('Phase 5: Dashboard Clients CRUD + Generate Full Plan + Detail Flo
       await page.goto('/dashboard/clients');
       await page.waitForLoadState('networkidle');
 
-      // The page should now show LIVE DATA context (either from this creation or existing seed)
-      await expect(page.getByText(/LIVE DATA|LIVE DB|real client/i)).toBeVisible();
+      await expect(page.getByRole('heading', { name: /Client matters/i })).toBeVisible();
+      await expect(page.getByText(/SCAFFOLD|MOCK DATA|LIVE DATA|LIVE DB/i)).toHaveCount(0);
 
     } catch (err) {
       console.warn('[phase5-e] Client create + UI verification test skipped (sandbox):', (err as Error)?.message ?? err);

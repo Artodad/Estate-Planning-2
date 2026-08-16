@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 
 import { getCurrentAuthContext } from "@/features/auth/server/get-current-auth";
 import { requireRole } from "@/features/auth/server/rbac";
@@ -12,17 +13,22 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import Link from "next/link";
 
-// Shared scaffold primitives (Sub-agent C)
-import { SectionCallout } from "@/features/dashboard/components/shared/SectionCallout";
-
-// Real data (additive wiring for Phase 3 D)
 import { getIntakesForCurrentFirm } from "@/features/dashboard/server/actions";
+
+function formatIntakeStatus(status: string | null | undefined): string {
+  const key = (status ?? "").toLowerCase();
+  if (key === "in_progress") return "In progress";
+  if (key === "completed") return "Complete";
+  if (key === "paused") return "Paused";
+  if (key === "not_started") return "Not started";
+  if (!status) return "In progress";
+  return status.replace(/_/g, " ");
+}
 
 /**
  * /dashboard/intakes
- * Lists real IntakeSession records with links to resume the adaptive questionnaire.
+ * Lists firm intake sessions with links to resume the questionnaire.
  */
 export default async function IntakesPage() {
   const authContext = await getCurrentAuthContext();
@@ -35,74 +41,72 @@ export default async function IntakesPage() {
     errorMessage: "Intakes section is available to owners and staff only.",
   });
 
-  // === ADDITIVE REAL DATA WIRING (Phase 3 D) ===
-  // Loads firm-scoped IntakeSessions via the protected action (getCurrentAuthContext + audit).
-  // Links go to the real QuestionnaireWizard route. The original SCAFFOLD callout + descriptive
-  // text below are preserved verbatim (additive only; no removal of banners or mock notes).
   let realIntakes: any[] = [];
-  let realNote = "";
   try {
     const res = await getIntakesForCurrentFirm();
     if (res && "success" in res && res.success) {
       realIntakes = res.intakes ?? [];
-      realNote = ` (live: ${res.count} for firm)`;
     }
   } catch {
-    realNote = " (real fetch error; showing stub)";
+    realIntakes = [];
   }
 
-  // Fallback tiny mock list only if no real data (graceful)
-  const mockIntakes = realIntakes.length === 0 ? [
-    { id: "int_01", client: "Elena M. Vargas...", progress: "95%", status: "Almost ready" },
-    { id: "int_02", client: "Robert Chen & Lisa Patel", progress: "62%", status: "In progress" },
-    { id: "int_03", client: "Aisha K. Thompson", progress: "38%", status: "Paused" },
-  ] : [];
+  const sampleIntakes =
+    realIntakes.length === 0
+      ? [
+          { id: "int_01", client: "Elena M. Vargas", progress: "95%", status: "Almost ready" },
+          { id: "int_02", client: "Robert Chen & Lisa Patel", progress: "62%", status: "In progress" },
+          { id: "int_03", client: "Aisha K. Thompson", progress: "38%", status: "Paused" },
+        ]
+      : [];
 
-  const intakesToShow = realIntakes.length > 0 ? realIntakes : mockIntakes;
+  const showingSample = realIntakes.length === 0;
 
   return (
     <div className="space-y-6">
-      <SectionCallout>
-        Real IntakeSession data from the adaptive questionnaire is live. Resume any session to continue the wizard. Additional history, bulk actions, and advanced filtering are planned for post-Phase 5 polish.
-      </SectionCallout>
-
       <Card>
         <CardHeader>
-          <CardTitle>Intakes</CardTitle>
+          <CardTitle>Intake sessions</CardTitle>
           <CardDescription>
-            Active and recent client intake sessions {realIntakes.length > 0 ? "(LIVE from IntakeSession)" : "(MOCK)"}.
+            {showingSample
+              ? "No intakes for this firm yet. Sample sessions below show how matters will appear. Start one from a client record."
+              : "Active and recent client intake sessions. Open a session to continue the questionnaire."}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            {intakesToShow.length === 0 && (
-              <div className="text-sm text-muted-foreground">No active intakes for this firm yet. Start one from a Client record.</div>
-            )}
             {realIntakes.length > 0 &&
               realIntakes.map((item: any) => (
                 <Link
                   key={item.id}
                   href={`/dashboard/intakes/${item.id}`}
-                  className="flex items-center justify-between rounded border p-3 text-sm hover:bg-muted/50 transition block"
+                  className="flex items-center justify-between rounded-md border p-3 text-sm transition hover:bg-muted/50"
                 >
-                  <div>
+                  <div className="min-w-0">
                     <div className="font-medium">{item.client?.displayName ?? "Client"}</div>
-                    <div className="text-xs text-muted-foreground">{item.status} • {item.client?.email}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {formatIntakeStatus(item.status)}
+                      {item.client?.email ? ` · ${item.client.email}` : ""}
+                    </div>
                   </div>
-                  <div className="text-right font-mono text-xs">{item.progress}%</div>
+                  <div className="shrink-0 text-right text-xs tabular-nums text-muted-foreground">
+                    {item.progress}%
+                  </div>
                 </Link>
               ))}
-            {realIntakes.length === 0 &&
-              mockIntakes.map((item) => (
+            {showingSample &&
+              sampleIntakes.map((item) => (
                 <div
                   key={item.id}
-                  className="flex items-center justify-between rounded border p-3 text-sm"
+                  className="flex items-center justify-between rounded-md border border-dashed p-3 text-sm"
                 >
-                  <div>
+                  <div className="min-w-0">
                     <div className="font-medium">{item.client}</div>
                     <div className="text-xs text-muted-foreground">{item.status}</div>
                   </div>
-                  <div className="text-right font-mono text-xs">{item.progress}</div>
+                  <div className="shrink-0 text-right text-xs tabular-nums text-muted-foreground">
+                    {item.progress}
+                  </div>
                 </div>
               ))}
           </div>
@@ -112,11 +116,6 @@ export default async function IntakesPage() {
               <Link href="/dashboard">← Back to Overview</Link>
             </Button>
           </div>
-
-          <p className="pt-2 text-[10px] text-muted-foreground">
-            Owner/Staff only (enforced via requireRole + sidebar filtering via useDashboardNav).
-            Real adaptive questionnaire + session state from Phase 3. {realNote}
-          </p>
         </CardContent>
       </Card>
     </div>

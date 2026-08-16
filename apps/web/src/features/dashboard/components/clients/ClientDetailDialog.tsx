@@ -24,18 +24,8 @@ import { StatusBadge } from "../shared/StatusBadge";
 /**
  * ClientDetailDialog
  *
- * Modal detail view for a single client (mock or real-normalized; opened from table/"View").
- * Shows rich summary + current status + read-only "answers" placeholder + scaffold action buttons.
- *
- * - All primary actions are clearly labeled SCAFFOLD / no-op (even for real DB rows during D).
- * - Generate Documents & Start/Resume Intake are OWNER_STAFF gated.
- * - Uses existing shadcn Dialog + Progress + Button.
- *
- * Phase 2 D: Works unchanged for real data (via normalize in parent). The amber banner
- * now distinguishes mock vs. real-backed records using a simple id heuristic.
- * Preserves every SCAFFOLD banner + RoleGuard + UX from expansion.
- *
- * Recommended by Design: dialog over new route for minimal surface in this slice.
+ * Modal detail view for a single client (sample or real-normalized; opened from table/"View").
+ * Generate Documents & Start/Resume Intake stay OWNER_STAFF gated.
  */
 interface ClientDetailDialogProps {
   client: MockClient;
@@ -50,14 +40,11 @@ export function ClientDetailDialog({
 }: ClientDetailDialogProps) {
   const [internalFeedback, setInternalFeedback] = useState<string | null>(null);
 
-  const handleScaffoldAction = (action: string) => {
-    const msg = `SCAFFOLD: "${action}" for ${client.name} — this will trigger real workflow in Phase 3/4. (No data changed)`;
-    setInternalFeedback(msg);
+  const isSampleRecord = client.id?.startsWith("cli_");
 
-    // Bubble to parent (ClientsList) so it can show persistent banner/toast
+  const handleAction = (action: string) => {
+    setInternalFeedback(`${action} for ${client.name}.`);
     onAction?.(action, client);
-
-    // Auto-clear after 4s for nice UX in dialog
     setTimeout(() => setInternalFeedback(null), 4000);
   };
 
@@ -81,11 +68,11 @@ export function ClientDetailDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {/* Prominent label inside dialog — adapts for real DB rows */}
-        <div className="rounded border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300">
-          Demo View — {client.id?.startsWith("cli_") ? "Mock" : "Real DB-backed (normalized)"} client record.
-          Some actions below remain visual/demo-only.
-        </div>
+        {isSampleRecord && (
+          <p className="text-xs text-muted-foreground">
+            Sample matter — create a client to run intake and generation on a real record.
+          </p>
+        )}
 
         {/* Key metrics row */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -134,9 +121,7 @@ export function ClientDetailDialog({
             <div className="mt-1 font-medium">
               {client.assignedAttorney ?? "Unassigned"}
             </div>
-            <div className="text-[10px] text-muted-foreground mt-1">
-              (Scaffold — real assignment in Phase 2)
-            </div>
+            <div className="mt-1 text-xs text-muted-foreground">Attorney on the matter</div>
           </div>
         </div>
 
@@ -144,7 +129,7 @@ export function ClientDetailDialog({
         {client.notes && (
           <div>
             <div className="mb-1 text-xs font-medium uppercase tracking-widest text-muted-foreground">
-              Matter Notes (mock)
+              Matter notes
             </div>
             <div className="rounded-md border bg-muted/30 p-3 text-sm leading-relaxed text-foreground">
               {client.notes}
@@ -152,29 +137,24 @@ export function ClientDetailDialog({
           </div>
         )}
 
-        {/* Fake "read-only answers" section (design per §3) */}
-        <div>
-          <div className="mb-1 flex items-center justify-between text-xs font-medium uppercase tracking-widest text-muted-foreground">
-            <span>Questionnaire Responses (read-only scaffold)</span>
-            <span className="font-normal normal-case">12 of 18 answered</span>
+        {isSampleRecord && (
+          <div>
+            <div className="mb-1 flex items-center justify-between text-xs font-medium uppercase tracking-widest text-muted-foreground">
+              <span>Sample intake snapshot</span>
+              <span className="font-normal normal-case">12 of 18 answered</span>
+            </div>
+            <div className="rounded border p-3 text-xs text-muted-foreground">
+              <ul className="list-disc space-y-1 pl-4">
+                <li>Primary residence: 1234 Oak Grove, San Francisco, CA</li>
+                <li>Spouse / partner: Listed (community property election)</li>
+                <li>Children / beneficiaries: 2 adult, 1 minor</li>
+                <li>Successor trustees: Named (attorney + adult child)</li>
+                <li>Healthcare agent: Spouse / adult child alternate</li>
+                <li>Remaining sections include specific gifts and digital assets.</li>
+              </ul>
+            </div>
           </div>
-          <div className="rounded border p-3 text-xs text-muted-foreground">
-            <ul className="list-disc space-y-1 pl-4">
-              <li>Primary residence: 1234 Oak Grove, San Francisco, CA</li>
-              <li>Spouse / partner: Listed (community property election)</li>
-              <li>Children / beneficiaries: 2 adult, 1 minor</li>
-              <li>Successor trustees: Named (attorney + adult child)</li>
-              <li>Healthcare agent: Spouse / adult child alternate</li>
-              <li className="text-amber-600 dark:text-amber-400">
-                [ 6 sections remaining — e.g. specific gifts, digital assets, pet provisions ]
-              </li>
-            </ul>
-            <p className="mt-2 text-[10px] italic">
-              In future: “View Full Answers” will open a read-only version of the
-              adaptive questionnaire.
-            </p>
-          </div>
-        </div>
+        )}
 
         {/* Internal action feedback (if any) */}
         {internalFeedback && (
@@ -186,12 +166,11 @@ export function ClientDetailDialog({
           </div>
         )}
 
-        {/* Action buttons — all scaffolds. Heavily role-aware for demonstration. */}
         <div className="flex flex-wrap gap-2 pt-2">
           <RoleGuard allowed={OWNER_STAFF}>
             <Button
               variant="default"
-              onClick={() => handleScaffoldAction("Resume / Start Intake")}
+              onClick={() => handleAction("Resume / Start Intake")}
             >
               Resume Intake
             </Button>
@@ -200,7 +179,7 @@ export function ClientDetailDialog({
           <RoleGuard allowed={OWNER_STAFF}>
             <Button
               variant="secondary"
-              onClick={() => handleScaffoldAction("Generate Full Document Package")}
+              onClick={() => handleAction("Generate Full Document Package")}
             >
               Generate Documents
             </Button>
@@ -208,7 +187,7 @@ export function ClientDetailDialog({
 
           <Button
             variant="outline"
-            onClick={() => handleScaffoldAction("Send Reminder Email")}
+            onClick={() => handleAction("Send Reminder Email")}
           >
             Send Reminder
           </Button>
@@ -219,11 +198,6 @@ export function ClientDetailDialog({
             </Button>
           </DialogClose>
         </div>
-
-        <p className="pt-1 text-center text-[10px] text-muted-foreground">
-          All buttons are SCAFFOLD actions. Real behavior lands in Phase 3 (intake) &amp; Phase 4 (doc gen).
-          Role enforcement via RoleGuard + server requireRole on page.
-        </p>
       </DialogContent>
     </Dialog>
   );
