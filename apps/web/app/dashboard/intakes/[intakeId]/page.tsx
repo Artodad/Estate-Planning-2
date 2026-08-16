@@ -5,6 +5,8 @@ import { requireRole } from "@/features/auth/server/rbac";
 
 import { getIntakeSessionForCurrentFirm, saveIntakeAnswers } from "@/features/dashboard/server/actions";
 import { GenerateTrustDraftButton } from "@/features/dashboard/components/GenerateTrustDraftButton";
+import { trustDraftFromStoredDocuments } from "@/features/dashboard/components/stored-trust-draft";
+import { generatedDocumentHelpers } from "@/lib/prisma";
 
 // Import the production wizard (from C) + types (via feature index)
 import { QuestionnaireWizard } from "@/features/intake";
@@ -58,6 +60,9 @@ export default async function IntakeWizardPage({
   }
 
   const { session, firmId, client } = result;
+  const storedTrustDraft = trustDraftFromStoredDocuments(
+    await generatedDocumentHelpers.listByIntakeForFirm(session.id, firmId),
+  );
 
   // Prepare initial data exactly as wizard contract expects (from C + B machine getInitialContext)
   const initialAnswers = (session.answers ?? {}) as PartialIntake | null;
@@ -131,7 +136,7 @@ export default async function IntakeWizardPage({
         // onSaveAndExit omitted → wizard falls back to window.history.back() which is clean in dashboard
       />
 
-      <GenerateTrustDraftButton intakeId={session.id} />
+      <GenerateTrustDraftButton intakeId={session.id} initialDraft={storedTrustDraft} />
 
       {/* Lightweight dev transparency (additive only; never shown to normal users in prod) */}
       <p className="text-[10px] text-muted-foreground font-mono opacity-60">
