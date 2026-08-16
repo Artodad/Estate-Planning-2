@@ -11,8 +11,7 @@ import { getClientsForCurrentFirm } from "@/features/dashboard/server/actions";
  * /dashboard/clients
  *
  * Thin Server Component: auth + OWNER_STAFF, then the interactive clients list.
- * Real rows are passed through when the firm has clients; otherwise the list
- * shows clearly labeled sample matters.
+ * Always passes the firm’s real rows, including an empty array.
  */
 export default async function ClientsPage() {
   const authContext = await getCurrentAuthContext();
@@ -25,14 +24,14 @@ export default async function ClientsPage() {
     errorMessage: "Clients section is available to owners and staff only.",
   });
 
-  let realClients: any[] | undefined = undefined;
+  let realClients: any[] = [];
   try {
     const result = await getClientsForCurrentFirm();
-    if (result && "success" in result && result.success && result.clients?.length) {
-      realClients = result.clients;
+    if (result && "success" in result && result.success) {
+      realClients = result.clients ?? [];
     }
   } catch {
-    realClients = undefined;
+    realClients = [];
   }
 
   return (

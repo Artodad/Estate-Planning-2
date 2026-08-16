@@ -1681,42 +1681,38 @@ test.describe('Dashboard Shell + Navigation + Clients + Role Visibility (Sub-age
   // --------------------------------------------------------------------------
   // 7-8. CLIENTS SECTION (star of expansion per Design §3 + C impl)
   // --------------------------------------------------------------------------
-  test('Clients list loads with mandatory scaffold banner, 7 mock clients, counts, status badges', async ({ page }) => {
+  test('Clients list shows a real empty state — never mock matters as a caseload', async ({ page }) => {
     await signInAsE2E(page);
     await page.goto('/dashboard/clients');
     await expect(page).toHaveURL(/\/dashboard\/clients/);
 
     await expect(page.getByRole('heading', { name: /Client matters/i })).toBeVisible();
-    await expect(page.getByText(/Sample matters — create a client to start a real intake/i)).toBeVisible();
-    await expect(page.getByText(/Showing 7 of 7 clients/)).toBeVisible();
+    await expect(page.getByText(/Sample matters — create a client to start a real intake/i)).toHaveCount(0);
     await expect(page.getByText(/SCAFFOLD|MOCK DATA|LIVE DATA|Phase \d/i)).toHaveCount(0);
+    await expect(page.getByText('1234 Oak Grove')).toHaveCount(0);
+    await expect(page.getByText('12 of 18 answered')).toHaveCount(0);
 
-    await expect(page.getByText('Elena M. Vargas Revocable Living Trust')).toBeVisible();
-    await expect(page.getByText('Dr. Priya Nair, MD (Physician Estate Plan)')).toBeVisible();
-    await expect(page.getByText('Hector & Maria Ruiz Community Property Trust')).toBeVisible();
-
-    await expect(page.getByText('Documents Ready')).toBeVisible();
-    await expect(page.locator('table')).toBeVisible();
+    const emptyState = page.getByRole('heading', { name: /No clients yet/i });
+    const table = page.locator('table');
+    if (await emptyState.isVisible().catch(() => false)) {
+      await expect(page.getByRole('button', { name: /New Client/i }).first()).toBeVisible();
+      await expect(table).toHaveCount(0);
+    } else {
+      await expect(table).toBeVisible();
+    }
   });
 
-  test('Clients search + filters + clear + empty state produce correct visible state changes', async ({ page }) => {
+  test('Clients search + filters work on real rows, or empty state when the firm has none', async ({ page }) => {
     await signInAsE2E(page);
     await page.goto('/dashboard/clients');
 
+    const emptyState = page.getByRole('heading', { name: /No clients yet/i });
+    if (await emptyState.isVisible().catch(() => false)) {
+      await expect(page.getByRole('button', { name: /New Client/i }).first()).toBeVisible();
+      return;
+    }
+
     const search = page.getByRole('searchbox', { name: /Search clients/i });
-    await search.fill('Vargas');
-    await expect(page.getByText(/Showing 1 of 7 clients/)).toBeVisible();
-    await expect(page.getByText('Elena M. Vargas')).toBeVisible();
-    await expect(page.getByText('Robert Chen')).not.toBeVisible();
-
-    // Filter chip (Documents Ready)
-    await page.getByRole('tab', { name: /Documents Ready/i }).click();
-    await expect(page.getByText(/Showing .* of 7 clients/)).toBeVisible();
-
-    await page.getByRole('button', { name: /Clear filters/i }).click();
-    await expect(page.getByText(/Showing 7 of 7 clients/)).toBeVisible();
-
-    // Empty state
     await search.fill('nonexistent-client-zzzz');
     await expect(page.getByText(/No clients match your current search or filters/)).toBeVisible();
 
@@ -1724,31 +1720,30 @@ test.describe('Dashboard Shell + Navigation + Clients + Role Visibility (Sub-age
     await page.getByRole('tab', { name: /^All$/i }).click();
   });
 
-  test('View dialog opens from table row, shows rich scaffold content + metrics + role-gated actions + feedback', async ({ page }) => {
+  test('View dialog shows real matter metrics — never Oak Grove / 12 of 18 fiction', async ({ page }) => {
     await signInAsE2E(page);
     await page.goto('/dashboard/clients');
 
-    // Open View (first row = Elena per mock order)
+    const emptyState = page.getByRole('heading', { name: /No clients yet/i });
+    if (await emptyState.isVisible().catch(() => false)) {
+      await expect(page.getByText('Sample intake snapshot')).toHaveCount(0);
+      await expect(page.getByText('1234 Oak Grove')).toHaveCount(0);
+      return;
+    }
+
     const firstViewBtn = page.getByRole('button', { name: 'View' }).first();
     await firstViewBtn.click();
 
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible({ timeout: 3000 });
 
-    // Rich content (ClientDetailDialog)
-    await expect(dialog.getByText(/Elena M. Vargas Revocable Living Trust/)).toBeVisible();
-    await expect(dialog.getByText(/Sample matter/i)).toBeVisible();
-    await expect(dialog.getByText('Sample intake snapshot')).toBeVisible();
-    await expect(dialog.getByText('12 of 18 answered')).toBeVisible();
-    await expect(dialog.getByText(/Primary residence: 1234 Oak Grove/)).toBeVisible();
+    await expect(dialog.getByText('Sample intake snapshot')).toHaveCount(0);
+    await expect(dialog.getByText('12 of 18 answered')).toHaveCount(0);
+    await expect(dialog.getByText(/Primary residence: 1234 Oak Grove/)).toHaveCount(0);
 
     await expect(dialog.getByRole('button', { name: /Resume Intake|Generate Full Document Package/i })).toBeVisible();
     await expect(dialog.getByRole('button', { name: /Send Reminder/i })).toBeVisible();
 
-    await dialog.getByRole('button', { name: /Generate Full Document Package/i }).click();
-    await expect(page.getByText(/Generate Full Document Package for/i)).toBeVisible({ timeout: 4000 });
-
-    // Close
     await page.getByRole('button', { name: /^Close$/i }).click();
     await expect(dialog).not.toBeVisible();
   });
@@ -1772,6 +1767,8 @@ test.describe('Dashboard Shell + Navigation + Clients + Role Visibility (Sub-age
     await page.getByRole('link', { name: /^Intakes$/i }).click();
     await expect(page.locator('h1').filter({ hasText: /^Intakes$/ })).toBeVisible();
     await expect(page.getByText(/Intake sessions/i)).toBeVisible();
+    await expect(page.getByText(/Almost ready/)).toHaveCount(0);
+    await expect(page.getByText(/Sample sessions below/i)).toHaveCount(0);
 
     // Header + context survive nav
     await expect(page.locator('header')).toBeVisible();
@@ -2500,7 +2497,7 @@ test.describe('Phase 3: Adaptive Questionnaire Flows (Wizard + Persistence + Iso
     // If sessionId fake (no seed), route may  redirect with error; resilient check
     const url = page.url();
     if (url.includes('/intakes/') && !url.includes('error')) {
-      await expect(page.getByRole('heading', { name: /Intake Questionnaire/i })).toBeVisible({ timeout: 10000 });
+      await expect(page.getByText(/Intake Questionnaire/i).first()).toBeVisible({ timeout: 10000 });
       await expect(page.getByText('DRAFT')).toBeVisible();
       await expect(page.getByText(/Overall Progress/i)).toBeVisible();
       await expect(page.getByText(/0% complete|progress/i)).toBeVisible();
@@ -2546,7 +2543,7 @@ test.describe('Phase 3: Adaptive Questionnaire Flows (Wizard + Persistence + Iso
     }
 
     await page.goto(`/dashboard/intakes/${sessionId}`);
-    await expect(page.getByRole('heading', { name: /Intake Questionnaire/i })).toBeVisible({ timeout: 8000 });
+    await expect(page.getByText(/Intake Questionnaire/i).first()).toBeVisible({ timeout: 8000 });
 
     // Personal section - fill required + conditional spouse + CA
     await page.getByLabel(/Client First Name/i).fill('TestClient');
@@ -2596,7 +2593,7 @@ test.describe('Phase 3: Adaptive Questionnaire Flows (Wizard + Persistence + Iso
     if (!sessionId) { console.warn('[phase3-e] branching test skipped'); return; }
 
     await page.goto(`/dashboard/intakes/${sessionId}`);
-    await expect(page.getByRole('heading', { name: /Intake Questionnaire/i })).toBeVisible({ timeout: 8000 });
+    await expect(page.getByText(/Intake Questionnaire/i).first()).toBeVisible({ timeout: 8000 });
 
     // Fill personal for married + CA (isMarriedAndCA guard)
     await page.getByLabel(/Client First Name/i).fill('MarriedCA');
@@ -2669,7 +2666,7 @@ test.describe('Phase 3: Adaptive Questionnaire Flows (Wizard + Persistence + Iso
     if (!sessionId) { console.warn('[phase3-e] auto-save DB test skipped'); return; }
 
     await page.goto(`/dashboard/intakes/${sessionId}`);
-    await expect(page.getByRole('heading', { name: /Intake Questionnaire/i })).toBeVisible({ timeout: 8000 });
+    await expect(page.getByText(/Intake Questionnaire/i).first()).toBeVisible({ timeout: 8000 });
 
     // Trigger SAVE_ANSWER via RHF watch (fill triggers debouncedPersist + onPersist from D)
     await page.getByLabel(/Client First Name/i).fill('PersistFirst');
@@ -2714,7 +2711,7 @@ test.describe('Phase 3: Adaptive Questionnaire Flows (Wizard + Persistence + Iso
     if (!sessionId) { console.warn('[phase3-e] resume test skipped'); return; }
 
     await page.goto(`/dashboard/intakes/${sessionId}`);
-    await expect(page.getByRole('heading', { name: /Intake Questionnaire/i })).toBeVisible({ timeout: 8000 });
+    await expect(page.getByText(/Intake Questionnaire/i).first()).toBeVisible({ timeout: 8000 });
 
     // Verify resume prefill from initialAnswers (D load + C getInitialContext + RHF)
     const firstNameInput = page.getByLabel(/Client First Name/i);
@@ -2729,7 +2726,7 @@ test.describe('Phase 3: Adaptive Questionnaire Flows (Wizard + Persistence + Iso
 
     // Re-launch same sessionId → should reload prior (now possibly more) answers
     await page.goto(`/dashboard/intakes/${sessionId}`);
-    await expect(page.getByRole('heading', { name: /Intake Questionnaire/i })).toBeVisible({ timeout: 8000 });
+    await expect(page.getByText(/Intake Questionnaire/i).first()).toBeVisible({ timeout: 8000 });
     // Prefill or progress preserved is success for resume contract
   });
 
@@ -2831,7 +2828,7 @@ test.describe('Phase 3: Adaptive Questionnaire Flows (Wizard + Persistence + Iso
 
     // First load — exercise the form a bit so auto-save fires
     await page.goto(`/dashboard/intakes/${sessionId}`);
-    await expect(page.getByRole('heading', { name: /Intake Questionnaire/i })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/Intake Questionnaire/i).first()).toBeVisible({ timeout: 10000 });
 
     // Touch one field to ensure a SAVE_ANSWER flows through (triggers normalization + markVisited in live session)
     const firstName = page.getByLabel(/Client First Name/i);
@@ -2840,7 +2837,7 @@ test.describe('Phase 3: Adaptive Questionnaire Flows (Wizard + Persistence + Iso
 
     // Hard reload (this is the key step that exposed the bug)
     await page.reload();
-    await expect(page.getByRole('heading', { name: /Intake Questionnaire/i })).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(/Intake Questionnaire/i).first()).toBeVisible({ timeout: 10000 });
 
     // === The assertions that document the desired (currently broken) behavior ===
     // After the reload, the wizard should treat previously completed sections as navigable.
@@ -2882,11 +2879,10 @@ test.describe('Phase 3: Adaptive Questionnaire Flows (Wizard + Persistence + Iso
   // --------------------------------------------------------------------------
   // 7. CONVERSATIONAL TOGGLE (C slot contract exercised)
   // --------------------------------------------------------------------------
-  test('conversational toggle works: Switch to Chat Mode renders placeholder; Return to Wizard restores forms', async ({ page }) => {
+  test('chat mode is not offered on the intake questionnaire', async ({ page }) => {
     await signInAsE2E(page);
     await page.goto('/dashboard');
     let sessionId = 'phase3-chat-skip';
-    // Seed abbreviated (pattern identical)
     try {
       const firmId = ((await page.locator('div:has-text("Firm ID:") code').first().textContent({ timeout: 2000 })) || '').trim();
       const prismaModule = await import('../src/lib/prisma');
@@ -2899,25 +2895,11 @@ test.describe('Phase 3: Adaptive Questionnaire Flows (Wizard + Persistence + Iso
     } catch (e) { /* skip */ }
 
     await page.goto(`/dashboard/intakes/${sessionId}`);
-    await expect(page.getByRole('heading', { name: /Intake Questionnaire/i })).toBeVisible({ timeout: 8000 }).catch(() => {});
+    await expect(page.getByText(/Intake Questionnaire/i).first()).toBeVisible({ timeout: 8000 }).catch(() => {});
 
-    // Toggle
-    const toggle = page.getByRole('button', { name: /Switch to Chat Mode|Back to Wizard/i });
-    await expect(toggle).toBeVisible({ timeout: 5000 }).catch(() => {});
-    if (await toggle.count()) {
-      await toggle.click();
-      // Placeholder renders (C contract, no AI needed)
-      await expect(page.getByText(/Conversational Intake \(Preview\)/i)).toBeVisible({ timeout: 4000 }).catch(() => {});
-      await expect(page.getByText(/This slot is reserved for the constrained AI chat experience/i)).toBeVisible().catch(() => {});
-      await expect(page.getByText(/Never generates legal text/i)).toBeVisible().catch(() => {});
-
-      // Return always works
-      const returnBtn = page.getByRole('button', { name: /Return to Structured Wizard/i });
-      if (await returnBtn.count()) {
-        await returnBtn.click();
-        await expect(page.getByRole('heading', { name: /Intake Questionnaire/i })).toBeVisible({ timeout: 3000 }).catch(() => {});
-      }
-    }
+    await expect(page.getByRole('button', { name: /Switch to Chat Mode|Back to Wizard/i })).toHaveCount(0);
+    await expect(page.getByText(/Conversational Intake \(Preview\)/i)).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Start a new intake/i })).toHaveCount(0);
   });
 
   // --------------------------------------------------------------------------
@@ -3892,10 +3874,8 @@ test.describe('Phase 4: Document Generation (Sub-agent E)', () => {
       await page.goto('/dashboard/documents');
       await page.waitForLoadState('networkidle', { timeout: 10000 });
 
-      // The page contains either the "Generated Documents (Live)" card or the fileKey / documentType text
-      await expect(page.getByText(/Generated Documents \(Live\)|Documents|healthcare_directive/i)).toBeVisible({ timeout: 8000 }).catch(() => {});
-      // SCAFFOLD note is always present (per page source)
-      await expect(page.getByText(/UI SCAFFOLD \+ LIVE DATA/i)).toBeVisible({ timeout: 5000 }).catch(() => {});
+      await expect(page.getByText(/Documents|healthcare_directive|No documents yet/i)).toBeVisible({ timeout: 8000 }).catch(() => {});
+      await expect(page.getByText(/UI SCAFFOLD \+ LIVE DATA/i)).toHaveCount(0);
     } catch (err) {
       console.warn('[phase4-e] Documents page UI test skipped (sandbox):', (err as Error)?.message ?? err);
       await expect(page).toHaveURL(/dashboard/);
@@ -4071,12 +4051,10 @@ test.describe('Phase 5: Dashboard Clients CRUD + Generate Full Plan + Detail Flo
     await signInAsE2E(page);
     await page.goto('/dashboard');
 
-    // The new LIVE DATA (Phase 5) section from Slice 2 should be present
-    await expect(page.getByText(/LIVE DATA \(Phase 5\)/)).toBeVisible();
     await expect(page.getByText(/Recent Firm Activity/)).toBeVisible();
-
-    // Existing mock row is still there (dual-path discipline)
-    await expect(page.getByText(/Total Clients \(MOCK\)/)).toBeVisible();
+    await expect(page.getByText(/LIVE DATA \(Phase 5\)/)).toHaveCount(0);
+    await expect(page.getByText(/Total Clients \(MOCK\)/)).toHaveCount(0);
+    await expect(page.getByText(/^Total Clients$/)).toBeVisible();
   });
 
   // ---------------------------------------------------------------------------

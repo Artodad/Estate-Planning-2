@@ -8,7 +8,8 @@
  * badges, detail dialog, and role-aware action buttons.
  *
  * - 7 realistic California estate planning clients.
- * - Used in the UI layer when no real Prisma data exists for the current firm.
+ * - Kept for helpers/normalizer and local UI experiments. Live Clients / Intakes
+ *   lists do not mount these rows as a caseload.
  * - All actions on mock rows surface clear demo messaging.
  *
  * The normalizePrismaClientToMock bridge allows the **exact same** UI to render both
@@ -181,7 +182,7 @@ export function filterMockClients(
  */
 export function formatLastActivity(isoString: string): string {
   const date = new Date(isoString);
-  const now = new Date("2026-05-26T12:00:00.000Z"); // Fixed "today" for deterministic demo
+  const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 

@@ -27,9 +27,6 @@ import { Progress } from "@/components/ui/progress";
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -46,7 +43,6 @@ import {
   ArrowRight,
   Save,
   LogOut,
-  MessageSquare,
   CheckCircle2,
   Lock,
   ChevronRight,
@@ -91,8 +87,6 @@ export interface QuestionnaireWizardProps {
 
   className?: string;
 }
-
-type UIMode = "wizard" | "chat";
 
 // ============================================================
 // Internal debounce helper (no external deps)
@@ -188,7 +182,6 @@ export function QuestionnaireWizard(props: QuestionnaireWizardProps) {
   const guardContext = { ...context, currentSection: currentSection as SectionKey };
 
   // --- UI-only state (never duplicates branching logic) ---
-  const [uiMode, setUiMode] = useState<UIMode>("wizard");
   const [saveStatus, setSaveStatus] = useState<
     "idle" | "saving" | "saved" | "error"
   >("idle");
@@ -499,8 +492,7 @@ export function QuestionnaireWizard(props: QuestionnaireWizardProps) {
       sec.key === "gifts" ? "gifts" : sec.key,
       answers
     );
-    // Once the whole intake is completed, lock all section navigation
-    // (only RESET via the "Start New Session" button is allowed)
+    // Once the whole intake is completed, lock all section navigation.
     const canNav = !isCompleted && canJumpTo(sec.key);
     return {
       ...sec,
@@ -531,9 +523,9 @@ export function QuestionnaireWizard(props: QuestionnaireWizardProps) {
         <div className="flex flex-col gap-3 p-4 md:flex-row md:items-center md:justify-between md:p-6">
           <div className="min-w-0">
             <div className="flex items-center gap-3">
-              <h1 className="truncate text-xl font-semibold tracking-tight">
+              <p className="truncate text-xl font-semibold tracking-tight">
                 Intake Questionnaire
-              </h1>
+              </p>
               <span className="rounded bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">
                 DRAFT
               </span>
@@ -566,18 +558,6 @@ export function QuestionnaireWizard(props: QuestionnaireWizardProps) {
               </span>
             </div>
 
-            {/* Mode Toggle — clear contract for conversational sub-agent */}
-            <Button
-              variant={uiMode === "chat" ? "default" : "outline"}
-              size="sm"
-              onClick={() => setUiMode(uiMode === "wizard" ? "chat" : "wizard")}
-              className="gap-2"
-              aria-label={uiMode === "wizard" ? "Switch to chat mode" : "Switch back to structured wizard"}
-            >
-              <MessageSquare className="h-4 w-4" />
-              {uiMode === "wizard" ? "Switch to Chat Mode" : "Back to Wizard"}
-            </Button>
-
             <RoleGuard allowed={OWNER_STAFF}>
               <Button
                 variant="outline"
@@ -602,33 +582,7 @@ export function QuestionnaireWizard(props: QuestionnaireWizardProps) {
         </div>
       </div>
 
-      {/* CHAT MODE SLOT (placeholder — ready for Sub-agent D) */}
-      {uiMode === "chat" && (
-        <Card className="mx-auto max-w-4xl">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <MessageSquare className="h-5 w-5" />
-              Conversational Intake (Preview)
-            </CardTitle>
-            <CardDescription>
-              Guided chat for this questionnaire is not available yet. Use the structured wizard — it remains the source of truth.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4 py-8 text-center">
-            <p className="mx-auto max-w-md text-sm text-muted-foreground">
-              When chat ships, it will collect the same answers as this wizard.
-              It never generates legal text, advice, or document language.
-            </p>
-            <Button onClick={() => setUiMode("wizard")}>
-              Return to Structured Wizard
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* WIZARD MODE — primary, always available */}
-      {uiMode === "wizard" && (
-        <div className="grid gap-6 lg:grid-cols-[260px,1fr] xl:grid-cols-[280px,1fr]">
+      <div className="grid gap-6 lg:grid-cols-[260px,1fr] xl:grid-cols-[280px,1fr]">
           {/* Section Navigation — mobile: horizontal chips; desktop: sidebar */}
           <aside className="lg:sticky lg:top-24 lg:self-start">
             <div className="mb-2 px-1 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
@@ -722,13 +676,6 @@ export function QuestionnaireWizard(props: QuestionnaireWizardProps) {
                     <p className="mt-2 text-muted-foreground">
                       This session is ready for document generation. The attorney will review all answers.
                     </p>
-                    <Button
-                      className="mt-6"
-                      variant="outline"
-                      onClick={() => send({ type: "RESET" })}
-                    >
-                      Start a new intake
-                    </Button>
                   </div>
                 ) : (
                   formRenderer
@@ -777,7 +724,6 @@ export function QuestionnaireWizard(props: QuestionnaireWizardProps) {
             </p>
           </div>
         </div>
-      )}
     </div>
   );
 }

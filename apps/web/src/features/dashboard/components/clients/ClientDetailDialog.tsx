@@ -24,7 +24,7 @@ import { StatusBadge } from "../shared/StatusBadge";
 /**
  * ClientDetailDialog
  *
- * Modal detail view for a single client (sample or real-normalized; opened from table/"View").
+ * Modal detail view for a single client (opened from table/"View").
  * Generate Documents & Start/Resume Intake stay OWNER_STAFF gated.
  */
 interface ClientDetailDialogProps {
@@ -39,8 +39,6 @@ export function ClientDetailDialog({
   onAction,
 }: ClientDetailDialogProps) {
   const [internalFeedback, setInternalFeedback] = useState<string | null>(null);
-
-  const isSampleRecord = client.id?.startsWith("cli_");
 
   const handleAction = (action: string) => {
     setInternalFeedback(`${action} for ${client.name}.`);
@@ -67,12 +65,6 @@ export function ClientDetailDialog({
             {client.email} • Last activity: {relativeActivity}
           </DialogDescription>
         </DialogHeader>
-
-        {isSampleRecord && (
-          <p className="text-xs text-muted-foreground">
-            Sample matter — create a client to run intake and generation on a real record.
-          </p>
-        )}
 
         {/* Key metrics row */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
@@ -133,25 +125,6 @@ export function ClientDetailDialog({
             </div>
             <div className="rounded-md border bg-muted/30 p-3 text-sm leading-relaxed text-foreground">
               {client.notes}
-            </div>
-          </div>
-        )}
-
-        {isSampleRecord && (
-          <div>
-            <div className="mb-1 flex items-center justify-between text-xs font-medium uppercase tracking-widest text-muted-foreground">
-              <span>Sample intake snapshot</span>
-              <span className="font-normal normal-case">12 of 18 answered</span>
-            </div>
-            <div className="rounded border p-3 text-xs text-muted-foreground">
-              <ul className="list-disc space-y-1 pl-4">
-                <li>Primary residence: 1234 Oak Grove, San Francisco, CA</li>
-                <li>Spouse / partner: Listed (community property election)</li>
-                <li>Children / beneficiaries: 2 adult, 1 minor</li>
-                <li>Successor trustees: Named (attorney + adult child)</li>
-                <li>Healthcare agent: Spouse / adult child alternate</li>
-                <li>Remaining sections include specific gifts and digital assets.</li>
-              </ul>
             </div>
           </div>
         )}
