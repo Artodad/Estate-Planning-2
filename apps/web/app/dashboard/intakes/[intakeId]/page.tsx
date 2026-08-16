@@ -4,6 +4,7 @@ import { getCurrentAuthContext } from "@/features/auth/server/get-current-auth";
 import { requireRole } from "@/features/auth/server/rbac";
 
 import { getIntakeSessionForCurrentFirm, saveIntakeAnswers } from "@/features/dashboard/server/actions";
+import { GenerateTrustDraftButton } from "@/features/dashboard/components/GenerateTrustDraftButton";
 
 // Import the production wizard (from C) + types (via feature index)
 import { QuestionnaireWizard } from "@/features/intake";
@@ -129,6 +130,8 @@ export default async function IntakeWizardPage({
         onComplete={handleComplete}
         // onSaveAndExit omitted → wizard falls back to window.history.back() which is clean in dashboard
       />
+
+      <GenerateTrustDraftButton intakeId={session.id} />
 
       {/* Lightweight dev transparency (additive only; never shown to normal users in prod) */}
       <p className="text-[10px] text-muted-foreground font-mono opacity-60">

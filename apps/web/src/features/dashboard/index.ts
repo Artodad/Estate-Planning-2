@@ -24,3 +24,5 @@ export { OverviewStats } from "./components/overview/OverviewStats";
 // Shared dashboard UI primitives
 export { SectionCallout } from "./components/shared/SectionCallout";
 export { StatusBadge } from "./components/shared/StatusBadge";
+export { GenerateTrustDraftButton } from "./components/GenerateTrustDraftButton";
+export { buildGenerateTrustDraftParams, TRUST_DRAFT_DOCUMENT_TYPE } from "./components/generate-trust-draft";

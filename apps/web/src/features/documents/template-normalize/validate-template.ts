@@ -13,6 +13,10 @@ import PizZip from "pizzip";
 import Docxtemplater from "docxtemplater";
 
 import { normalizeDocxtemplaterError } from "../errors";
+import {
+  createRecordingNullGetter,
+  DOCXTEMPLATER_BASE_OPTIONS,
+} from "../docxtemplater-options";
 import { buildFixtureVariables } from "./normalize-tags";
 import type { TemplateValidationResult } from "./types";
 
@@ -67,15 +71,8 @@ export function validateTemplate(
     const zip = new PizZip(buffer);
     // Construction compiles the template (modern docxtemplater).
     doc = new Docxtemplater(zip, {
-      paragraphLoop: true,
-      nullGetter(part) {
-        const tagName =
-          part && typeof part === "object" && "value" in part
-            ? String((part as { value: string }).value)
-            : "unknown";
-        missingTags.add(tagName);
-        return "";
-      },
+      ...DOCXTEMPLATER_BASE_OPTIONS,
+      nullGetter: createRecordingNullGetter(missingTags),
     });
   } catch (err) {
     const collected = collectSyntaxErrors(err);

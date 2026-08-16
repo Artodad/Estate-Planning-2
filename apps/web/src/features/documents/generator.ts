@@ -42,6 +42,10 @@ import {
   StorageError,
   DocumentGenerationError,
 } from "./errors";
+import {
+  createRecordingNullGetter,
+  DOCXTEMPLATER_BASE_OPTIONS,
+} from "./docxtemplater-options";
 
 // -----------------------------
 // Main production function
@@ -87,9 +91,10 @@ export async function generateDocument(
     // Do not pass createDraftWatermarkModule() here — it is a stub without parse/render hooks
     // and docxtemplater rejects it with "module cannot be wrapped".
     doc = new Docxtemplater(zip, {
-      paragraphLoop: true, // Enables {#children}...{/children} and similar loops
-      // Standard delimiters { } — attorney templates use these (or documented custom)
-      // nullGetter left default (throws on missing → we catch below for clear errors)
+      ...DOCXTEMPLATER_BASE_OPTIONS,
+      // Same nullGetter as validate-template: unknown tags render as "" (upload
+      // warnings) instead of throwing here after upload already accepted them.
+      nullGetter: createRecordingNullGetter(),
     });
   } catch (err) {
     const causeMsg = err instanceof Error ? err.message : String(err);
