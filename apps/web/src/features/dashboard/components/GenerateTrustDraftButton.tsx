@@ -8,6 +8,8 @@ import { ErrorCallout } from "@/components/ui/callouts";
 import { Button } from "@/components/ui/button";
 import { RoleGuard, OWNER_STAFF } from "@/features/auth";
 import { buildGenerateTrustDraftParams } from "./generate-trust-draft";
+import { TrustDraftFillReport } from "./TrustDraftFillReport";
+import type { DocumentFillReport } from "@/features/documents/types";
 
 export { buildGenerateTrustDraftParams, TRUST_DRAFT_DOCUMENT_TYPE } from "./generate-trust-draft";
 
@@ -18,7 +20,10 @@ export { buildGenerateTrustDraftParams, TRUST_DRAFT_DOCUMENT_TYPE } from "./gene
 export function GenerateTrustDraftButton({ intakeId }: { intakeId: string }) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [result, setResult] = useState<{ fileKey: string } | null>(null);
+  const [result, setResult] = useState<{
+    fileKey: string;
+    fillReport: DocumentFillReport;
+  } | null>(null);
 
   async function handleGenerate() {
     if (!intakeId) {
@@ -36,7 +41,7 @@ export function GenerateTrustDraftButton({ intakeId }: { intakeId: string }) {
         setError(res.error);
         return;
       }
-      setResult({ fileKey: res.generated.fileKey });
+      setResult({ fileKey: res.generated.fileKey, fillReport: res.generated.fillReport });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Trust draft generation failed.");
     } finally {
@@ -79,6 +84,7 @@ export function GenerateTrustDraftButton({ intakeId }: { intakeId: string }) {
               <p className="mt-2 text-[10px] text-emerald-600">
                 Visible DRAFT watermark. Exact fidelity to your attorney Trust Family template.
               </p>
+              <TrustDraftFillReport report={result.fillReport} />
             </div>
           )}
         </div>

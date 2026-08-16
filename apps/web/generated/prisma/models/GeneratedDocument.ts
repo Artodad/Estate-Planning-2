@@ -57,6 +57,7 @@ export type GeneratedDocumentCountAggregateOutputType = {
   fileKey: number
   status: number
   generatedAt: number
+  fillReport: number
   createdAt: number
   _all: number
 }
@@ -95,6 +96,7 @@ export type GeneratedDocumentCountAggregateInputType = {
   fileKey?: true
   status?: true
   generatedAt?: true
+  fillReport?: true
   createdAt?: true
   _all?: true
 }
@@ -180,6 +182,7 @@ export type GeneratedDocumentGroupByOutputType = {
   fileKey: string
   status: string
   generatedAt: Date | null
+  fillReport: runtime.JsonValue | null
   createdAt: Date
   _count: GeneratedDocumentCountAggregateOutputType | null
   _min: GeneratedDocumentMinAggregateOutputType | null
@@ -213,6 +216,7 @@ export type GeneratedDocumentWhereInput = {
   fileKey?: Prisma.StringFilter<"GeneratedDocument"> | string
   status?: Prisma.StringFilter<"GeneratedDocument"> | string
   generatedAt?: Prisma.DateTimeNullableFilter<"GeneratedDocument"> | Date | string | null
+  fillReport?: Prisma.JsonNullableFilter<"GeneratedDocument">
   createdAt?: Prisma.DateTimeFilter<"GeneratedDocument"> | Date | string
   intakeSession?: Prisma.XOR<Prisma.IntakeSessionScalarRelationFilter, Prisma.IntakeSessionWhereInput>
   firm?: Prisma.XOR<Prisma.FirmScalarRelationFilter, Prisma.FirmWhereInput>
@@ -228,6 +232,7 @@ export type GeneratedDocumentOrderByWithRelationInput = {
   fileKey?: Prisma.SortOrder
   status?: Prisma.SortOrder
   generatedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  fillReport?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   intakeSession?: Prisma.IntakeSessionOrderByWithRelationInput
   firm?: Prisma.FirmOrderByWithRelationInput
@@ -246,6 +251,7 @@ export type GeneratedDocumentWhereUniqueInput = Prisma.AtLeast<{
   fileKey?: Prisma.StringFilter<"GeneratedDocument"> | string
   status?: Prisma.StringFilter<"GeneratedDocument"> | string
   generatedAt?: Prisma.DateTimeNullableFilter<"GeneratedDocument"> | Date | string | null
+  fillReport?: Prisma.JsonNullableFilter<"GeneratedDocument">
   createdAt?: Prisma.DateTimeFilter<"GeneratedDocument"> | Date | string
   intakeSession?: Prisma.XOR<Prisma.IntakeSessionScalarRelationFilter, Prisma.IntakeSessionWhereInput>
   firm?: Prisma.XOR<Prisma.FirmScalarRelationFilter, Prisma.FirmWhereInput>
@@ -261,6 +267,7 @@ export type GeneratedDocumentOrderByWithAggregationInput = {
   fileKey?: Prisma.SortOrder
   status?: Prisma.SortOrder
   generatedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  fillReport?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   _count?: Prisma.GeneratedDocumentCountOrderByAggregateInput
   _max?: Prisma.GeneratedDocumentMaxOrderByAggregateInput
@@ -279,6 +286,7 @@ export type GeneratedDocumentScalarWhereWithAggregatesInput = {
   fileKey?: Prisma.StringWithAggregatesFilter<"GeneratedDocument"> | string
   status?: Prisma.StringWithAggregatesFilter<"GeneratedDocument"> | string
   generatedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"GeneratedDocument"> | Date | string | null
+  fillReport?: Prisma.JsonNullableWithAggregatesFilter<"GeneratedDocument">
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"GeneratedDocument"> | Date | string
 }
 
@@ -288,6 +296,7 @@ export type GeneratedDocumentCreateInput = {
   fileKey: string
   status?: string
   generatedAt?: Date | string | null
+  fillReport?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   intakeSession: Prisma.IntakeSessionCreateNestedOneWithoutGeneratedDocumentsInput
   firm: Prisma.FirmCreateNestedOneWithoutDocumentsInput
@@ -303,6 +312,7 @@ export type GeneratedDocumentUncheckedCreateInput = {
   fileKey: string
   status?: string
   generatedAt?: Date | string | null
+  fillReport?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
 }
 
@@ -312,6 +322,7 @@ export type GeneratedDocumentUpdateInput = {
   fileKey?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.StringFieldUpdateOperationsInput | string
   generatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  fillReport?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   intakeSession?: Prisma.IntakeSessionUpdateOneRequiredWithoutGeneratedDocumentsNestedInput
   firm?: Prisma.FirmUpdateOneRequiredWithoutDocumentsNestedInput
@@ -327,6 +338,7 @@ export type GeneratedDocumentUncheckedUpdateInput = {
   fileKey?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.StringFieldUpdateOperationsInput | string
   generatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  fillReport?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -339,6 +351,7 @@ export type GeneratedDocumentCreateManyInput = {
   fileKey: string
   status?: string
   generatedAt?: Date | string | null
+  fillReport?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
 }
 
@@ -348,6 +361,7 @@ export type GeneratedDocumentUpdateManyMutationInput = {
   fileKey?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.StringFieldUpdateOperationsInput | string
   generatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  fillReport?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -360,6 +374,7 @@ export type GeneratedDocumentUncheckedUpdateManyInput = {
   fileKey?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.StringFieldUpdateOperationsInput | string
   generatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  fillReport?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -382,6 +397,7 @@ export type GeneratedDocumentCountOrderByAggregateInput = {
   fileKey?: Prisma.SortOrder
   status?: Prisma.SortOrder
   generatedAt?: Prisma.SortOrder
+  fillReport?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
 
@@ -541,6 +557,7 @@ export type GeneratedDocumentCreateWithoutFirmInput = {
   fileKey: string
   status?: string
   generatedAt?: Date | string | null
+  fillReport?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   intakeSession: Prisma.IntakeSessionCreateNestedOneWithoutGeneratedDocumentsInput
   template?: Prisma.TemplateCreateNestedOneWithoutGeneratedDocumentsInput
@@ -554,6 +571,7 @@ export type GeneratedDocumentUncheckedCreateWithoutFirmInput = {
   fileKey: string
   status?: string
   generatedAt?: Date | string | null
+  fillReport?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
 }
 
@@ -595,6 +613,7 @@ export type GeneratedDocumentScalarWhereInput = {
   fileKey?: Prisma.StringFilter<"GeneratedDocument"> | string
   status?: Prisma.StringFilter<"GeneratedDocument"> | string
   generatedAt?: Prisma.DateTimeNullableFilter<"GeneratedDocument"> | Date | string | null
+  fillReport?: Prisma.JsonNullableFilter<"GeneratedDocument">
   createdAt?: Prisma.DateTimeFilter<"GeneratedDocument"> | Date | string
 }
 
@@ -604,6 +623,7 @@ export type GeneratedDocumentCreateWithoutIntakeSessionInput = {
   fileKey: string
   status?: string
   generatedAt?: Date | string | null
+  fillReport?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   firm: Prisma.FirmCreateNestedOneWithoutDocumentsInput
   template?: Prisma.TemplateCreateNestedOneWithoutGeneratedDocumentsInput
@@ -617,6 +637,7 @@ export type GeneratedDocumentUncheckedCreateWithoutIntakeSessionInput = {
   fileKey: string
   status?: string
   generatedAt?: Date | string | null
+  fillReport?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
 }
 
@@ -652,6 +673,7 @@ export type GeneratedDocumentCreateWithoutTemplateInput = {
   fileKey: string
   status?: string
   generatedAt?: Date | string | null
+  fillReport?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   intakeSession: Prisma.IntakeSessionCreateNestedOneWithoutGeneratedDocumentsInput
   firm: Prisma.FirmCreateNestedOneWithoutDocumentsInput
@@ -665,6 +687,7 @@ export type GeneratedDocumentUncheckedCreateWithoutTemplateInput = {
   fileKey: string
   status?: string
   generatedAt?: Date | string | null
+  fillReport?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
 }
 
@@ -702,6 +725,7 @@ export type GeneratedDocumentCreateManyFirmInput = {
   fileKey: string
   status?: string
   generatedAt?: Date | string | null
+  fillReport?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
 }
 
@@ -711,6 +735,7 @@ export type GeneratedDocumentUpdateWithoutFirmInput = {
   fileKey?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.StringFieldUpdateOperationsInput | string
   generatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  fillReport?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   intakeSession?: Prisma.IntakeSessionUpdateOneRequiredWithoutGeneratedDocumentsNestedInput
   template?: Prisma.TemplateUpdateOneWithoutGeneratedDocumentsNestedInput
@@ -724,6 +749,7 @@ export type GeneratedDocumentUncheckedUpdateWithoutFirmInput = {
   fileKey?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.StringFieldUpdateOperationsInput | string
   generatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  fillReport?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -735,6 +761,7 @@ export type GeneratedDocumentUncheckedUpdateManyWithoutFirmInput = {
   fileKey?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.StringFieldUpdateOperationsInput | string
   generatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  fillReport?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -746,6 +773,7 @@ export type GeneratedDocumentCreateManyIntakeSessionInput = {
   fileKey: string
   status?: string
   generatedAt?: Date | string | null
+  fillReport?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
 }
 
@@ -755,6 +783,7 @@ export type GeneratedDocumentUpdateWithoutIntakeSessionInput = {
   fileKey?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.StringFieldUpdateOperationsInput | string
   generatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  fillReport?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   firm?: Prisma.FirmUpdateOneRequiredWithoutDocumentsNestedInput
   template?: Prisma.TemplateUpdateOneWithoutGeneratedDocumentsNestedInput
@@ -768,6 +797,7 @@ export type GeneratedDocumentUncheckedUpdateWithoutIntakeSessionInput = {
   fileKey?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.StringFieldUpdateOperationsInput | string
   generatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  fillReport?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -779,6 +809,7 @@ export type GeneratedDocumentUncheckedUpdateManyWithoutIntakeSessionInput = {
   fileKey?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.StringFieldUpdateOperationsInput | string
   generatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  fillReport?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -790,6 +821,7 @@ export type GeneratedDocumentCreateManyTemplateInput = {
   fileKey: string
   status?: string
   generatedAt?: Date | string | null
+  fillReport?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
 }
 
@@ -799,6 +831,7 @@ export type GeneratedDocumentUpdateWithoutTemplateInput = {
   fileKey?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.StringFieldUpdateOperationsInput | string
   generatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  fillReport?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   intakeSession?: Prisma.IntakeSessionUpdateOneRequiredWithoutGeneratedDocumentsNestedInput
   firm?: Prisma.FirmUpdateOneRequiredWithoutDocumentsNestedInput
@@ -812,6 +845,7 @@ export type GeneratedDocumentUncheckedUpdateWithoutTemplateInput = {
   fileKey?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.StringFieldUpdateOperationsInput | string
   generatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  fillReport?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -823,6 +857,7 @@ export type GeneratedDocumentUncheckedUpdateManyWithoutTemplateInput = {
   fileKey?: Prisma.StringFieldUpdateOperationsInput | string
   status?: Prisma.StringFieldUpdateOperationsInput | string
   generatedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  fillReport?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -837,6 +872,7 @@ export type GeneratedDocumentSelect<ExtArgs extends runtime.Types.Extensions.Int
   fileKey?: boolean
   status?: boolean
   generatedAt?: boolean
+  fillReport?: boolean
   createdAt?: boolean
   intakeSession?: boolean | Prisma.IntakeSessionDefaultArgs<ExtArgs>
   firm?: boolean | Prisma.FirmDefaultArgs<ExtArgs>
@@ -852,6 +888,7 @@ export type GeneratedDocumentSelectCreateManyAndReturn<ExtArgs extends runtime.T
   fileKey?: boolean
   status?: boolean
   generatedAt?: boolean
+  fillReport?: boolean
   createdAt?: boolean
   intakeSession?: boolean | Prisma.IntakeSessionDefaultArgs<ExtArgs>
   firm?: boolean | Prisma.FirmDefaultArgs<ExtArgs>
@@ -867,6 +904,7 @@ export type GeneratedDocumentSelectUpdateManyAndReturn<ExtArgs extends runtime.T
   fileKey?: boolean
   status?: boolean
   generatedAt?: boolean
+  fillReport?: boolean
   createdAt?: boolean
   intakeSession?: boolean | Prisma.IntakeSessionDefaultArgs<ExtArgs>
   firm?: boolean | Prisma.FirmDefaultArgs<ExtArgs>
@@ -882,10 +920,11 @@ export type GeneratedDocumentSelectScalar = {
   fileKey?: boolean
   status?: boolean
   generatedAt?: boolean
+  fillReport?: boolean
   createdAt?: boolean
 }
 
-export type GeneratedDocumentOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "intakeSessionId" | "firmId" | "templateId" | "documentType" | "fileKey" | "status" | "generatedAt" | "createdAt", ExtArgs["result"]["generatedDocument"]>
+export type GeneratedDocumentOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "intakeSessionId" | "firmId" | "templateId" | "documentType" | "fileKey" | "status" | "generatedAt" | "fillReport" | "createdAt", ExtArgs["result"]["generatedDocument"]>
 export type GeneratedDocumentInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   intakeSession?: boolean | Prisma.IntakeSessionDefaultArgs<ExtArgs>
   firm?: boolean | Prisma.FirmDefaultArgs<ExtArgs>
@@ -918,6 +957,7 @@ export type $GeneratedDocumentPayload<ExtArgs extends runtime.Types.Extensions.I
     fileKey: string
     status: string
     generatedAt: Date | null
+    fillReport: runtime.JsonValue | null
     createdAt: Date
   }, ExtArgs["result"]["generatedDocument"]>
   composites: {}
@@ -1353,6 +1393,7 @@ export interface GeneratedDocumentFieldRefs {
   readonly fileKey: Prisma.FieldRef<"GeneratedDocument", 'String'>
   readonly status: Prisma.FieldRef<"GeneratedDocument", 'String'>
   readonly generatedAt: Prisma.FieldRef<"GeneratedDocument", 'DateTime'>
+  readonly fillReport: Prisma.FieldRef<"GeneratedDocument", 'Json'>
   readonly createdAt: Prisma.FieldRef<"GeneratedDocument", 'DateTime'>
 }
     

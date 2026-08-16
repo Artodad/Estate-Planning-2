@@ -40,11 +40,20 @@ export interface GenerateDocumentParams {
   };
 }
 
+/** Tag-name-only snapshot of what filled vs what did not (no PII values). */
+export interface DocumentFillReport {
+  filledScalars: string[];
+  emptyOptionals: string[];
+  leftoverBraces: string[];
+  loopCounts: Record<string, number>;
+}
+
 // Result (buffer kept in memory for ZIP assembly in D without re-fetch).
 export interface GenerateDocumentResult {
   fileKey: string; // Computed per fidelity naming: {Last}-{First}-{Type}-DRAFT-{YYYY-MM-DD}.docx (namespaced)
   buffer: Buffer;
   documentType?: DocumentType;
+  fillReport: DocumentFillReport;
 }
 
 // For mapper (Design §2).
