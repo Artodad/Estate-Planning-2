@@ -523,6 +523,15 @@ export async function generateDocumentForIntake(params: {
     }
 
     if (!resolvedFileKey) {
+      const active = await templateHelpers.listActiveByFirm(firmId);
+      const match = active.find((t) => t.documentType === documentType);
+      if (match?.fileKey) {
+        resolvedFileKey = match.fileKey;
+        resolvedTemplateId = match.id;
+      }
+    }
+
+    if (!resolvedFileKey) {
       return {
         error:
           "No template fileKey available for this document type. Register an active Template for your firm (fileKey in storage) or pass a dev templateFileKey for testing. See features/documents/storage.ts for dev paths.",
@@ -545,7 +554,12 @@ export async function generateDocumentForIntake(params: {
       templateFileKey: resolvedFileKey,
       variables,
       firmId,
-      options: { addDraftWatermark: true },
+      options: {
+        addDraftWatermark: true,
+        documentType: documentType as DocumentType,
+        clientLastName: session.client?.lastName ?? undefined,
+        clientFirstName: session.client?.firstName ?? undefined,
+      },
     });
 
     // 5. Persist the GeneratedDocument record (firm-scoped)
