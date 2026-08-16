@@ -51,32 +51,31 @@ export default async function IntakesPage() {
     realIntakes = [];
   }
 
-  const sampleIntakes =
-    realIntakes.length === 0
-      ? [
-          { id: "int_01", client: "Elena M. Vargas", progress: "95%", status: "Almost ready" },
-          { id: "int_02", client: "Robert Chen & Lisa Patel", progress: "62%", status: "In progress" },
-          { id: "int_03", client: "Aisha K. Thompson", progress: "38%", status: "Paused" },
-        ]
-      : [];
-
-  const showingSample = realIntakes.length === 0;
-
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle>Intake sessions</CardTitle>
           <CardDescription>
-            {showingSample
-              ? "No intakes for this firm yet. Sample sessions below show how matters will appear. Start one from a client record."
+            {realIntakes.length === 0
+              ? "No intakes yet. Start one from a client record."
               : "Active and recent client intake sessions. Open a session to continue the questionnaire."}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            {realIntakes.length > 0 &&
-              realIntakes.map((item: any) => (
+          {realIntakes.length === 0 ? (
+            <div className="rounded-lg border border-dashed p-8 text-center">
+              <p className="text-lg font-semibold tracking-tight">No intakes yet</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Start an intake from a client record.
+              </p>
+              <Button asChild className="mt-4" variant="outline">
+                <Link href="/dashboard/clients">Go to Clients</Link>
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {realIntakes.map((item: any) => (
                 <Link
                   key={item.id}
                   href={`/dashboard/intakes/${item.id}`}
@@ -94,22 +93,8 @@ export default async function IntakesPage() {
                   </div>
                 </Link>
               ))}
-            {showingSample &&
-              sampleIntakes.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex items-center justify-between rounded-md border border-dashed p-3 text-sm"
-                >
-                  <div className="min-w-0">
-                    <div className="font-medium">{item.client}</div>
-                    <div className="text-xs text-muted-foreground">{item.status}</div>
-                  </div>
-                  <div className="shrink-0 text-right text-xs tabular-nums text-muted-foreground">
-                    {item.progress}
-                  </div>
-                </div>
-              ))}
-          </div>
+            </div>
+          )}
 
           <div className="pt-2">
             <Button asChild variant="outline">

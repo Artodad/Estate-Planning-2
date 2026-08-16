@@ -106,9 +106,9 @@ export default async function IntakeWizardPage({
         </Link>
         <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div className="min-w-0">
-            <h2 className="truncate text-2xl font-semibold tracking-tight">
+            <h1 className="truncate text-2xl font-semibold tracking-tight">
               {clientDisplayName}
-            </h2>
+            </h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Intake · {formatIntakeStatus(session.status)} · {initialProgress}% complete
             </p>

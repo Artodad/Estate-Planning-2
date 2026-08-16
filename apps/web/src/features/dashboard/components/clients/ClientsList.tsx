@@ -8,7 +8,6 @@ import { useRole, OWNER_STAFF } from "@/features/auth";
 import { RoleGuard } from "@/features/auth/components/role-guard";
 import type { MockClient, ClientFilter } from "../../types";
 import {
-  MOCK_CLIENTS,
   filterMockClients,
   normalizePrismaClientToMock,
 } from "./MockClientData";
@@ -48,7 +47,7 @@ interface ClientsListProps {
  * ClientsList
  *
  * Search + filters + table + detail dialog for the Clients section.
- * Real firm rows when provided; otherwise labeled sample matters.
+ * Live list shows firm rows only — never mock matters as a caseload.
  * RoleGuard + start-intake / create-client / generate wiring unchanged.
  */
 export function ClientsList({ initialRealClients = [] }: ClientsListProps) {
@@ -87,13 +86,10 @@ export function ClientsList({ initialRealClients = [] }: ClientsListProps) {
     manifest: Array<{ documentType: string; individualFileKey: string }>;
   }>(null);
 
-  // D integration: prefer real firm-scoped data (normalized for compat) when provided
-  // and non-empty. Falls back cleanly to the full mock set. All downstream components
-  // (table, filters, dialog) receive the MockClient shape they expect — zero breakage.
-  const isUsingRealData = Array.isArray(initialRealClients) && initialRealClients.length > 0;
-  const baseClients = isUsingRealData
-    ? initialRealClients.map(normalizePrismaClientToMock)
-    : MOCK_CLIENTS;
+  // Firm rows only. An empty firm is an empty list — never MOCK_CLIENTS as a caseload.
+  const realRows = Array.isArray(initialRealClients) ? initialRealClients : [];
+  const isUsingRealData = realRows.length > 0;
+  const baseClients = realRows.map(normalizePrismaClientToMock);
 
   const filteredClients = filterMockClients(baseClients, searchTerm, activeFilter);
 
@@ -309,9 +305,9 @@ export function ClientsList({ initialRealClients = [] }: ClientsListProps) {
         <div>
           <h2 className="text-xl font-semibold tracking-tight">Client matters</h2>
           <p className="text-sm text-muted-foreground">
-            {isUsingRealData
-              ? `${baseClients.length} ${baseClients.length === 1 ? "client" : "clients"}`
-              : "Sample matters — create a client to start a real intake."}
+            {baseClients.length === 0
+              ? "Create a client to start an intake."
+              : `${baseClients.length} ${baseClients.length === 1 ? "client" : "clients"}`}
           </p>
         </div>
 
@@ -336,12 +332,6 @@ export function ClientsList({ initialRealClients = [] }: ClientsListProps) {
           <span className="font-medium">{actionFeedback.action}</span>
           {" for "}
           <span className="font-medium">{actionFeedback.clientName}</span>.
-          {!isUsingRealData && (
-            <span className="text-muted-foreground">
-              {" "}
-              Sample record — create a client to run this on a real matter.
-            </span>
-          )}
         </div>
       )}
 
@@ -386,18 +376,38 @@ export function ClientsList({ initialRealClients = [] }: ClientsListProps) {
         </div>
       )}
 
-      {/* Search + Filters (client state) */}
-      <ClientFilters
-        searchTerm={searchTerm}
-        onSearchChange={setSearchTerm}
-        activeFilter={activeFilter}
-        onFilterChange={setActiveFilter}
-        resultCount={filteredClients.length}
-        totalCount={baseClients.length}
-      />
+      {baseClients.length === 0 ? (
+        <div className="rounded-lg border border-dashed p-8 text-center">
+          <h3 className="text-lg font-semibold tracking-tight">No clients yet</h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Create a client to start an intake and generate draft documents.
+          </p>
+          <RoleGuard allowed={OWNER_STAFF}>
+            <Button
+              className="mt-4"
+              onClick={() => {
+                setCreateError(null);
+                setShowCreateDialog(true);
+              }}
+            >
+              + New Client
+            </Button>
+          </RoleGuard>
+        </div>
+      ) : (
+        <>
+          <ClientFilters
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            activeFilter={activeFilter}
+            onFilterChange={setActiveFilter}
+            resultCount={filteredClients.length}
+            totalCount={baseClients.length}
+          />
 
-      {/* The star of the show: the table */}
-      <ClientsTable clients={filteredClients} onAction={handleAction} />
+          <ClientsTable clients={filteredClients} onAction={handleAction} />
+        </>
+      )}
 
       <p className="border-t pt-4 text-xs text-muted-foreground">
         View opens the matter summary. Intake and Generate stay on this list for owners and staff.

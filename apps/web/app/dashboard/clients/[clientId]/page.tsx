@@ -35,7 +35,7 @@ import { Button } from "@/components/ui/button";
  *   - Summary (displayName, contact, notes)
  *   - Linked Intakes with resume links to the existing wizard
  *   - Generated Documents with live download links via /api/documents/download
- *   - Simple notes stub (client component)
+ *   - Internal notes (client component)
  *   - Prominent "Generate Full Estate Plan" button (real wiring via the thin package)
  *   - Light delete (with confirmation)
  *
@@ -47,7 +47,7 @@ interface ClientDetailPageProps {
   params: Promise<{ clientId: string }>;
 }
 
-// Small client island for the prominent generate button + notes stub (keeps the page mostly server).
+// Small client island for the prominent generate button + notes (keeps the page mostly server).
 // Re-uses the exact same resolver + package pattern established in ClientsList for consistency.
 function GenerateAndNotes({
   clientId,
@@ -206,7 +206,6 @@ function GenerateAndNotes({
         </GenerationErrorBoundary>
       </RoleGuard>
 
-      {/* Notes (stub for Phase 5) */}
       <div className="rounded-lg border bg-card p-4">
         <div className="mb-2 text-sm font-medium">Internal notes</div>
         <textarea
