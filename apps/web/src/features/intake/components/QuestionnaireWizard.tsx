@@ -305,7 +305,7 @@ export function QuestionnaireWizard(props: QuestionnaireWizardProps) {
       if (!onPersist) {
         // No-op in C (E will supply). Still update local lastSaved via machine.
         setSaveStatus("saved");
-        setSaveMessage("Saved locally (demo)");
+        setSaveMessage("Saved locally");
         return;
       }
 
@@ -604,39 +604,24 @@ export function QuestionnaireWizard(props: QuestionnaireWizardProps) {
 
       {/* CHAT MODE SLOT (placeholder — ready for Sub-agent D) */}
       {uiMode === "chat" && (
-        <Card className="mx-auto max-w-4xl border-dashed">
+        <Card className="mx-auto max-w-4xl">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <MessageSquare className="h-5 w-5" />
               Conversational Intake (Preview)
             </CardTitle>
             <CardDescription>
-              This slot is reserved for the constrained AI chat experience (Sub-agent D).
+              Guided chat for this questionnaire is not available yet. Use the structured wizard — it remains the source of truth.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4 py-10 text-center">
-            <div className="mx-auto max-w-md text-sm text-muted-foreground">
-              The conversational layer will share the <strong>exact same XState actor</strong> as the wizard.
-              It will emit <code>SAVE_ANSWER</code> events with validated JSON deltas only.
-              <br />
-              <span className="font-semibold text-amber-600">Safety contract (immutable):</span> Never generates legal text, advice, or document language. Always follows current section schema + machine guards.
-            </div>
-
-            <div className="rounded-md border bg-muted/50 p-4 text-left text-xs font-mono">
-              &lt;ConversationalIntake<br />
-              &nbsp;&nbsp;actor={"{actor}"}<br />
-              &nbsp;&nbsp;send={"{send}"}<br />
-              &nbsp;&nbsp;currentSection={"{currentSection}"}<br />
-              &nbsp;&nbsp;onApplyDelta={"{(delta) => send({ type: 'SAVE_ANSWER', section, data: delta })}"}<br />
-              /&gt;
-            </div>
-
-            <Button onClick={() => setUiMode("wizard")} className="mt-4">
+          <CardContent className="space-y-4 py-8 text-center">
+            <p className="mx-auto max-w-md text-sm text-muted-foreground">
+              When chat ships, it will collect the same answers as this wizard.
+              It never generates legal text, advice, or document language.
+            </p>
+            <Button onClick={() => setUiMode("wizard")}>
               Return to Structured Wizard
             </Button>
-            <p className="text-[10px] text-muted-foreground">
-              The wizard remains the source of truth and fallback at all times.
-            </p>
           </CardContent>
         </Card>
       )}
@@ -742,7 +727,7 @@ export function QuestionnaireWizard(props: QuestionnaireWizardProps) {
                       variant="outline"
                       onClick={() => send({ type: "RESET" })}
                     >
-                      Start New Session (dev)
+                      Start a new intake
                     </Button>
                   </div>
                 ) : (
@@ -764,8 +749,8 @@ export function QuestionnaireWizard(props: QuestionnaireWizardProps) {
                 </Button>
 
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <RoleGuard allowed={OWNER_STAFF} fallback={<span>Client view (read + limited edit)</span>}>
-                    <span>Firm-scoped • Attorney control retained</span>
+                  <RoleGuard allowed={OWNER_STAFF} fallback={<span>Client view — limited edit</span>}>
+                    <span>Answers stay with this firm. Documents remain drafts until you review them.</span>
                   </RoleGuard>
                 </div>
 
@@ -1319,7 +1304,6 @@ function DynamicSectionForm({
               <Button type="submit">Save &amp; Continue</Button>
             </div>
 
-            <p className="text-[10px] text-muted-foreground">Complex repeating sections (children, assets, decision makers) support full add/remove + validation. Extend fields in schema + here in lockstep.</p>
           </form>
         );
       }

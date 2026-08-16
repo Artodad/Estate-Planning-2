@@ -79,7 +79,7 @@ export function ClientsTable({ clients, onAction }: ClientsTableProps) {
                 {/* Client name + email */}
                 <TableCell className="font-medium">
                   <div className="font-semibold">{client.name}</div>
-                  <div className="font-mono text-xs text-muted-foreground">
+                  <div className="text-xs text-muted-foreground">
                     {client.email}
                   </div>
                 </TableCell>
@@ -123,7 +123,7 @@ export function ClientsTable({ clients, onAction }: ClientsTableProps) {
                           variant="outline"
                           size="sm"
                           className="h-8 px-2.5 text-xs"
-                          title="Scaffold action — opens read-only detail modal"
+                          title="View matter summary"
                         >
                           View
                         </Button>
@@ -131,13 +131,12 @@ export function ClientsTable({ clients, onAction }: ClientsTableProps) {
                       onAction={onAction}
                     />
 
-                    {/* Role-gated higher-value actions (still scaffolds) */}
                     <RoleGuard allowed={OWNER_STAFF}>
                       <Button
                         variant="ghost"
                         size="sm"
                         className="h-8 px-2.5 text-xs"
-                        title="Opens the adaptive intake wizard for this client (demo on mock rows)"
+                        title="Open or resume intake for this client"
                         onClick={() => onAction("Start / Resume Intake", client)}
                       >
                         Intake
@@ -149,7 +148,7 @@ export function ClientsTable({ clients, onAction }: ClientsTableProps) {
                         variant="ghost"
                         size="sm"
                         className="h-8 px-2.5 text-xs"
-                        title="Generate full estate plan package (live on real clients with completed intake)"
+                        title="Generate documents for this client"
                         onClick={() => onAction("Generate Documents", client)}
                       >
                         Generate

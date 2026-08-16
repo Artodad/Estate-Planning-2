@@ -208,7 +208,7 @@ function GenerateAndNotes({
 
       {/* Notes (stub for Phase 5) */}
       <div className="rounded-lg border bg-card p-4">
-        <div className="mb-2 text-sm font-medium">Internal Notes (stub)</div>
+        <div className="mb-2 text-sm font-medium">Internal notes</div>
         <textarea
           className="w-full rounded border p-2 text-sm"
           rows={4}
@@ -222,8 +222,8 @@ function GenerateAndNotes({
           </Button>
           {notesSaved && <span className="text-xs text-emerald-600">Saved</span>}
         </div>
-        <p className="mt-1 text-[10px] text-muted-foreground">
-          Persisted via the protected `updateClientForCurrentFirm` Server Action (audited, firm-scoped).
+        <p className="mt-1 text-xs text-muted-foreground">
+          Visible only to your firm.
         </p>
       </div>
 
@@ -234,7 +234,7 @@ function GenerateAndNotes({
             Delete Client
           </Button>
           <span className="ml-2 text-xs text-muted-foreground">
-            (Confirmation required — cascades related records per schema)
+            Confirmation required. This cannot be undone.
           </span>
         </div>
       </RoleGuard>
@@ -298,8 +298,8 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
           <div className="text-sm text-muted-foreground">{client.email}</div>
         </div>
 
-        <div className="text-right text-xs text-muted-foreground font-mono">
-          Client ID: {client.id.slice(0, 8)}...
+        <div className="text-right text-xs text-muted-foreground">
+          Last updated {new Date(client.updatedAt).toLocaleDateString()}
         </div>
       </div>
 
@@ -328,8 +328,8 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
           <div className="text-xs uppercase tracking-widest text-muted-foreground">Activity</div>
           <div className="mt-1">Created: {new Date(client.createdAt).toLocaleDateString()}</div>
           <div>Last updated: {new Date(client.updatedAt).toLocaleDateString()}</div>
-          <div className="mt-2 text-[10px] text-muted-foreground">
-            All data scoped to your firm. DRAFT documents only.
+          <div className="mt-2 text-xs text-muted-foreground">
+            Firm records only. Generated documents are drafts.
           </div>
         </div>
       </div>
@@ -412,8 +412,8 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
             </table>
           </div>
         )}
-        <p className="mt-2 text-[10px] text-muted-foreground">
-          Downloads are served through the secure RBAC-protected route. Every file contains the visible DRAFT header.
+        <p className="mt-2 text-xs text-muted-foreground">
+          Every file carries a visible DRAFT header.
         </p>
       </div>
 
@@ -429,9 +429,6 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
         }}
       />
 
-      <div className="pt-4 text-[10px] text-muted-foreground font-mono">
-        Real DB-backed client detail page (Phase 5). All actions are RBAC + firm-scoped.
-      </div>
     </div>
   );
 }

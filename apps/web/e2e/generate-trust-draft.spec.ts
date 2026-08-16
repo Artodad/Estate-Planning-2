@@ -88,6 +88,10 @@ test.describe("Generate Trust draft — intake UI calls generateDocumentForIntak
     await intakeBtn.click();
     await expect(page).toHaveURL(/\/dashboard\/intakes\//, { timeout: 15000 });
 
+    await expect(page.getByRole("heading", { name: displayName })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(/Intake ·/)).toBeVisible();
+    await expect(page.getByText(/SCAFFOLD|MOCK DATA|JSONB|Firm-scoped/i)).toHaveCount(0);
+
     const generateBtn = page.getByRole("button", { name: /Generate Trust draft/i });
     await expect(generateBtn).toBeVisible({ timeout: 15000 });
     await expect(page.getByRole("button", { name: /Generate Full Estate Plan/i })).toHaveCount(0);

@@ -56,42 +56,49 @@ export function GenerateTrustDraftButton({
   return (
     <RoleGuard allowed={OWNER_STAFF}>
       <GenerationErrorBoundary>
-        <div className="rounded-lg border bg-card p-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <div className="text-sm font-medium">Trust Family draft</div>
-              <div className="text-xs text-muted-foreground">
-                Fills one Revocable Living Trust DRAFT from this intake. For attorney review only.
-              </div>
+        <section className="space-y-4 border-t pt-8">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0">
+              <h2 className="text-lg font-semibold tracking-tight">Generate Trust draft</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Next step after intake: fill one Revocable Living Trust from these answers.
+                The file is watermarked DRAFT — for attorney review only.
+              </p>
             </div>
             <Button
               onClick={handleGenerate}
               disabled={isGenerating || !intakeId}
               size="lg"
+              className="shrink-0"
             >
               {isGenerating ? "Generating Trust draft…" : "Generate Trust draft"}
             </Button>
           </div>
 
-          {error && <ErrorCallout className="mt-3">{error}</ErrorCallout>}
+          {error && <ErrorCallout>{error}</ErrorCallout>}
 
           {result && (
-            <div className="mt-4 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-200">
-              <div className="font-semibold">Trust draft generated</div>
-              <a
-                href={`/api/documents/download?fileKey=${encodeURIComponent(result.fileKey)}`}
-                className="mt-2 inline-flex items-center rounded bg-emerald-600 px-3 py-1 text-xs font-medium text-white hover:bg-emerald-700"
-                download
-              >
-                Download Trust DRAFT
-              </a>
-              <p className="mt-2 text-[10px] text-emerald-600">
-                Visible DRAFT watermark. Exact fidelity to your attorney Trust Family template.
-              </p>
+            <div className="space-y-4">
+              <div className="flex flex-col gap-3 rounded-lg border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-medium">Trust draft is ready</p>
+                  <p className="mt-0.5 text-sm text-muted-foreground">
+                    Download the Word file. Every page carries a visible DRAFT watermark
+                    matching your Trust Family template.
+                  </p>
+                </div>
+                <a
+                  href={`/api/documents/download?fileKey=${encodeURIComponent(result.fileKey)}`}
+                  className="inline-flex h-9 shrink-0 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                  download
+                >
+                  Download Trust DRAFT
+                </a>
+              </div>
               {result.fillReport && <TrustDraftFillReport report={result.fillReport} />}
             </div>
           )}
-        </div>
+        </section>
       </GenerationErrorBoundary>
     </RoleGuard>
   );
