@@ -19,6 +19,8 @@ import { fileURLToPath } from "node:url";
 import PizZip from "pizzip";
 import Docxtemplater from "docxtemplater";
 
+import { createActor } from "xstate";
+
 import { mapIntakeToDocVariables } from "./mapper";
 import { applyDraftWatermark, DRAFT_TEXT } from "./draft-watermark-module";
 import { normalizeTemplateBuffer } from "./template-normalize/normalize-template";
@@ -32,6 +34,8 @@ import {
   marriedCaRichIntake,
   singleNoChildrenIntake,
 } from "./__fixtures__/intake-answers";
+import { getInitialContext, questionnaireMachine } from "../intake/machine";
+import type { PartialIntake } from "../intake/schemas/intake";
 
 /** PR #10 intake-backed soft-blank / Educational Trust tags. */
 const INTAKE_BACKED_SOFT_BLANK_TAGS = [
@@ -544,4 +548,104 @@ test("complementary intake → fill (synthetic): linked alternate fills second s
   assert.match(unrelated, /Second Successor:\s*$/m);
   assert.ok(!unrelated.includes("Alt Exec"), "executor alternate must not fill second successor");
   assert.ok(!unrelated.includes("{second_successor_trustee_full_name}"));
+});
+
+/**
+ * Wizard persist shape: Decision Makers (id + alternateFor) and Distribution
+ * (residuary name/relationship/sharePercent, including string percents from
+ * number inputs) via SAVE_ANSWER — the runtime path the mapper never received.
+ */
+function persistWizardResiduaryAndAlternateFor(): PartialIntake {
+  const actor = createActor(questionnaireMachine, {
+    input: getInitialContext({ clientId: "c-wizard-loop", firmId: "f-wizard-loop" }),
+  });
+  actor.start();
+  actor.send({ type: "START" });
+  actor.send({
+    type: "SAVE_ANSWER",
+    section: "personal",
+    data: {
+      client: { firstName: "Elena", lastName: "Vargas" },
+      maritalStatus: "married",
+      spouseOrPartner: { firstName: "Diego", lastName: "Vargas" },
+      isCAResident: true,
+      countyOfResidence: "Alameda",
+    },
+  });
+  actor.send({
+    type: "SAVE_ANSWER",
+    section: "decisionMakers",
+    data: [
+      {
+        id: "dm-succ-1",
+        role: "successor_trustee",
+        person: { firstName: "Isabella", lastName: "Vargas" },
+      },
+      {
+        id: "dm-succ-alt",
+        role: "alternate",
+        alternateFor: "dm-succ-1",
+        person: { firstName: "Nora", lastName: "Chen" },
+      },
+    ],
+  });
+  actor.send({
+    type: "SAVE_ANSWER",
+    section: "distribution",
+    data: {
+      residuary: [
+        { name: "Sofia Vargas", relationship: "daughter", sharePercent: "50" },
+        { name: "Leo Vargas", relationship: "son", sharePercent: "50" },
+      ],
+      firstDistributionAge: "23",
+      educationalTrustEligibilityAge: "21",
+      educationalTrustRemainderAge: "25",
+      educationalTrustTerminationAge: "30",
+    },
+  });
+  return actor.getSnapshot().context.answers;
+}
+
+test("intake → fill (synthetic): wizard-collected residuary + alternateFor reach mapper", () => {
+  const answers = persistWizardResiduaryAndAlternateFor();
+  const residuary = answers.distribution?.residuary ?? [];
+  assert.equal(residuary.length, 2);
+  assert.equal(residuary[0]?.name, "Sofia Vargas");
+  assert.equal(residuary[0]?.sharePercent, 50);
+  assert.equal(typeof residuary[0]?.sharePercent, "number");
+  assert.equal(residuary[1]?.name, "Leo Vargas");
+  assert.equal(residuary[1]?.sharePercent, 50);
+  const alt = (answers.decisionMakers ?? []).find((dm) => dm.role === "alternate");
+  assert.equal(alt?.alternateFor, "dm-succ-1");
+
+  const variables = mapIntakeToDocVariables(answers, "revocable_trust");
+  const text = plainTextFromDocx(renderDocx(createIntakeFillTemplateDocx(), variables));
+
+  assert.match(text, /Client: Elena Vargas/);
+  assert.match(text, /Spouse: Diego Vargas/);
+  assert.ok(!text.includes("[No spouse section]"), "married polarity must keep the spouse block");
+  assert.ok(text.includes("- Sofia Vargas @ 50%"));
+  assert.ok(text.includes("- Leo Vargas @ 50%"));
+  assert.match(text, /Successor Trustee: Isabella Vargas/);
+  assert.match(text, /Second Successor: Nora Chen/);
+  assert.ok(!text.includes("Carmen Vargas"), "2nd successor_trustee fixture must not leak");
+  // Educational / staggered ages stay distinct (do not collapse 21/25/30 vs 23)
+  assert.match(text, /First Distribution Age: 23/);
+  assert.match(text, /Educational Eligibility Age: 21/);
+  assert.match(text, /Educational Remainder Age: 25/);
+  assert.match(text, /Educational Termination Age: 30/);
+  assert.ok(text.includes("21") && text.includes("25") && text.includes("30") && text.includes("23"));
+  assert.notEqual(variables.first_distribution_age, variables.educational_trust_eligibility_age);
+  assert.notEqual(variables.first_distribution_age, variables.educational_trust_remainder_age);
+  assert.notEqual(variables.first_distribution_age, variables.educational_trust_termination_age);
+  assertNoUnresolvedMapperTags(text, [
+    "client_full_name",
+    "spouse_full_name",
+    "successor_trustee_full_name",
+    "second_successor_trustee_full_name",
+    "first_distribution_age",
+    "educational_trust_eligibility_age",
+    "educational_trust_remainder_age",
+    "educational_trust_termination_age",
+  ]);
 });
