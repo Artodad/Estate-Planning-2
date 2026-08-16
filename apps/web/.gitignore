@@ -3,3 +3,6 @@
 /test-results/
 /e2e/.auth/
 *.log
+
+# Clerk local keyless cache (do not track)
+.clerk/
