@@ -11,7 +11,8 @@ import {
 
 /**
  * Punch list under the Trust draft download.
- * Rows come from that generate's stored fill report — tag names only.
+ * Section doors lead with punchListActionCopy (people they already entered).
+ * Field / unmapped rows still show the leftover tag.
  */
 export function TrustDraftFillReport({
   report,
@@ -38,16 +39,31 @@ export function TrustDraftFillReport({
               const loop = loopCountForPunchTag(row.tag, report);
               const door = row.href ? (row.field ? "field" : "section") : "none";
               const action = punchListActionCopy(row, report);
+              const hooks = {
+                "data-punch-row": "" as const,
+                "data-tag": row.tag,
+                "data-punch-door": door,
+                "data-loop-count": loop ? String(loop.count) : undefined,
+                "data-loop-noun": loop?.noun,
+              };
               return (
                 <li key={row.tag}>
-                  {row.href ? (
+                  {door === "section" && row.href ? (
                     <a
                       href={`${row.href}#intake-wizard`}
-                      data-punch-row=""
-                      data-tag={row.tag}
-                      data-punch-door={door}
-                      data-loop-count={loop ? String(loop.count) : undefined}
-                      data-loop-noun={loop?.noun}
+                      {...hooks}
+                      className="group flex items-center justify-between gap-4 rounded-md py-2.5 text-foreground outline-none hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    >
+                      <span className="text-sm font-medium leading-6">{action}</span>
+                      <ChevronRight
+                        className="h-4 w-4 shrink-0 text-muted-foreground group-hover:text-foreground"
+                        aria-hidden
+                      />
+                    </a>
+                  ) : row.href ? (
+                    <a
+                      href={`${row.href}#intake-wizard`}
+                      {...hooks}
                       className="group flex items-center justify-between gap-4 rounded-md py-2.5 outline-none hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     >
                       <span className="font-mono text-[13px] leading-6">{row.tag}</span>
@@ -60,9 +76,7 @@ export function TrustDraftFillReport({
                     <button
                       type="button"
                       disabled
-                      data-punch-row=""
-                      data-tag={row.tag}
-                      data-punch-door={door}
+                      {...hooks}
                       className="flex w-full cursor-default items-center justify-between gap-4 py-2.5 text-left text-muted-foreground"
                     >
                       <span className="font-mono text-[13px] leading-6">{row.tag}</span>
