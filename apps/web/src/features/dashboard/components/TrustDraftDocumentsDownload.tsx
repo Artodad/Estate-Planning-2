@@ -27,7 +27,7 @@ export function TrustDraftDocumentsDownload({
     <>
       <a
         href={stampedHref}
-        className="rounded border px-3 py-1 font-medium hover:bg-muted"
+        className="inline-flex h-9 shrink-0 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
         download
         data-testid="trust-draft-download"
         data-leftover-count={String(leftoverCount)}
@@ -38,7 +38,7 @@ export function TrustDraftDocumentsDownload({
           }
         }}
       >
-        Download
+        Download Trust DRAFT
       </a>
       {leftoverCount > 0 && (
         <TrustDraftDownloadConfirmDialog

@@ -23,7 +23,15 @@ import {
   isRevocableTrustDocumentType,
 } from "@/features/dashboard/components/documents-trust-draft-row";
 import { parseStoredFillReport } from "@/features/documents/fill-report";
+import type { PartialIntake } from "@/features/intake/schemas/intake";
 import { generatedDocumentHelpers } from "@/lib/prisma";
+
+function trustDraftClientName(answers: PartialIntake | null): string | null {
+  const first = answers?.personal?.client?.firstName?.trim() ?? "";
+  const last = answers?.personal?.client?.lastName?.trim() ?? "";
+  const name = `${first} ${last}`.trim();
+  return name || null;
+}
 
 /**
  * /dashboard/documents
@@ -78,19 +86,13 @@ export default async function DocumentsPage() {
             <div className="space-y-3">
               {realDocs.map((d) => {
                 const isTrust = isRevocableTrustDocumentType(d.documentType);
-                const report = isTrust ? parseStoredFillReport(d.fillReport) : null;
-                const answers = isTrust
-                  ? documentsRowIntakeAnswers(d.intakeSession?.answers)
-                  : null;
-                const leftoverCount = leftoverCountFromFillReport(report, answers);
-
-                return (
-                  <div
-                    key={d.id}
-                    className="space-y-3 rounded border p-3 text-sm"
-                    data-document-type={d.documentType}
-                  >
-                    <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+                if (!isTrust) {
+                  return (
+                    <div
+                      key={d.id}
+                      className="flex flex-col gap-1 rounded border p-3 text-sm md:flex-row md:items-center md:justify-between"
+                      data-document-type={d.documentType}
+                    >
                       <div>
                         <div className="font-medium">
                           {d.documentType} — {d.template?.name ?? "Custom"}
@@ -108,22 +110,54 @@ export default async function DocumentsPage() {
                             {d.generatedAt ? new Date(d.generatedAt).toLocaleDateString() : ""}
                           </div>
                         </div>
-                        {isTrust ? (
-                          <TrustDraftDocumentsDownload
-                            fileKey={d.fileKey}
-                            leftoverCount={leftoverCount}
-                          />
-                        ) : (
-                          <a
-                            href={`/api/documents/download?fileKey=${encodeURIComponent(d.fileKey)}`}
-                            className="rounded border px-3 py-1 font-medium hover:bg-muted"
-                          >
-                            Download
-                          </a>
-                        )}
+                        <a
+                          href={`/api/documents/download?fileKey=${encodeURIComponent(d.fileKey)}`}
+                          className="rounded border px-3 py-1 font-medium hover:bg-muted"
+                        >
+                          Download
+                        </a>
                       </div>
                     </div>
-                    {isTrust && report ? (
+                  );
+                }
+
+                const report = parseStoredFillReport(d.fillReport);
+                const answers = documentsRowIntakeAnswers(d.intakeSession?.answers);
+                const leftoverCount = leftoverCountFromFillReport(report, answers);
+                const clientName = trustDraftClientName(answers);
+                const generatedOn = d.generatedAt
+                  ? new Date(d.generatedAt).toLocaleDateString()
+                  : "";
+
+                return (
+                  <div
+                    key={d.id}
+                    className="space-y-6 rounded-lg border p-5 sm:p-6"
+                    data-document-type={d.documentType}
+                  >
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium tracking-tight">
+                          {clientName ?? "Trust draft"}
+                        </p>
+                        {clientName || generatedOn ? (
+                          <p className="mt-0.5 text-xs text-muted-foreground">
+                            {[clientName ? "Trust draft" : null, generatedOn]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </p>
+                        ) : null}
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          Download the DRAFT, then clear any holes below. Every page is
+                          watermarked for attorney review only.
+                        </p>
+                      </div>
+                      <TrustDraftDocumentsDownload
+                        fileKey={d.fileKey}
+                        leftoverCount={leftoverCount}
+                      />
+                    </div>
+                    {report ? (
                       <TrustDraftFillReport
                         report={report}
                         answers={answers}
