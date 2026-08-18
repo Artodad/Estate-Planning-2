@@ -5,6 +5,7 @@ import {
   Dialog,
   DialogClose,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -36,14 +37,23 @@ export function TrustDraftDownloadConfirmDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
+        showCloseButton={false}
         data-slot="trust-draft-download-confirm"
         data-testid="trust-draft-download-confirm"
         data-leftover-count={String(leftoverCount)}
+        className="gap-5 sm:max-w-md"
       >
-        <DialogHeader>
-          <DialogTitle data-slot="trust-draft-download-confirm-phrase">
+        <DialogHeader className="gap-3 pr-0">
+          <DialogTitle
+            data-slot="trust-draft-download-confirm-phrase"
+            className="text-lg leading-snug tracking-tight"
+          >
             {phrase}
           </DialogTitle>
+          <DialogDescription className="text-[13px] leading-relaxed">
+            You reviewed the holes. This download records that you sent the draft
+            with those leftovers.
+          </DialogDescription>
         </DialogHeader>
         <DialogFooter>
           <DialogClose asChild>
@@ -59,7 +69,7 @@ export function TrustDraftDownloadConfirmDialog({
               data-testid="trust-draft-download-confirm-proceed"
               onClick={() => onOpenChange(false)}
             >
-              {phrase}
+              Download anyway
             </a>
           </Button>
         </DialogFooter>
