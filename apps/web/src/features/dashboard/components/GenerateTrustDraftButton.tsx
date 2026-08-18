@@ -78,26 +78,24 @@ export function GenerateTrustDraftButton({
           {error && <ErrorCallout>{error}</ErrorCallout>}
 
           {result && (
-            <div className="space-y-4">
-              <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
-                <div className="flex flex-col gap-3 rounded-lg border bg-card p-4 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-sm font-medium">Trust draft is ready</p>
-                    <p className="mt-0.5 text-sm text-muted-foreground">
-                      Download the Word file. Every page carries a visible DRAFT watermark
-                      matching your Trust Family template.
-                    </p>
-                  </div>
-                  <a
-                    href={`/api/documents/download?fileKey=${encodeURIComponent(result.fileKey)}`}
-                    className="inline-flex h-9 shrink-0 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-                    download
-                  >
-                    Download Trust DRAFT
-                  </a>
+            <div className="space-y-6">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium">Trust draft is ready</p>
+                  <p className="mt-0.5 text-sm text-muted-foreground">
+                    Download the DRAFT, then clear any holes below. Every page is watermarked
+                    for attorney review only.
+                  </p>
                 </div>
-                {result.fillReport && <TrustDraftFillReport report={result.fillReport} />}
+                <a
+                  href={`/api/documents/download?fileKey=${encodeURIComponent(result.fileKey)}`}
+                  className="inline-flex h-9 shrink-0 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                  download
+                >
+                  Download Trust DRAFT
+                </a>
               </div>
+              {result.fillReport && <TrustDraftFillReport report={result.fillReport} />}
             </div>
           )}
         </section>

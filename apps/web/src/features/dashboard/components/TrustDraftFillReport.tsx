@@ -1,9 +1,11 @@
+import { ChevronRight } from "lucide-react";
+
 import type { DocumentFillReport } from "@/features/documents/types";
 
 import { punchListFromFillReport } from "./fill-report-punch-list";
 
 /**
- * Punch list next to the Trust draft download.
+ * Punch list under the Trust draft download.
  * Rows come from that generate's stored fill report — tag names only.
  */
 export function TrustDraftFillReport({ report }: { report: DocumentFillReport }) {
@@ -11,23 +13,16 @@ export function TrustDraftFillReport({ report }: { report: DocumentFillReport })
   const filledCount = report.filledScalars.length;
 
   return (
-    <div className="space-y-3" data-testid="trust-draft-fill-report">
-      <details className="rounded-lg border bg-card px-4 py-3">
-        <summary className="cursor-pointer text-sm font-medium">
-          Filled
-          <span className="ml-1.5 tabular-nums text-muted-foreground">({filledCount})</span>
-        </summary>
-      </details>
-
-      <div
-        className="rounded-lg border bg-card p-4"
-        data-testid="trust-draft-punch-list"
-      >
-        <h3 className="text-sm font-semibold tracking-tight">Punch list</h3>
+    <div className="space-y-5" data-testid="trust-draft-fill-report">
+      <div data-testid="trust-draft-punch-list">
+        <h3 className="text-sm font-semibold tracking-tight">
+          Needs attention
+          <span className="ml-1.5 tabular-nums text-muted-foreground">({rows.length})</span>
+        </h3>
         {rows.length === 0 ? (
-          <p className="mt-2 text-sm text-muted-foreground">No leftover tags.</p>
+          <p className="mt-2 text-sm text-muted-foreground">Nothing needs attention.</p>
         ) : (
-          <ul className="mt-3 space-y-1">
+          <ul className="mt-1 divide-y">
             {rows.map((row) => (
               <li key={row.tag}>
                 {row.href ? (
@@ -35,9 +30,13 @@ export function TrustDraftFillReport({ report }: { report: DocumentFillReport })
                     href={`${row.href}#intake-wizard`}
                     data-punch-row=""
                     data-tag={row.tag}
-                    className="flex w-full rounded-md border bg-background px-3 py-2 text-left text-sm hover:bg-muted/50"
+                    className="group flex items-center justify-between gap-4 rounded-md py-2.5 outline-none hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                   >
-                    {row.tag}
+                    <span className="font-mono text-[13px] leading-6">{row.tag}</span>
+                    <span className="inline-flex shrink-0 items-center gap-0.5 text-xs font-medium text-muted-foreground group-hover:text-foreground">
+                      Go to field
+                      <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+                    </span>
                   </a>
                 ) : (
                   <button
@@ -45,9 +44,10 @@ export function TrustDraftFillReport({ report }: { report: DocumentFillReport })
                     disabled
                     data-punch-row=""
                     data-tag={row.tag}
-                    className="flex w-full cursor-not-allowed rounded-md border bg-background px-3 py-2 text-left text-sm text-muted-foreground"
+                    className="flex w-full cursor-default items-center justify-between gap-4 py-2.5 text-left text-muted-foreground"
                   >
-                    {row.tag}
+                    <span className="font-mono text-[13px] leading-6">{row.tag}</span>
+                    <span className="shrink-0 text-xs">No intake field</span>
                   </button>
                 )}
               </li>
@@ -55,6 +55,22 @@ export function TrustDraftFillReport({ report }: { report: DocumentFillReport })
           </ul>
         )}
       </div>
+
+      <details className="text-sm">
+        <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+          Filled
+          <span className="ml-1.5 tabular-nums">({filledCount})</span>
+        </summary>
+        {filledCount > 0 ? (
+          <ul className="mt-2 space-y-1">
+            {report.filledScalars.map((tag) => (
+              <li key={tag} className="font-mono text-[13px] text-muted-foreground">
+                {tag}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </details>
     </div>
   );
 }
