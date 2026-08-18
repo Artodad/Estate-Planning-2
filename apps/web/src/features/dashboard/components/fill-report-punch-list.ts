@@ -4,6 +4,8 @@
  * Resolve leftover/empty tags via MAPPER_CONTRACT_KEYS / TAG_ALIASES only.
  * A real jump requires a Field id the wizard already sets (id={name}).
  * No mapper-key → field / section / required tables.
+ * Session answers drop computed leftovers (full names / has_spouse / is_ca_resident)
+ * when the parts that compose them are already present.
  */
 
 import { z } from "zod";
@@ -17,8 +19,12 @@ import {
 } from "@/features/documents/template-normalize/normalize-tags";
 import { WIZARD_CONTROL_IDS } from "@/features/intake/components/wizard-control-ids";
 import {
+  PersonalInfoSchema,
   SECTION_ORDER,
   SECTION_SCHEMAS,
+  hasSpouseOrPartner,
+  isCAResident,
+  type PartialIntake,
   type SectionKey,
 } from "@/features/intake/schemas/intake";
 
@@ -115,18 +121,64 @@ export function punchListHref(section: SectionKey | null, field: string | null):
   return `?${params.toString()}`;
 }
 
+function trimmedNonEmpty(value: unknown): boolean {
+  return typeof value === "string" && value.trim().length > 0;
+}
+
+function firstAndLastPresent(person: { firstName?: string; lastName?: string } | undefined): boolean {
+  return trimmedNonEmpty(person?.firstName) && trimmedNonEmpty(person?.lastName);
+}
+
+function maritalStatusIsSet(answers?: PartialIntake | null): boolean {
+  return PersonalInfoSchema.shape.maritalStatus.safeParse(answers?.personal?.maritalStatus).success;
+}
+
+/**
+ * Computed mapper leftovers are not holes when the parts that make them are present.
+ * has_spouse / is_ca_resident cannot be proven from filledScalars (booleans ignored).
+ */
+function computedTagPartsPresent(
+  key: MapperContractKey,
+  report: DocumentFillReport,
+  answers?: PartialIntake | null,
+): boolean {
+  if (key === "client_full_name") {
+    return firstAndLastPresent(answers?.personal?.client) || report.filledScalars.includes("client_full_name");
+  }
+  if (key === "spouse_full_name") {
+    const session = answers ?? {};
+    if (!hasSpouseOrPartner(session)) return true;
+    return (
+      firstAndLastPresent(session.personal?.spouseOrPartner) || report.filledScalars.includes("spouse_full_name")
+    );
+  }
+  if (key === "has_spouse") {
+    return maritalStatusIsSet(answers);
+  }
+  if (key === "is_ca_resident") {
+    if (answers == null) return false;
+    return typeof isCAResident(answers) === "boolean";
+  }
+  return false;
+}
+
 /**
  * leftoverBraces always (disabled if no existing Field id).
  * emptyOptionals only when they resolve to a required wizard Field.
  * Allowed (Zod optional / leave-blank) empties stay quiet.
+ * Computed leftovers drop when their source parts are present on session answers.
  */
-export function punchListFromFillReport(report: DocumentFillReport): PunchListRow[] {
+export function punchListFromFillReport(
+  report: DocumentFillReport,
+  answers?: PartialIntake | null,
+): PunchListRow[] {
   const seen = new Set<string>();
   const rows: PunchListRow[] = [];
 
   const push = (tag: string, emptyOptional: boolean) => {
     if (seen.has(tag)) return;
     const key = resolveFillTagToMapperKey(tag);
+    if (key && computedTagPartsPresent(key, report, answers)) return;
     const { section, field } = key
       ? punchJumpForMapperKey(key)
       : { section: null, field: null };
