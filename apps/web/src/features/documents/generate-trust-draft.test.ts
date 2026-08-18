@@ -49,6 +49,13 @@ import {
   trustDraftDownloadConfirmPhrase,
   trustDraftStampedDownloadHref,
 } from "../dashboard/components/trust-draft-download-confirm";
+import { prefixedPunchListHref } from "../dashboard/components/TrustDraftFillReport";
+import {
+  documentsRowDownloadHref,
+  documentsRowIntakeAnswers,
+  documentsTrustDraftHrefPrefix,
+  isRevocableTrustDocumentType,
+} from "../dashboard/components/documents-trust-draft-row";
 
 /** Three child rows in the mapper bag so leftover {#children} still has loopCounts.children === 3. */
 const ADA_THREE_CHILDREN = [
@@ -966,5 +973,73 @@ test("stamp helper adds confirm phrase on a generated buffer without a second ge
   } finally {
     await cleanupKeys(templateFileKey, generatedFileKey ?? "");
   }
+});
+
+test("Documents punch JUMP_TO prefixes intakeSessionId; punchListFromFillReport stays relative", () => {
+  const report = leftoverReport(["young_person_retention_age", "#children"], {
+    loopCounts: { children: 3 },
+  });
+  const rows = punchListFromFillReport(report, adaAnswers);
+  const age = rows.find((r) => r.tag === "young_person_retention_age");
+  const children = rows.find((r) => r.tag === "#children");
+  assert.ok(age);
+  assert.ok(children);
+  assert.equal(age.href, "?section=distribution&field=youngPersonRetentionAge");
+  assert.equal(children.href, "?section=family");
+
+  const prefix = documentsTrustDraftHrefPrefix("sess_docs_1");
+  assert.equal(prefix, "/dashboard/intakes/sess_docs_1");
+  assert.equal(
+    prefixedPunchListHref(age.href, prefix),
+    "/dashboard/intakes/sess_docs_1?section=distribution&field=youngPersonRetentionAge",
+  );
+  assert.equal(
+    prefixedPunchListHref(children.href, prefix),
+    "/dashboard/intakes/sess_docs_1?section=family",
+  );
+  assert.equal(
+    prefixedPunchListHref(age.href),
+    age.href,
+    "intake page omits hrefPrefix — relative JUMP_TO unchanged",
+  );
+  assert.equal(prefixedPunchListHref(null, prefix), null);
+});
+
+test("Documents row passes answers ?? null so N matches stamp; {} would skip is_ca_resident", () => {
+  const leftovers = leftoverReport(["is_ca_resident", "unresolved_blank"]);
+  const missing = leftoverCountFromFillReport(leftovers, documentsRowIntakeAnswers(undefined));
+  const storedEmpty = leftoverCountFromFillReport(leftovers, documentsRowIntakeAnswers({}));
+  const omitted = leftoverCountFromFillReport(leftovers);
+  const coercedEmpty = leftoverCountFromFillReport(leftovers, {});
+
+  assert.equal(documentsRowIntakeAnswers(undefined), null);
+  assert.equal(documentsRowIntakeAnswers(null), null);
+  assert.deepEqual(documentsRowIntakeAnswers({}), {});
+  assert.equal(missing, omitted, "undefined answers must stay null, not {}");
+  assert.ok(
+    missing > storedEmpty,
+    "is_ca_resident stays when answers are missing; {} skips it",
+  );
+  assert.equal(storedEmpty, coercedEmpty);
+  assert.equal(missing, leftoverCountFromFillReport(leftovers, null));
+});
+
+test("Documents download href: revocable_trust stamps; other types stay ungated", () => {
+  const fileKey = "generated/firm/trust-DRAFT.docx";
+  assert.equal(isRevocableTrustDocumentType("revocable_trust"), true);
+  assert.equal(isRevocableTrustDocumentType("healthcare_directive"), false);
+  assert.equal(documentsRowDownloadHref("revocable_trust", fileKey), trustDraftStampedDownloadHref(fileKey));
+  assert.match(
+    documentsRowDownloadHref("revocable_trust", fileKey),
+    /^\/api\/documents\/download-trust-draft\?fileKey=/,
+  );
+  assert.equal(
+    documentsRowDownloadHref("healthcare_directive", fileKey),
+    `/api/documents/download?fileKey=${encodeURIComponent(fileKey)}`,
+  );
+  assert.ok(
+    !documentsRowDownloadHref("pour_over_will", fileKey).includes("download-trust-draft"),
+    "non-trust types stay on ungated GET /api/documents/download",
+  );
 });
 

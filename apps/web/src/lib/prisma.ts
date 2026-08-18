@@ -209,6 +209,22 @@ export const generatedDocumentHelpers = {
     });
   },
 
+  /**
+   * Documents page only. Includes intakeSession.answers so revocable_trust
+   * punch-list N matches the stamp route. listByFirm stays answers-free.
+   */
+  async listByFirmForDocuments(firmId: string, take = 20) {
+    return prisma.generatedDocument.findMany({
+      where: { firmId },
+      orderBy: { createdAt: "desc" },
+      take,
+      include: {
+        template: { select: { name: true } },
+        intakeSession: { select: { answers: true } },
+      },
+    });
+  },
+
   /** Record a successfully generated DRAFT (called by actions after generateDocument). */
   async createForFirm(
     firmId: string,

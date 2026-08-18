@@ -9,6 +9,15 @@ import {
   punchListFromFillReport,
 } from "./fill-report-punch-list";
 
+/** Prefix a relative punchListHref (`?section=`) for Documents. Intake omits this. */
+export function prefixedPunchListHref(
+  href: string | null,
+  hrefPrefix?: string,
+): string | null {
+  if (!href) return null;
+  return hrefPrefix ? `${hrefPrefix}${href}` : href;
+}
+
 /**
  * Punch list under the Trust draft download.
  * Section doors lead with punchListActionCopy (people they already entered).
@@ -17,9 +26,11 @@ import {
 export function TrustDraftFillReport({
   report,
   answers,
+  hrefPrefix,
 }: {
   report: DocumentFillReport;
   answers?: PartialIntake | null;
+  hrefPrefix?: string;
 }) {
   const rows = punchListFromFillReport(report, answers);
   const filledCount = report.filledScalars.length;
@@ -39,6 +50,7 @@ export function TrustDraftFillReport({
               const loop = loopCountForPunchTag(row.tag, report);
               const door = row.href ? (row.field ? "field" : "section") : "none";
               const action = punchListActionCopy(row, report);
+              const jumpHref = prefixedPunchListHref(row.href, hrefPrefix);
               const hooks = {
                 "data-punch-row": "" as const,
                 "data-tag": row.tag,
@@ -48,9 +60,9 @@ export function TrustDraftFillReport({
               };
               return (
                 <li key={row.tag}>
-                  {door === "section" && row.href ? (
+                  {door === "section" && jumpHref ? (
                     <a
-                      href={`${row.href}#intake-wizard`}
+                      href={`${jumpHref}#intake-wizard`}
                       {...hooks}
                       className="group flex items-center justify-between gap-4 rounded-md py-2.5 text-foreground outline-none hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     >
@@ -60,9 +72,9 @@ export function TrustDraftFillReport({
                         aria-hidden
                       />
                     </a>
-                  ) : row.href ? (
+                  ) : jumpHref ? (
                     <a
-                      href={`${row.href}#intake-wizard`}
+                      href={`${jumpHref}#intake-wizard`}
                       {...hooks}
                       className="group flex items-center justify-between gap-4 rounded-md py-2.5 outline-none hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     >

@@ -14,12 +14,22 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
+import { leftoverCountFromFillReport } from "@/features/dashboard/components/trust-draft-download-confirm";
+import { TrustDraftFillReport } from "@/features/dashboard/components/TrustDraftFillReport";
+import { TrustDraftDocumentsDownload } from "@/features/dashboard/components/TrustDraftDocumentsDownload";
+import {
+  documentsRowIntakeAnswers,
+  documentsTrustDraftHrefPrefix,
+  isRevocableTrustDocumentType,
+} from "@/features/dashboard/components/documents-trust-draft-row";
+import { parseStoredFillReport } from "@/features/documents/fill-report";
 import { generatedDocumentHelpers } from "@/lib/prisma";
 
 /**
  * /dashboard/documents
  * Shows real GeneratedDocument rows + secure downloads.
  * Full coordinated package generation is launched from the Clients section.
+ * revocable_trust rows reuse the intake punch list + stamp confirm.
  */
 export default async function DocumentsPage() {
   const authContext = await getCurrentAuthContext();
@@ -32,10 +42,13 @@ export default async function DocumentsPage() {
     errorMessage: "Documents section is available to owners and staff only.",
   });
 
-  let realDocs: any[] = [];
+  let realDocs: Awaited<ReturnType<typeof generatedDocumentHelpers.listByFirmForDocuments>> = [];
   try {
     if (authContext?.currentFirm?.id) {
-      realDocs = await generatedDocumentHelpers.listByFirm(authContext.currentFirm.id, 20);
+      realDocs = await generatedDocumentHelpers.listByFirmForDocuments(
+        authContext.currentFirm.id,
+        20,
+      );
     }
   } catch {
     realDocs = [];
@@ -63,37 +76,63 @@ export default async function DocumentsPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {realDocs.map((d: any) => (
-                <div
-                  key={d.id}
-                  className="flex flex-col gap-1 rounded border p-3 text-sm md:flex-row md:items-center md:justify-between"
-                >
-                  <div>
-                    <div className="font-medium">
-                      {d.documentType} — {d.template?.name ?? "Custom"}
-                    </div>
-                    <div className="break-all text-xs text-muted-foreground font-mono">
-                      {d.fileKey}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3 text-right text-xs">
-                    <div>
-                      <div className="font-medium text-emerald-700 dark:text-emerald-400">
-                        {d.status}
+              {realDocs.map((d) => {
+                const isTrust = isRevocableTrustDocumentType(d.documentType);
+                const report = isTrust ? parseStoredFillReport(d.fillReport) : null;
+                const answers = isTrust
+                  ? documentsRowIntakeAnswers(d.intakeSession?.answers)
+                  : null;
+                const leftoverCount = leftoverCountFromFillReport(report, answers);
+
+                return (
+                  <div
+                    key={d.id}
+                    className="space-y-3 rounded border p-3 text-sm"
+                    data-document-type={d.documentType}
+                  >
+                    <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+                      <div>
+                        <div className="font-medium">
+                          {d.documentType} — {d.template?.name ?? "Custom"}
+                        </div>
+                        <div className="break-all text-xs text-muted-foreground font-mono">
+                          {d.fileKey}
+                        </div>
                       </div>
-                      <div className="text-muted-foreground">
-                        {d.generatedAt ? new Date(d.generatedAt).toLocaleDateString() : ""}
+                      <div className="flex items-center gap-3 text-right text-xs">
+                        <div>
+                          <div className="font-medium text-emerald-700 dark:text-emerald-400">
+                            {d.status}
+                          </div>
+                          <div className="text-muted-foreground">
+                            {d.generatedAt ? new Date(d.generatedAt).toLocaleDateString() : ""}
+                          </div>
+                        </div>
+                        {isTrust ? (
+                          <TrustDraftDocumentsDownload
+                            fileKey={d.fileKey}
+                            leftoverCount={leftoverCount}
+                          />
+                        ) : (
+                          <a
+                            href={`/api/documents/download?fileKey=${encodeURIComponent(d.fileKey)}`}
+                            className="rounded border px-3 py-1 font-medium hover:bg-muted"
+                          >
+                            Download
+                          </a>
+                        )}
                       </div>
                     </div>
-                    <a
-                      href={`/api/documents/download?fileKey=${encodeURIComponent(d.fileKey)}`}
-                      className="rounded border px-3 py-1 font-medium hover:bg-muted"
-                    >
-                      Download
-                    </a>
+                    {isTrust && report ? (
+                      <TrustDraftFillReport
+                        report={report}
+                        answers={answers}
+                        hrefPrefix={documentsTrustDraftHrefPrefix(d.intakeSessionId)}
+                      />
+                    ) : null}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
