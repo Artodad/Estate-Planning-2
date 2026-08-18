@@ -65,6 +65,8 @@ export interface QuestionnaireWizardProps {
   initialAnswers?: PartialIntake | null;
   initialProgress?: number;
   initialCurrentSection?: string;
+  /** Existing Field id={name} from punch-list ?field= — focused after JUMP_TO paint. */
+  focusField?: string;
 
   /** Friendly name for header (from Client.displayName) */
   clientDisplayName?: string;
@@ -142,6 +144,7 @@ export function QuestionnaireWizard(props: QuestionnaireWizardProps) {
     initialAnswers,
     initialProgress,
     initialCurrentSection,
+    focusField,
     clientDisplayName = "Client",
     onPersist,
     onSaveAndExit,
@@ -244,6 +247,17 @@ export function QuestionnaireWizard(props: QuestionnaireWizardProps) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount
   }, []);
+
+  // Punch-list landing: after JUMP_TO paints the section, focus the existing Field id.
+  // If that id is not in the DOM, this is a section-only (fake) jump — do not invent one.
+  useEffect(() => {
+    if (!isHydrated || !focusField) return;
+    const id = focusField;
+    const frame = requestAnimationFrame(() => {
+      document.getElementById(id)?.focus();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [isHydrated, currentSection, focusField]);
 
   // Hydrate from localStorage only as last-resort fallback (props from server win)
   useEffect(() => {
@@ -517,7 +531,7 @@ export function QuestionnaireWizard(props: QuestionnaireWizardProps) {
   // RENDER
   // ============================================================
   return (
-    <div className={cn("w-full space-y-6", className)}>
+    <div id="intake-wizard" className={cn("w-full space-y-6", className)}>
       {/* Header — professional, attorney-friendly, mobile responsive */}
       <div className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="flex flex-col gap-3 p-4 md:flex-row md:items-center md:justify-between md:p-6">
@@ -1338,6 +1352,7 @@ function DynamicSectionForm({
 
               <Label>Minor trust / age-based distribution notes (optional)</Label>
               <textarea
+                id="minorTrustProvisions"
                 className="w-full rounded border p-3 text-sm"
                 placeholder="e.g. Distribute at age 25, trustee discretion for education"
                 {...register("minorTrustProvisions")}
@@ -1390,7 +1405,7 @@ function DynamicSectionForm({
           {currentSection === "healthcare" && (
             <>
               <Field register={register} errors={errors} name="primaryPhysician" label="Primary Physician" />
-              <div><Label>Care Instructions (AHCD Part 2)</Label><textarea {...register("careInstructions")} className="mt-1 w-full rounded border p-3" rows={4} placeholder="I want..." /></div>
+              <div><Label>Care Instructions (AHCD Part 2)</Label><textarea id="careInstructions" {...register("careInstructions")} className="mt-1 w-full rounded border p-3" rows={4} placeholder="I want..." /></div>
               <div className="flex gap-2"><input type="checkbox" {...register("anatomicalGifts")} /> <Label className="font-normal">Willing to be anatomical donor</Label></div>
             </>
           )}
