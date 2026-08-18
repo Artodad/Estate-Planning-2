@@ -143,7 +143,11 @@ export default async function IntakeWizardPage({
         />
       </Suspense>
 
-      <GenerateTrustDraftButton intakeId={session.id} initialDraft={storedTrustDraft} />
+      <GenerateTrustDraftButton
+        intakeId={session.id}
+        initialDraft={storedTrustDraft}
+        answers={initialAnswers}
+      />
     </div>
   );
 }

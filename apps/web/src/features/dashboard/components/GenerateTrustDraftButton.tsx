@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { RoleGuard, OWNER_STAFF } from "@/features/auth";
 import { buildGenerateTrustDraftParams } from "./generate-trust-draft";
 import type { StoredTrustDraft } from "./generate-trust-draft";
+import type { PartialIntake } from "@/features/intake/schemas/intake";
 import { TrustDraftFillReport } from "./TrustDraftFillReport";
 
 export { buildGenerateTrustDraftParams, TRUST_DRAFT_DOCUMENT_TYPE } from "./generate-trust-draft";
@@ -21,9 +22,11 @@ export { buildGenerateTrustDraftParams, TRUST_DRAFT_DOCUMENT_TYPE } from "./gene
 export function GenerateTrustDraftButton({
   intakeId,
   initialDraft = null,
+  answers = null,
 }: {
   intakeId: string;
   initialDraft?: StoredTrustDraft | null;
+  answers?: PartialIntake | null;
 }) {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -95,7 +98,9 @@ export function GenerateTrustDraftButton({
                   Download Trust DRAFT
                 </a>
               </div>
-              {result.fillReport && <TrustDraftFillReport report={result.fillReport} />}
+              {result.fillReport && (
+                <TrustDraftFillReport report={result.fillReport} answers={answers} />
+              )}
             </div>
           )}
         </section>

@@ -1,6 +1,7 @@
 import { ChevronRight } from "lucide-react";
 
 import type { DocumentFillReport } from "@/features/documents/types";
+import type { PartialIntake } from "@/features/intake/schemas/intake";
 
 import { punchListFromFillReport } from "./fill-report-punch-list";
 
@@ -8,8 +9,14 @@ import { punchListFromFillReport } from "./fill-report-punch-list";
  * Punch list under the Trust draft download.
  * Rows come from that generate's stored fill report — tag names only.
  */
-export function TrustDraftFillReport({ report }: { report: DocumentFillReport }) {
-  const rows = punchListFromFillReport(report);
+export function TrustDraftFillReport({
+  report,
+  answers,
+}: {
+  report: DocumentFillReport;
+  answers?: PartialIntake | null;
+}) {
+  const rows = punchListFromFillReport(report, answers);
   const filledCount = report.filledScalars.length;
 
   return (

@@ -24,6 +24,8 @@ import { generatedDocumentPersistFromGenerate, parseStoredFillReport } from "./f
 import { DRAFT_TEXT } from "./draft-watermark-module";
 import { mapIntakeToDocVariables } from "./mapper";
 import { marriedCaRichIntake } from "./__fixtures__/intake-answers";
+import type { PartialIntake } from "../intake/schemas/intake";
+import type { DocumentFillReport } from "./types";
 import { validateTemplate } from "./template-normalize/validate-template";
 import {
   createDocxFromDocumentXml,
@@ -515,7 +517,7 @@ test("punch list comes from a real generate: leftovers + required empties; allow
       `array leftover from generate, got: ${hole.fillReport.leftoverBraces.join(", ")}`,
     );
 
-    const rows = punchListFromFillReport(hole.fillReport);
+    const rows = punchListFromFillReport(hole.fillReport, {});
     assert.notEqual(rows, hole.fillReport, "punch list is derived from the generate report, not a stand-in");
     const tags = rows.map((r) => r.tag);
     assert.ok(tags.includes("client_first_name"), "required empty from generate is a punch-list row");
@@ -546,7 +548,7 @@ test("punch list comes from a real generate: leftovers + required empties; allow
     assert.equal(composed.field, null);
 
     const hasSpouse = rows.find((r) => r.tag === "has_spouse");
-    assert.ok(hasSpouse, "section-only leftover is listed");
+    assert.ok(hasSpouse, "leftover has_spouse and no maritalStatus on answers → still listed");
     assert.equal(hasSpouse.href, null, "has_spouse is not a Field id");
     assert.equal(hasSpouse.field, null);
 
@@ -565,7 +567,7 @@ test("punch list comes from a real generate: leftovers + required empties; allow
     ]);
     assert.ok(loaded?.fillReport);
     assert.deepEqual(
-      punchListFromFillReport(loaded.fillReport),
+      punchListFromFillReport(loaded.fillReport, {}),
       rows,
       "reload punch list is the stored generate report, not a rebuilt object",
     );
@@ -588,7 +590,7 @@ test("punch list comes from a real generate: leftovers + required empties; allow
       },
     });
     fixedKey = fixed.fileKey;
-    const afterFix = punchListFromFillReport(fixed.fillReport);
+    const afterFix = punchListFromFillReport(fixed.fillReport, {});
     assert.ok(
       !afterFix.some((r) => r.tag === "client_first_name"),
       "after regenerate with the field filled, that punch-list row is gone",
@@ -598,3 +600,167 @@ test("punch list comes from a real generate: leftovers + required empties; allow
     await cleanupKeys(templateFileKey, holeKey ?? "", fixedKey ?? "");
   }
 });
+
+const adaAnswers: PartialIntake = {
+  personal: {
+    client: { firstName: "Ada", lastName: "Lovelace" },
+    maritalStatus: "single",
+    isCAResident: true,
+  },
+};
+
+function leftoverReport(leftoverBraces: string[], extra: Partial<DocumentFillReport> = {}): DocumentFillReport {
+  return {
+    filledScalars: extra.filledScalars ?? [],
+    emptyOptionals: extra.emptyOptionals ?? [],
+    leftoverBraces,
+    loopCounts: extra.loopCounts ?? {},
+  };
+}
+
+test("computed leftovers drop when Ada answers supply the parts; real holes stay", async () => {
+  const stamp = Date.now();
+  const templateFileKey = `templates/unit-punch-computed-${stamp}/punch.docx`;
+  const body = [
+    paragraphWithRuns(["First: {client_first_name}"]),
+    paragraphWithRuns(["Age (leave blank ok): {first_distribution_age}"]),
+    `    <w:p><w:r><w:instrText>{client_full_name}</w:instrText></w:r></w:p>`,
+    `    <w:p><w:r><w:instrText>{has_spouse}</w:instrText></w:r></w:p>`,
+    `    <w:p><w:r><w:instrText>{is_ca_resident}</w:instrText></w:r></w:p>`,
+    `    <w:p><w:r><w:instrText>{spouse_full_name}</w:instrText></w:r></w:p>`,
+    `    <w:p><w:r><w:instrText>{unresolved_blank}</w:instrText></w:r></w:p>`,
+    `    <w:p><w:r><w:instrText>{young_person_retention_age}</w:instrText></w:r></w:p>`,
+    `    <w:p><w:r><w:instrText>{successor_trustee_full_name}</w:instrText></w:r></w:p>`,
+    `    <w:p><w:r><w:instrText>{#children}</w:instrText></w:r></w:p>`,
+  ].join("\n");
+  const buf = createDocxFromDocumentXml(wrapDocumentXml(body));
+  await mkdir(path.dirname(resolveStoragePath(templateFileKey)), { recursive: true });
+  await writeFile(resolveStoragePath(templateFileKey), buf);
+
+  let holeKey: string | undefined;
+  try {
+    const hole = await generateDocument({
+      templateFileKey,
+      variables: {
+        client_first_name: "",
+        first_distribution_age: "",
+      },
+      firmId: "firm_unit_punch_computed",
+      options: {
+        addDraftWatermark: true,
+        documentType: "revocable_trust",
+        clientLastName: "Lovelace",
+        clientFirstName: "Ada",
+      },
+    });
+    holeKey = hole.fileKey;
+
+    for (const tag of [
+      "client_full_name",
+      "has_spouse",
+      "is_ca_resident",
+      "spouse_full_name",
+      "unresolved_blank",
+      "young_person_retention_age",
+      "successor_trustee_full_name",
+    ]) {
+      assert.ok(
+        hole.fillReport.leftoverBraces.includes(tag),
+        `generate leftover ${tag}, got: ${hole.fillReport.leftoverBraces.join(", ")}`,
+      );
+    }
+    assert.ok(hole.fillReport.leftoverBraces.includes("#children"));
+    assert.ok(hole.fillReport.emptyOptionals.includes("client_first_name"));
+
+    const withoutAnswers = punchListFromFillReport(hole.fillReport);
+    assert.ok(
+      withoutAnswers.some((r) => r.tag === "has_spouse"),
+      "leftover has_spouse and no maritalStatus on answers → still listed",
+    );
+    assert.ok(
+      withoutAnswers.some((r) => r.tag === "is_ca_resident"),
+      "leftover is_ca_resident cannot be proven without answers",
+    );
+
+    const rows = punchListFromFillReport(hole.fillReport, adaAnswers);
+    const tags = rows.map((r) => r.tag);
+    for (const tag of ["client_full_name", "has_spouse", "is_ca_resident", "spouse_full_name"]) {
+      assert.ok(!tags.includes(tag), `Ada answers drop leftover ${tag}, got: ${tags.join(", ")}`);
+    }
+
+    const unresolved = rows.find((r) => r.tag === "unresolved_blank");
+    assert.ok(unresolved);
+    assert.equal(unresolved.href, null);
+
+    const age = rows.find((r) => r.tag === "young_person_retention_age");
+    assert.ok(age);
+    assert.equal(age.href, "?section=distribution&field=youngPersonRetentionAge");
+
+    const firstName = rows.find((r) => r.tag === "client_first_name");
+    assert.ok(firstName, "required empty client_first_name stays");
+    assert.equal(firstName.href, "?section=personal&field=client.firstName");
+
+    const successor = rows.find((r) => r.tag === "successor_trustee_full_name");
+    assert.ok(successor);
+    assert.equal(successor.href, null);
+
+    const children = rows.find((r) => r.tag === "#children");
+    assert.ok(children);
+    assert.equal(children.href, null);
+
+    const marriedMissingLast: PartialIntake = {
+      personal: {
+        client: { firstName: "Elena", lastName: "Vargas" },
+        maritalStatus: "married",
+        spouseOrPartner: { firstName: "Diego", lastName: "" },
+        isCAResident: true,
+      },
+    };
+    const marriedRows = punchListFromFillReport(hole.fillReport, marriedMissingLast);
+    assert.ok(
+      marriedRows.some((r) => r.tag === "spouse_full_name"),
+      "married + leftover spouse_full_name + missing spouse last stays",
+    );
+    assert.ok(!marriedRows.some((r) => r.tag === "has_spouse"));
+    assert.ok(!marriedRows.some((r) => r.tag === "client_full_name"));
+    assert.ok(!marriedRows.some((r) => r.tag === "is_ca_resident"));
+
+    const marriedComplete = punchListFromFillReport(hole.fillReport, marriedCaRichIntake);
+    assert.ok(
+      !marriedComplete.some((r) => r.tag === "spouse_full_name"),
+      "spouse first+last present drops leftover spouse_full_name",
+    );
+  } finally {
+    await cleanupKeys(templateFileKey, holeKey ?? "");
+  }
+});
+
+test("computed punch-list skip uses session answers, not a new key table", () => {
+  const leftovers = leftoverReport([
+    "client_full_name",
+    "has_spouse",
+    "is_ca_resident",
+    "spouse_full_name",
+    "county_of_residence",
+  ]);
+
+  const noMarital = punchListFromFillReport(leftovers, {});
+  assert.ok(noMarital.some((r) => r.tag === "has_spouse"));
+  assert.ok(
+    !noMarital.some((r) => r.tag === "is_ca_resident"),
+    "isCAResident({}) defaults true — leftover is never a missing answer",
+  );
+  assert.ok(noMarital.some((r) => r.tag === "county_of_residence"), "county is a separate leftover");
+
+  const reportOnly = punchListFromFillReport(leftovers);
+  assert.ok(reportOnly.some((r) => r.tag === "is_ca_resident"));
+  assert.ok(reportOnly.some((r) => r.tag === "has_spouse"));
+
+  assert.ok(
+    !punchListFromFillReport(
+      leftoverReport(["client_full_name"], { filledScalars: ["client_full_name"] }),
+    ).some((r) => r.tag === "client_full_name"),
+    "key ∈ filledScalars drops leftover client_full_name",
+  );
+});
+
