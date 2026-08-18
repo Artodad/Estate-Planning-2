@@ -3,7 +3,11 @@ import { ChevronRight } from "lucide-react";
 import type { DocumentFillReport } from "@/features/documents/types";
 import type { PartialIntake } from "@/features/intake/schemas/intake";
 
-import { punchListFromFillReport } from "./fill-report-punch-list";
+import {
+  loopCountForPunchTag,
+  punchListActionCopy,
+  punchListFromFillReport,
+} from "./fill-report-punch-list";
 
 /**
  * Punch list under the Trust draft download.
@@ -30,35 +34,44 @@ export function TrustDraftFillReport({
           <p className="mt-2 text-sm text-muted-foreground">Nothing needs attention.</p>
         ) : (
           <ul className="mt-1 divide-y">
-            {rows.map((row) => (
-              <li key={row.tag}>
-                {row.href ? (
-                  <a
-                    href={`${row.href}#intake-wizard`}
-                    data-punch-row=""
-                    data-tag={row.tag}
-                    className="group flex items-center justify-between gap-4 rounded-md py-2.5 outline-none hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  >
-                    <span className="font-mono text-[13px] leading-6">{row.tag}</span>
-                    <span className="inline-flex shrink-0 items-center gap-0.5 text-xs font-medium text-muted-foreground group-hover:text-foreground">
-                      Go to field
-                      <ChevronRight className="h-3.5 w-3.5" aria-hidden />
-                    </span>
-                  </a>
-                ) : (
-                  <button
-                    type="button"
-                    disabled
-                    data-punch-row=""
-                    data-tag={row.tag}
-                    className="flex w-full cursor-default items-center justify-between gap-4 py-2.5 text-left text-muted-foreground"
-                  >
-                    <span className="font-mono text-[13px] leading-6">{row.tag}</span>
-                    <span className="shrink-0 text-xs">No intake field</span>
-                  </button>
-                )}
-              </li>
-            ))}
+            {rows.map((row) => {
+              const loop = loopCountForPunchTag(row.tag, report);
+              const door = row.href ? (row.field ? "field" : "section") : "none";
+              const action = punchListActionCopy(row, report);
+              return (
+                <li key={row.tag}>
+                  {row.href ? (
+                    <a
+                      href={`${row.href}#intake-wizard`}
+                      data-punch-row=""
+                      data-tag={row.tag}
+                      data-punch-door={door}
+                      data-loop-count={loop ? String(loop.count) : undefined}
+                      data-loop-noun={loop?.noun}
+                      className="group flex items-center justify-between gap-4 rounded-md py-2.5 outline-none hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    >
+                      <span className="font-mono text-[13px] leading-6">{row.tag}</span>
+                      <span className="inline-flex shrink-0 items-center gap-0.5 text-xs font-medium text-muted-foreground group-hover:text-foreground">
+                        {action}
+                        <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+                      </span>
+                    </a>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled
+                      data-punch-row=""
+                      data-tag={row.tag}
+                      data-punch-door={door}
+                      className="flex w-full cursor-default items-center justify-between gap-4 py-2.5 text-left text-muted-foreground"
+                    >
+                      <span className="font-mono text-[13px] leading-6">{row.tag}</span>
+                      <span className="shrink-0 text-xs">{action}</span>
+                    </button>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>
