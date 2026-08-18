@@ -2,8 +2,9 @@
  * Trust draft punch list from a stored generate fill report.
  *
  * Resolve leftover/empty tags via MAPPER_CONTRACT_KEYS / TAG_ALIASES only.
- * A real jump requires a Field id the wizard already sets (id={name}).
- * No mapper-key → field / section / required tables.
+ * Jump href needs a wizard section; Field id is optional (section door).
+ * After a Field miss, derive section from SECTION_SCHEMAS shape / nest /
+ * DecisionMakerSchema.role — no mapper-key → field / section / required tables.
  * Session answers drop computed leftovers (full names / has_spouse / is_ca_resident)
  * when the parts that compose them are already present.
  */
@@ -19,6 +20,7 @@ import {
 } from "@/features/documents/template-normalize/normalize-tags";
 import { WIZARD_CONTROL_IDS } from "@/features/intake/components/wizard-control-ids";
 import {
+  DecisionMakerSchema,
   PersonalInfoSchema,
   SECTION_ORDER,
   SECTION_SCHEMAS,
@@ -32,7 +34,7 @@ const CANONICAL_SET = new Set<string>(MAPPER_CONTRACT_KEYS);
 
 export type PunchListRow = {
   tag: string;
-  /** Set only when section + an existing Field id both exist. */
+  /** Section door (section only) or field door (section + Field id). */
   href: string | null;
   section: SectionKey | null;
   field: string | null;
@@ -75,12 +77,53 @@ export function existingFieldIdForMapperKey(key: string): string | null {
   return null;
 }
 
+function zodObjectShape(schema: unknown): Record<string, unknown> | null {
+  const shape = (schema as { shape?: Record<string, unknown> }).shape;
+  return shape && typeof shape === "object" ? shape : null;
+}
+
 function sectionForFieldId(fieldId: string): SectionKey | null {
   const top = fieldId.split(".")[0];
   for (const [section, schema] of Object.entries(SECTION_SCHEMAS)) {
-    const shape = (schema as { shape?: Record<string, unknown> }).shape;
+    const shape = zodObjectShape(schema);
     if (shape && top in shape) return section as SectionKey;
   }
+  return null;
+}
+
+/**
+ * After a Field miss: walk SECTION_SCHEMAS / nest / DecisionMakerSchema.role.
+ * No mapper-key → section table. Cut role names fail the enum (not special-cased).
+ */
+function sectionForMapperKey(key: string): SectionKey | null {
+  const camel = snakeToCamel(key);
+
+  for (const [section, schema] of Object.entries(SECTION_SCHEMAS)) {
+    const shape = zodObjectShape(schema);
+    if (shape && (key in shape || camel in shape)) return section as SectionKey;
+  }
+
+  if (isWizardSectionKey(key) && key !== "review") return key;
+  if (isWizardSectionKey(camel) && camel !== "review") return camel;
+
+  if (key.endsWith("_full_name")) {
+    const rolePrefix = key.slice(0, -"_full_name".length);
+    if (DecisionMakerSchema.shape.role.safeParse(rolePrefix).success) {
+      return "decisionMakers";
+    }
+  }
+
+  const nested = snakeToNestedId(key);
+  if (nested) {
+    const [top, ...rest] = nested.split(".");
+    const remainder = rest.join(".");
+    if (isWizardSectionKey(top) && top !== "review") {
+      const schema = SECTION_SCHEMAS[top as keyof typeof SECTION_SCHEMAS];
+      const shape = zodObjectShape(schema);
+      if (shape && remainder && remainder in shape) return top;
+    }
+  }
+
   return null;
 }
 
@@ -111,14 +154,60 @@ export function punchJumpForMapperKey(key: string): {
   field: string | null;
 } {
   const field = existingFieldIdForMapperKey(key);
-  if (!field) return { section: null, field: null };
-  return { section: sectionForFieldId(field), field };
+  if (field) return { section: sectionForFieldId(field), field };
+  return { section: sectionForMapperKey(key), field: null };
 }
 
 export function punchListHref(section: SectionKey | null, field: string | null): string | null {
-  if (!section || !field) return null;
-  const params = new URLSearchParams({ section, field });
+  if (!section) return null;
+  const params = new URLSearchParams({ section });
+  if (field) params.set("field", field);
   return `?${params.toString()}`;
+}
+
+/** family → Family, decisionMakers → Decision Makers. Not SECTIONS_CONFIG.label. */
+export function camelSplitSectionKey(section: string): string {
+  return section
+    .replace(/([A-Z])/g, " $1")
+    .replace(/^./, (c) => c.toUpperCase())
+    .trim();
+}
+
+/** Leftover inner with braces stripped (`#children` / `children`). */
+function leftoverInner(tag: string): string {
+  return tag.replace(/^\{/, "").replace(/\}$/, "").trim();
+}
+
+/**
+ * Loop leftovers only (`#` / `^`). loopCounts[raw] ?? loopCounts[canonical].
+ * Noun is the loopCounts key that hit. Never answers.family.children.length.
+ * Bare scalars (residuary / successor) get no number.
+ */
+export function loopCountForPunchTag(
+  tag: string,
+  report: DocumentFillReport,
+): { count: number; noun: string } | null {
+  const inner = leftoverInner(tag);
+  if (!/^[#^]/.test(inner)) return null;
+  const raw = inner.replace(/^[#^]/, "");
+  if (Object.hasOwn(report.loopCounts, raw)) {
+    return { count: report.loopCounts[raw], noun: raw };
+  }
+  const canonical = resolveFillTagToMapperKey(tag);
+  if (canonical && Object.hasOwn(report.loopCounts, canonical)) {
+    return { count: report.loopCounts[canonical], noun: canonical };
+  }
+  return null;
+}
+
+/** Field door: "Go to field". Section door: "N noun — Open Section" or "Open Section". */
+export function punchListActionCopy(row: PunchListRow, report: DocumentFillReport): string {
+  if (!row.href) return "No intake field";
+  if (row.field) return "Go to field";
+  const sectionLabel = row.section ? camelSplitSectionKey(row.section) : "";
+  const loop = loopCountForPunchTag(row.tag, report);
+  if (loop) return `${loop.count} ${loop.noun} — Open ${sectionLabel}`;
+  return `Open ${sectionLabel}`;
 }
 
 function trimmedNonEmpty(value: unknown): boolean {
@@ -163,7 +252,7 @@ function computedTagPartsPresent(
 }
 
 /**
- * leftoverBraces always (disabled if no existing Field id).
+ * leftoverBraces always (disabled if no section door or Field).
  * emptyOptionals only when they resolve to a required wizard Field.
  * Allowed (Zod optional / leave-blank) empties stay quiet.
  * Computed leftovers drop when their source parts are present on session answers.

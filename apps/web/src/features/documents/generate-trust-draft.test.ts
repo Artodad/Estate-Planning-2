@@ -37,10 +37,18 @@ import { buildGenerateTrustDraftParams } from "../dashboard/components/generate-
 import { trustDraftFromStoredDocuments } from "../dashboard/components/stored-trust-draft";
 import {
   punchListFromFillReport,
+  punchListActionCopy,
   resolveFillTagToMapperKey,
   existingFieldIdForMapperKey,
   punchJumpForMapperKey,
 } from "../dashboard/components/fill-report-punch-list";
+
+/** Three child rows in the mapper bag so leftover {#children} still has loopCounts.children === 3. */
+const ADA_THREE_CHILDREN = [
+  { full_name: "Annabella King" },
+  { full_name: "Byron King" },
+  { full_name: "Allegra Byron" },
+];
 
 const FIXTURE_REL = "src/features/documents/__fixtures__/trust-family-fidelity-labels.docx";
 
@@ -451,6 +459,7 @@ test("mapper key yields an existing Field id only by name transform, not a key t
     "do not map is_ca_resident to isCA",
   );
   assert.equal(existingFieldIdForMapperKey("children"), null, "array tag is not a Field id");
+  assert.equal(existingFieldIdForMapperKey("executor_full_name"), null, "do not invent an executor row Field id");
 
   const age = punchJumpForMapperKey("young_person_retention_age");
   assert.equal(age.field, "youngPersonRetentionAge");
@@ -463,6 +472,30 @@ test("mapper key yields an existing Field id only by name transform, not a key t
   const full = punchJumpForMapperKey("client_full_name");
   assert.equal(full.field, null);
   assert.equal(full.section, null);
+
+  const children = punchJumpForMapperKey("children");
+  assert.equal(children.field, null);
+  assert.equal(children.section, "family");
+
+  const residuary = punchJumpForMapperKey("distribution_residuary");
+  assert.equal(residuary.field, null);
+  assert.equal(residuary.section, "distribution");
+
+  const successor = punchJumpForMapperKey("successor_trustee_full_name");
+  assert.equal(successor.field, null);
+  assert.equal(successor.section, "decisionMakers");
+
+  const executor = punchJumpForMapperKey("executor_full_name");
+  assert.equal(executor.field, null);
+  assert.equal(executor.section, "decisionMakers");
+
+  const cutSecond = punchJumpForMapperKey("second_successor_trustee_full_name");
+  assert.equal(cutSecond.field, null);
+  assert.equal(cutSecond.section, null, "second_successor_trustee is not a DecisionMakerSchema.role");
+
+  const cutGuardian = punchJumpForMapperKey("guardian_of_minor_full_name");
+  assert.equal(cutGuardian.field, null);
+  assert.equal(cutGuardian.section, null, "guardian_of_minor is not a DecisionMakerSchema.role");
 });
 
 test("punch list comes from a real generate: leftovers + required empties; allowed empties quiet", async () => {
@@ -476,6 +509,8 @@ test("punch list comes from a real generate: leftovers + required empties; allow
     `    <w:p><w:r><w:instrText>{unresolved_blank}</w:instrText></w:r></w:p>`,
     `    <w:p><w:r><w:instrText>{young_person_retention_age}</w:instrText></w:r></w:p>`,
     `    <w:p><w:r><w:instrText>{successor_trustee_full_name}</w:instrText></w:r></w:p>`,
+    `    <w:p><w:r><w:instrText>{executor_full_name}</w:instrText></w:r></w:p>`,
+    `    <w:p><w:r><w:instrText>{distribution_residuary}</w:instrText></w:r></w:p>`,
     `    <w:p><w:r><w:instrText>{has_spouse}</w:instrText></w:r></w:p>`,
     `    <w:p><w:r><w:instrText>{#children}</w:instrText></w:r></w:p>`,
   ].join("\n");
@@ -494,6 +529,7 @@ test("punch list comes from a real generate: leftovers + required empties; allow
         first_distribution_age: "",
         optional_middle_name: "",
         young_person_retention_age: "21",
+        children: ADA_THREE_CHILDREN,
       },
       firmId: "firm_unit_punch_list",
       options: {
@@ -511,11 +547,14 @@ test("punch list comes from a real generate: leftovers + required empties; allow
     assert.ok(hole.fillReport.leftoverBraces.includes("unresolved_blank"));
     assert.ok(hole.fillReport.leftoverBraces.includes("young_person_retention_age"));
     assert.ok(hole.fillReport.leftoverBraces.includes("successor_trustee_full_name"));
+    assert.ok(hole.fillReport.leftoverBraces.includes("executor_full_name"));
+    assert.ok(hole.fillReport.leftoverBraces.includes("distribution_residuary"));
     assert.ok(hole.fillReport.leftoverBraces.includes("has_spouse"));
     assert.ok(
       hole.fillReport.leftoverBraces.includes("#children"),
       `array leftover from generate, got: ${hole.fillReport.leftoverBraces.join(", ")}`,
     );
+    assert.equal(hole.fillReport.loopCounts.children, 3);
 
     const rows = punchListFromFillReport(hole.fillReport, {});
     assert.notEqual(rows, hole.fillReport, "punch list is derived from the generate report, not a stand-in");
@@ -535,17 +574,36 @@ test("punch list comes from a real generate: leftovers + required empties; allow
     const leftoverKnown = rows.find((r) => r.tag === "young_person_retention_age");
     assert.ok(leftoverKnown);
     assert.equal(leftoverKnown.href, "?section=distribution&field=youngPersonRetentionAge");
+    assert.equal(punchListActionCopy(leftoverKnown, hole.fillReport), "Go to field");
 
     const leftoverUnknown = rows.find((r) => r.tag === "unresolved_blank");
     assert.ok(leftoverUnknown);
     assert.equal(leftoverUnknown.href, null, "unresolved leftover is disabled — no invented landing");
     assert.equal(leftoverUnknown.section, null);
     assert.equal(leftoverUnknown.field, null);
+    assert.equal(punchListActionCopy(leftoverUnknown, hole.fillReport), "No intake field");
 
     const composed = rows.find((r) => r.tag === "successor_trustee_full_name");
-    assert.ok(composed, "leftover array/role tag is listed");
-    assert.equal(composed.href, null, "no Field id — not a Go to field link");
+    assert.ok(composed, "leftover role tag is listed");
+    assert.equal(composed.href, "?section=decisionMakers");
     assert.equal(composed.field, null);
+    assert.equal(punchListActionCopy(composed, hole.fillReport), "Open Decision Makers");
+
+    const executorRow = rows.find((r) => r.tag === "executor_full_name");
+    assert.ok(executorRow);
+    assert.equal(executorRow.href, "?section=decisionMakers");
+    assert.equal(executorRow.field, null);
+    assert.equal(punchListActionCopy(executorRow, hole.fillReport), "Open Decision Makers");
+
+    const residuaryRow = rows.find((r) => r.tag === "distribution_residuary");
+    assert.ok(residuaryRow);
+    assert.equal(residuaryRow.href, "?section=distribution");
+    assert.equal(residuaryRow.field, null);
+    assert.equal(
+      punchListActionCopy(residuaryRow, hole.fillReport),
+      "Open Distribution",
+      "bare scalar leftover has no loopCounts name",
+    );
 
     const hasSpouse = rows.find((r) => r.tag === "has_spouse");
     assert.ok(hasSpouse, "leftover has_spouse and no maritalStatus on answers → still listed");
@@ -554,8 +612,9 @@ test("punch list comes from a real generate: leftovers + required empties; allow
 
     const childrenLoop = rows.find((r) => r.tag === "#children");
     assert.ok(childrenLoop, "array leftover is listed");
-    assert.equal(childrenLoop.href, null, "array leftover is not a Go to field link");
+    assert.equal(childrenLoop.href, "?section=family");
     assert.equal(childrenLoop.field, null);
+    assert.equal(punchListActionCopy(childrenLoop, hole.fillReport), "3 children — Open Family");
 
     const persist = generatedDocumentPersistFromGenerate(hole, {
       intakeSessionId: "intake_punch_list",
@@ -580,6 +639,7 @@ test("punch list comes from a real generate: leftovers + required empties; allow
         first_distribution_age: "",
         optional_middle_name: "",
         young_person_retention_age: "21",
+        children: ADA_THREE_CHILDREN,
       },
       firmId: "firm_unit_punch_list",
       options: {
@@ -644,6 +704,7 @@ test("computed leftovers drop when Ada answers supply the parts; real holes stay
       variables: {
         client_first_name: "",
         first_distribution_age: "",
+        children: ADA_THREE_CHILDREN,
       },
       firmId: "firm_unit_punch_computed",
       options: {
@@ -702,11 +763,14 @@ test("computed leftovers drop when Ada answers supply the parts; real holes stay
 
     const successor = rows.find((r) => r.tag === "successor_trustee_full_name");
     assert.ok(successor);
-    assert.equal(successor.href, null);
+    assert.equal(successor.href, "?section=decisionMakers");
+    assert.equal(punchListActionCopy(successor, hole.fillReport), "Open Decision Makers");
 
     const children = rows.find((r) => r.tag === "#children");
     assert.ok(children);
-    assert.equal(children.href, null);
+    assert.equal(children.href, "?section=family");
+    assert.equal(hole.fillReport.loopCounts.children, 3);
+    assert.equal(punchListActionCopy(children, hole.fillReport), "3 children — Open Family");
 
     const marriedMissingLast: PartialIntake = {
       personal: {
@@ -732,6 +796,48 @@ test("computed leftovers drop when Ada answers supply the parts; real holes stay
     );
   } finally {
     await cleanupKeys(templateFileKey, holeKey ?? "");
+  }
+});
+
+test("section-door copy uses loopCounts and alias lookup; cut roles stay closed", () => {
+  const report = leftoverReport(["#kids", "#distribution_residuary", "residuary", "executor_name"], {
+    loopCounts: { children: 3, distribution_residuary: 2 },
+  });
+  const rows = punchListFromFillReport(report);
+  const kids = rows.find((r) => r.tag === "#kids");
+  assert.ok(kids);
+  assert.equal(kids.href, "?section=family");
+  assert.equal(kids.field, null);
+  assert.equal(punchListActionCopy(kids, report), "3 children — Open Family");
+
+  const residuaryLoop = rows.find((r) => r.tag === "#distribution_residuary");
+  assert.ok(residuaryLoop);
+  assert.equal(residuaryLoop.href, "?section=distribution");
+  assert.equal(punchListActionCopy(residuaryLoop, report), "2 distribution_residuary — Open Distribution");
+
+  const residuaryScalar = rows.find((r) => r.tag === "residuary");
+  assert.ok(residuaryScalar);
+  assert.equal(residuaryScalar.href, "?section=distribution");
+  assert.equal(
+    punchListActionCopy(residuaryScalar, report),
+    "Open Distribution",
+    "bare scalar leftover does not take loopCounts",
+  );
+
+  const executorAlias = leftoverReport(["executor_name"]);
+  const executorRow = punchListFromFillReport(executorAlias).find((r) => r.tag === "executor_name");
+  assert.ok(executorRow);
+  assert.equal(executorRow.href, "?section=decisionMakers");
+  assert.equal(punchListActionCopy(executorRow, executorAlias), "Open Decision Makers");
+
+  const cut = leftoverReport(["second_successor_trustee_full_name", "guardian_of_minor_full_name"]);
+  const cutRows = punchListFromFillReport(cut);
+  for (const tag of ["second_successor_trustee_full_name", "guardian_of_minor_full_name"]) {
+    const row = cutRows.find((r) => r.tag === tag);
+    assert.ok(row);
+    assert.equal(row.href, null);
+    assert.equal(row.section, null);
+    assert.equal(punchListActionCopy(row, cut), "No intake field");
   }
 });
 
