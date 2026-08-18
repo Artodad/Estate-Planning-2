@@ -9,6 +9,8 @@ import { GenerateTrustDraftButton } from "@/features/dashboard/components/Genera
 import { trustDraftFromStoredDocuments } from "@/features/dashboard/components/stored-trust-draft";
 import { generatedDocumentHelpers } from "@/lib/prisma";
 
+import { Suspense } from "react";
+
 import { QuestionnaireWizard } from "@/features/intake";
 import type { PartialIntake, SectionKey } from "@/features/intake";
 import { isWizardSectionKey } from "@/features/dashboard/components/fill-report-punch-list";
@@ -124,20 +126,22 @@ export default async function IntakeWizardPage({
         </div>
       </header>
 
-      <QuestionnaireWizard
-        clientId={session.clientId}
-        firmId={firmId}
-        sessionId={session.id}
-        initialAnswers={initialAnswers}
-        initialProgress={initialProgress}
-        initialCurrentSection={
-          punchSection ?? (session.status === "completed" ? "review" : undefined)
-        }
-        focusField={punchField}
-        clientDisplayName={clientDisplayName}
-        onPersist={handlePersist}
-        onComplete={handleComplete}
-      />
+      <Suspense fallback={null}>
+        <QuestionnaireWizard
+          clientId={session.clientId}
+          firmId={firmId}
+          sessionId={session.id}
+          initialAnswers={initialAnswers}
+          initialProgress={initialProgress}
+          initialCurrentSection={
+            punchSection ?? (session.status === "completed" ? "review" : undefined)
+          }
+          focusField={punchField}
+          clientDisplayName={clientDisplayName}
+          onPersist={handlePersist}
+          onComplete={handleComplete}
+        />
+      </Suspense>
 
       <GenerateTrustDraftButton intakeId={session.id} initialDraft={storedTrustDraft} />
     </div>

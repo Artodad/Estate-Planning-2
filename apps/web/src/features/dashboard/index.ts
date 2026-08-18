@@ -30,5 +30,6 @@ export { trustDraftFromStoredDocuments } from "./components/stored-trust-draft";
 export {
   punchListFromFillReport,
   resolveFillTagToMapperKey,
-  wizardJumpForMapperKey,
+  existingFieldIdForMapperKey,
+  punchJumpForMapperKey,
 } from "./components/fill-report-punch-list";

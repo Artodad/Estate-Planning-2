@@ -989,6 +989,15 @@ test("JUMP_TO restrictions enforced + RESUME lands safely with mixed complete/in
     badJump.value === "personal" ||
       badJump.context.currentSection === "personal",
   );
+
+  // Punch-list landing: force shows the section even when priors are incomplete.
+  const forced = sendAndGetSnapshot(actor, {
+    type: "JUMP_TO",
+    section: "distribution",
+    force: true,
+  });
+  assert.equal(forced.value, "distribution");
+  assert.equal(forced.context.currentSection, "distribution");
 });
 
 test("SECTION_SCHEMAS behaviors via guards: enum values, sharePercent bounds 0-100, DOB regex, required fields (parse success/fail)", () => {

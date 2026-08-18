@@ -65,7 +65,7 @@ export type IntakeEvent =
   | { type: 'SUBMIT_SECTION'; section?: string; data?: Record<string, unknown> }
   | { type: 'NEXT' }
   | { type: 'PREV' }
-  | { type: 'JUMP_TO'; section: string }
+  | { type: 'JUMP_TO'; section: string; force?: boolean }
   | {
       type: 'RESUME';
       answers?: PartialIntake;
@@ -208,6 +208,8 @@ export const guards = {
   canJump: ({ context, event }: { context: IntakeContext; event: IntakeEvent }) => {
     const target = (event as any)?.section;
     if (!target || !SECTION_KEYS.includes(target as SectionKey)) return false;
+    // Punch-list landing: show the section even when priors are incomplete.
+    if (event.type === 'JUMP_TO' && event.force) return true;
     if (target === context.currentSection) return true;
 
     const targetIdx = SECTION_KEYS.indexOf(target as SectionKey);

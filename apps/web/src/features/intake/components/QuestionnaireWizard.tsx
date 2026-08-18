@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useLayoutEffect, useCallback, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { useMachine } from "@xstate/react";
 import { useForm, useFieldArray, type UseFormReturn } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -16,6 +17,7 @@ import {
 import * as IntakeSchemas from "../schemas/intake";
 import {
   SECTION_SCHEMAS,
+  SECTION_ORDER,
   sectionIsComplete as sectionIsCompleteFn,
   calculateProgress as calculateProgressFn,
   type PartialIntake,
@@ -153,6 +155,9 @@ export function QuestionnaireWizard(props: QuestionnaireWizardProps) {
   } = props;
 
   const { role, isHydrated } = useRole();
+  const searchParams = useSearchParams();
+  const punchSection = searchParams.get("section");
+  const punchField = searchParams.get("field") || focusField;
 
   // --- XState: THE single source of truth (per mandatory Design §4 + handoff from B) ---
   const initialCtx = getInitialContext({
@@ -248,16 +253,7 @@ export function QuestionnaireWizard(props: QuestionnaireWizardProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount
   }, []);
 
-  // Punch-list landing: after JUMP_TO paints the section, focus the existing Field id.
-  // If that id is not in the DOM, this is a section-only (fake) jump — do not invent one.
-  useEffect(() => {
-    if (!isHydrated || !focusField) return;
-    const id = focusField;
-    const frame = requestAnimationFrame(() => {
-      document.getElementById(id)?.focus();
-    });
-    return () => cancelAnimationFrame(frame);
-  }, [isHydrated, currentSection, focusField]);
+  // Punch-list landing is applied after hydrate (see query JUMP_TO below).
 
   // Hydrate from localStorage only as last-resort fallback (props from server win)
   useEffect(() => {
@@ -374,6 +370,25 @@ export function QuestionnaireWizard(props: QuestionnaireWizardProps) {
       send({ type: "JUMP_TO", section });
     }
   }
+
+  // Same-page punch click: re-fire JUMP_TO when ?section=&field= changes.
+  useEffect(() => {
+    if (!isHydrated || isCompleted) return;
+    if (!punchSection || !(SECTION_ORDER as readonly string[]).includes(punchSection)) {
+      return;
+    }
+    send({ type: "JUMP_TO", section: punchSection, force: true });
+  }, [isHydrated, isCompleted, punchSection, punchField, send]);
+
+  // After the section paints, focus the existing Field id. No id → no focus.
+  useEffect(() => {
+    if (!isHydrated || !punchField) return;
+    const id = punchField;
+    const timeout = window.setTimeout(() => {
+      document.getElementById(id)?.focus();
+    }, 0);
+    return () => window.clearTimeout(timeout);
+  }, [isHydrated, currentSection, punchField]);
 
   function handlePrev() {
     send({ type: "PREV" });
