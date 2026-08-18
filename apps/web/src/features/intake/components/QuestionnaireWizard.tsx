@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useLayoutEffect, useCallback, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { useMachine } from "@xstate/react";
 import { useForm, useFieldArray, type UseFormReturn } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -16,6 +17,7 @@ import {
 import * as IntakeSchemas from "../schemas/intake";
 import {
   SECTION_SCHEMAS,
+  SECTION_ORDER,
   sectionIsComplete as sectionIsCompleteFn,
   calculateProgress as calculateProgressFn,
   type PartialIntake,
@@ -65,6 +67,8 @@ export interface QuestionnaireWizardProps {
   initialAnswers?: PartialIntake | null;
   initialProgress?: number;
   initialCurrentSection?: string;
+  /** Existing Field id={name} from punch-list ?field= — focused after JUMP_TO paint. */
+  focusField?: string;
 
   /** Friendly name for header (from Client.displayName) */
   clientDisplayName?: string;
@@ -142,6 +146,7 @@ export function QuestionnaireWizard(props: QuestionnaireWizardProps) {
     initialAnswers,
     initialProgress,
     initialCurrentSection,
+    focusField,
     clientDisplayName = "Client",
     onPersist,
     onSaveAndExit,
@@ -150,6 +155,9 @@ export function QuestionnaireWizard(props: QuestionnaireWizardProps) {
   } = props;
 
   const { role, isHydrated } = useRole();
+  const searchParams = useSearchParams();
+  const punchSection = searchParams.get("section");
+  const punchField = searchParams.get("field") || focusField;
 
   // --- XState: THE single source of truth (per mandatory Design §4 + handoff from B) ---
   const initialCtx = getInitialContext({
@@ -244,6 +252,8 @@ export function QuestionnaireWizard(props: QuestionnaireWizardProps) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- run once on mount
   }, []);
+
+  // Punch-list landing is applied after hydrate (see query JUMP_TO below).
 
   // Hydrate from localStorage only as last-resort fallback (props from server win)
   useEffect(() => {
@@ -360,6 +370,25 @@ export function QuestionnaireWizard(props: QuestionnaireWizardProps) {
       send({ type: "JUMP_TO", section });
     }
   }
+
+  // Same-page punch click: re-fire JUMP_TO when ?section=&field= changes.
+  useEffect(() => {
+    if (!isHydrated || isCompleted) return;
+    if (!punchSection || !(SECTION_ORDER as readonly string[]).includes(punchSection)) {
+      return;
+    }
+    send({ type: "JUMP_TO", section: punchSection, force: true });
+  }, [isHydrated, isCompleted, punchSection, punchField, send]);
+
+  // After the section paints, focus the existing Field id. No id → no focus.
+  useEffect(() => {
+    if (!isHydrated || !punchField) return;
+    const id = punchField;
+    const timeout = window.setTimeout(() => {
+      document.getElementById(id)?.focus();
+    }, 0);
+    return () => window.clearTimeout(timeout);
+  }, [isHydrated, currentSection, punchField]);
 
   function handlePrev() {
     send({ type: "PREV" });
@@ -517,7 +546,7 @@ export function QuestionnaireWizard(props: QuestionnaireWizardProps) {
   // RENDER
   // ============================================================
   return (
-    <div className={cn("w-full space-y-6", className)}>
+    <div id="intake-wizard" className={cn("w-full space-y-6", className)}>
       {/* Header — professional, attorney-friendly, mobile responsive */}
       <div className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="flex flex-col gap-3 p-4 md:flex-row md:items-center md:justify-between md:p-6">
@@ -1338,6 +1367,7 @@ function DynamicSectionForm({
 
               <Label>Minor trust / age-based distribution notes (optional)</Label>
               <textarea
+                id="minorTrustProvisions"
                 className="w-full rounded border p-3 text-sm"
                 placeholder="e.g. Distribute at age 25, trustee discretion for education"
                 {...register("minorTrustProvisions")}
@@ -1390,7 +1420,7 @@ function DynamicSectionForm({
           {currentSection === "healthcare" && (
             <>
               <Field register={register} errors={errors} name="primaryPhysician" label="Primary Physician" />
-              <div><Label>Care Instructions (AHCD Part 2)</Label><textarea {...register("careInstructions")} className="mt-1 w-full rounded border p-3" rows={4} placeholder="I want..." /></div>
+              <div><Label>Care Instructions (AHCD Part 2)</Label><textarea id="careInstructions" {...register("careInstructions")} className="mt-1 w-full rounded border p-3" rows={4} placeholder="I want..." /></div>
               <div className="flex gap-2"><input type="checkbox" {...register("anatomicalGifts")} /> <Label className="font-normal">Willing to be anatomical donor</Label></div>
             </>
           )}

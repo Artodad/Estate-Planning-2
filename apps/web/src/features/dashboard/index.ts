@@ -27,3 +27,9 @@ export { StatusBadge } from "./components/shared/StatusBadge";
 export { GenerateTrustDraftButton } from "./components/GenerateTrustDraftButton";
 export { buildGenerateTrustDraftParams, TRUST_DRAFT_DOCUMENT_TYPE } from "./components/generate-trust-draft";
 export { trustDraftFromStoredDocuments } from "./components/stored-trust-draft";
+export {
+  punchListFromFillReport,
+  resolveFillTagToMapperKey,
+  existingFieldIdForMapperKey,
+  punchJumpForMapperKey,
+} from "./components/fill-report-punch-list";

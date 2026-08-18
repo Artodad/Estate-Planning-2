@@ -41,4 +41,5 @@ export {
   calculateProgress,
   type FullIntake,
   type PartialIntake,
+  type SectionKey,
 } from "./schemas/intake";

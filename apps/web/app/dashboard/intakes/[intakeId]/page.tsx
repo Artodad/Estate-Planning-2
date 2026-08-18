@@ -9,8 +9,11 @@ import { GenerateTrustDraftButton } from "@/features/dashboard/components/Genera
 import { trustDraftFromStoredDocuments } from "@/features/dashboard/components/stored-trust-draft";
 import { generatedDocumentHelpers } from "@/lib/prisma";
 
+import { Suspense } from "react";
+
 import { QuestionnaireWizard } from "@/features/intake";
-import type { PartialIntake } from "@/features/intake";
+import type { PartialIntake, SectionKey } from "@/features/intake";
+import { isWizardSectionKey } from "@/features/dashboard/components/fill-report-punch-list";
 
 function formatIntakeStatus(status: string | null | undefined): string {
   const key = (status ?? "").toLowerCase();
@@ -31,10 +34,17 @@ function formatIntakeStatus(status: string | null | undefined): string {
  */
 export default async function IntakeWizardPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ intakeId: string }>;
+  searchParams: Promise<{ section?: string; field?: string }>;
 }) {
   const { intakeId } = await params;
+  const query = await searchParams;
+  const punchSection: SectionKey | undefined = isWizardSectionKey(query.section)
+    ? query.section
+    : undefined;
+  const punchField = query.field?.trim() || undefined;
 
   const authContext = await getCurrentAuthContext();
   if (!authContext?.userId) {
@@ -116,17 +126,22 @@ export default async function IntakeWizardPage({
         </div>
       </header>
 
-      <QuestionnaireWizard
-        clientId={session.clientId}
-        firmId={firmId}
-        sessionId={session.id}
-        initialAnswers={initialAnswers}
-        initialProgress={initialProgress}
-        initialCurrentSection={session.status === "completed" ? "review" : undefined}
-        clientDisplayName={clientDisplayName}
-        onPersist={handlePersist}
-        onComplete={handleComplete}
-      />
+      <Suspense fallback={null}>
+        <QuestionnaireWizard
+          clientId={session.clientId}
+          firmId={firmId}
+          sessionId={session.id}
+          initialAnswers={initialAnswers}
+          initialProgress={initialProgress}
+          initialCurrentSection={
+            punchSection ?? (session.status === "completed" ? "review" : undefined)
+          }
+          focusField={punchField}
+          clientDisplayName={clientDisplayName}
+          onPersist={handlePersist}
+          onComplete={handleComplete}
+        />
+      </Suspense>
 
       <GenerateTrustDraftButton intakeId={session.id} initialDraft={storedTrustDraft} />
     </div>

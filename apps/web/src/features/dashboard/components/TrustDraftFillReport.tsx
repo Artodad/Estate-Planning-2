@@ -1,109 +1,76 @@
+import { ChevronRight } from "lucide-react";
+
 import type { DocumentFillReport } from "@/features/documents/types";
 
-function humanizeField(name: string): string {
-  return name
-    .replace(/[{}]/g, "")
-    .replace(/[_-]+/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-function FieldChips({ items, emptyLabel }: { items: string[]; emptyLabel: string }) {
-  if (items.length === 0) {
-    return <p className="text-sm text-muted-foreground">{emptyLabel}</p>;
-  }
-
-  return (
-    <ul className="flex flex-wrap gap-1.5">
-      {items.map((item) => (
-        <li
-          key={item}
-          className="rounded-md border bg-background px-2 py-0.5 text-xs text-foreground"
-        >
-          {humanizeField(item)}
-        </li>
-      ))}
-    </ul>
-  );
-}
+import { punchListFromFillReport } from "./fill-report-punch-list";
 
 /**
- * Scannable fill snapshot for the Trust draft.
- * Driven by the existing DocumentFillReport object — same fields, no new data.
+ * Punch list under the Trust draft download.
+ * Rows come from that generate's stored fill report — tag names only.
  */
 export function TrustDraftFillReport({ report }: { report: DocumentFillReport }) {
-  const loopEntries = Object.entries(report.loopCounts);
-  const leftoverCount = report.leftoverBraces.length;
+  const rows = punchListFromFillReport(report);
+  const filledCount = report.filledScalars.length;
 
   return (
-    <div
-      className="rounded-lg border bg-card p-4"
-      data-testid="trust-draft-fill-report"
-    >
-      <div className="mb-4">
-        <h3 className="text-sm font-semibold tracking-tight">Fill report</h3>
-        <p className="mt-0.5 text-sm text-muted-foreground">
-          What this draft captured from the intake. Review leftovers before sending to the client.
-        </p>
+    <div className="space-y-5" data-testid="trust-draft-fill-report">
+      <div data-testid="trust-draft-punch-list">
+        <h3 className="text-sm font-semibold tracking-tight">
+          Needs attention
+          <span className="ml-1.5 tabular-nums text-muted-foreground">({rows.length})</span>
+        </h3>
+        {rows.length === 0 ? (
+          <p className="mt-2 text-sm text-muted-foreground">Nothing needs attention.</p>
+        ) : (
+          <ul className="mt-1 divide-y">
+            {rows.map((row) => (
+              <li key={row.tag}>
+                {row.href ? (
+                  <a
+                    href={`${row.href}#intake-wizard`}
+                    data-punch-row=""
+                    data-tag={row.tag}
+                    className="group flex items-center justify-between gap-4 rounded-md py-2.5 outline-none hover:bg-muted/50 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  >
+                    <span className="font-mono text-[13px] leading-6">{row.tag}</span>
+                    <span className="inline-flex shrink-0 items-center gap-0.5 text-xs font-medium text-muted-foreground group-hover:text-foreground">
+                      Go to field
+                      <ChevronRight className="h-3.5 w-3.5" aria-hidden />
+                    </span>
+                  </a>
+                ) : (
+                  <button
+                    type="button"
+                    disabled
+                    data-punch-row=""
+                    data-tag={row.tag}
+                    className="flex w-full cursor-default items-center justify-between gap-4 py-2.5 text-left text-muted-foreground"
+                  >
+                    <span className="font-mono text-[13px] leading-6">{row.tag}</span>
+                    <span className="shrink-0 text-xs">No intake field</span>
+                  </button>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <section>
-          <h4 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Filled
-            <span className="ml-1.5 tabular-nums">({report.filledScalars.length})</span>
-          </h4>
-          <FieldChips items={report.filledScalars} emptyLabel="No scalar fields filled." />
-        </section>
-
-        <section>
-          <h4 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Empty optionals
-            <span className="ml-1.5 tabular-nums">({report.emptyOptionals.length})</span>
-          </h4>
-          <FieldChips items={report.emptyOptionals} emptyLabel="No optional blanks left empty." />
-        </section>
-
-        <section>
-          <h4 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Leftover braces
-            <span className="ml-1.5 tabular-nums">({leftoverCount})</span>
-          </h4>
-          {leftoverCount > 0 ? (
-            <ul className="flex flex-wrap gap-1.5">
-              {report.leftoverBraces.map((item) => (
-                <li
-                  key={item}
-                  className="rounded-md border border-amber-200 bg-amber-50 px-2 py-0.5 text-xs text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200"
-                >
-                  {humanizeField(item)}
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-sm text-muted-foreground">None — no leftover template braces.</p>
-          )}
-        </section>
-
-        <section>
-          <h4 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Loops
-            <span className="ml-1.5 tabular-nums">({loopEntries.length})</span>
-          </h4>
-          {loopEntries.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No repeating sections in this draft.</p>
-          ) : (
-            <ul className="space-y-1 text-sm">
-              {loopEntries.map(([name, count]) => (
-                <li key={name} className="flex items-center justify-between gap-3">
-                  <span>{humanizeField(name)}</span>
-                  <span className="tabular-nums text-muted-foreground">{count}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      </div>
+      <details className="text-sm">
+        <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+          Filled
+          <span className="ml-1.5 tabular-nums">({filledCount})</span>
+        </summary>
+        {filledCount > 0 ? (
+          <ul className="mt-2 space-y-1">
+            {report.filledScalars.map((tag) => (
+              <li key={tag} className="font-mono text-[13px] text-muted-foreground">
+                {tag}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+      </details>
     </div>
   );
 }

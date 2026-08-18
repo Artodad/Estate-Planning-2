@@ -33,6 +33,12 @@ import {
 import { createRecordingNullGetter } from "./docxtemplater-options";
 import { buildGenerateTrustDraftParams } from "../dashboard/components/generate-trust-draft";
 import { trustDraftFromStoredDocuments } from "../dashboard/components/stored-trust-draft";
+import {
+  punchListFromFillReport,
+  resolveFillTagToMapperKey,
+  existingFieldIdForMapperKey,
+  punchJumpForMapperKey,
+} from "../dashboard/components/fill-report-punch-list";
 
 const FIXTURE_REL = "src/features/documents/__fixtures__/trust-family-fidelity-labels.docx";
 
@@ -400,4 +406,195 @@ test("reload UI/API returns the persisted fillReport JSON, not a client rebuild"
   ]);
   assert.ok(noReport);
   assert.equal(noReport.fillReport, null, "invalid stored JSON must not be rebuilt into a report");
+});
+
+test("resolveFillTagToMapperKey uses MAPPER_CONTRACT_KEYS and TAG_ALIASES only", () => {
+  assert.equal(resolveFillTagToMapperKey("young_person_retention_age"), "young_person_retention_age");
+  assert.equal(resolveFillTagToMapperKey("{#children}"), "children");
+  assert.equal(resolveFillTagToMapperKey("client_name"), "client_full_name");
+  assert.equal(resolveFillTagToMapperKey("city_and_state_of_marriage"), "marriage_city_state");
+  assert.equal(resolveFillTagToMapperKey("unresolved_blank"), null);
+  assert.equal(resolveFillTagToMapperKey("optional_middle_name"), null);
+});
+
+test("mapper key yields an existing Field id only by name transform, not a key table", () => {
+  assert.equal(existingFieldIdForMapperKey("young_person_retention_age"), "youngPersonRetentionAge");
+  assert.equal(existingFieldIdForMapperKey("client_first_name"), "client.firstName");
+  assert.equal(existingFieldIdForMapperKey("client_email"), "client.email");
+  assert.equal(existingFieldIdForMapperKey("marriage_city_state"), "marriageCityState");
+  assert.equal(
+    existingFieldIdForMapperKey("client_full_name"),
+    null,
+    "no client_full_name Field id",
+  );
+  assert.equal(existingFieldIdForMapperKey("has_spouse"), null, "maritalStatus has no matching id");
+  assert.equal(
+    existingFieldIdForMapperKey("successor_trustee_full_name"),
+    null,
+    "do not invent a successor row Field id",
+  );
+  assert.equal(
+    existingFieldIdForMapperKey("distribution_residuary"),
+    null,
+    "do not invent a residuary row Field id",
+  );
+  assert.equal(
+    existingFieldIdForMapperKey("healthcare_instructions"),
+    null,
+    "do not map healthcare_instructions to careInstructions",
+  );
+  assert.equal(
+    existingFieldIdForMapperKey("is_ca_resident"),
+    null,
+    "do not map is_ca_resident to isCA",
+  );
+  assert.equal(existingFieldIdForMapperKey("children"), null, "array tag is not a Field id");
+
+  const age = punchJumpForMapperKey("young_person_retention_age");
+  assert.equal(age.field, "youngPersonRetentionAge");
+  assert.equal(age.section, "distribution");
+
+  const first = punchJumpForMapperKey("client_first_name");
+  assert.equal(first.field, "client.firstName");
+  assert.equal(first.section, "personal");
+
+  const full = punchJumpForMapperKey("client_full_name");
+  assert.equal(full.field, null);
+  assert.equal(full.section, null);
+});
+
+test("punch list comes from a real generate: leftovers + required empties; allowed empties quiet", async () => {
+  const stamp = Date.now();
+  const templateFileKey = `templates/unit-punch-list-${stamp}/punch.docx`;
+  const body = [
+    paragraphWithRuns(["Client: {client_full_name}"]),
+    paragraphWithRuns(["First: {client_first_name}"]),
+    paragraphWithRuns(["Age (leave blank ok): {first_distribution_age}"]),
+    paragraphWithRuns(["Optional: {optional_middle_name}"]),
+    `    <w:p><w:r><w:instrText>{unresolved_blank}</w:instrText></w:r></w:p>`,
+    `    <w:p><w:r><w:instrText>{young_person_retention_age}</w:instrText></w:r></w:p>`,
+    `    <w:p><w:r><w:instrText>{successor_trustee_full_name}</w:instrText></w:r></w:p>`,
+    `    <w:p><w:r><w:instrText>{has_spouse}</w:instrText></w:r></w:p>`,
+    `    <w:p><w:r><w:instrText>{#children}</w:instrText></w:r></w:p>`,
+  ].join("\n");
+  const buf = createDocxFromDocumentXml(wrapDocumentXml(body));
+  await mkdir(path.dirname(resolveStoragePath(templateFileKey)), { recursive: true });
+  await writeFile(resolveStoragePath(templateFileKey), buf);
+
+  let holeKey: string | undefined;
+  let fixedKey: string | undefined;
+  try {
+    const hole = await generateDocument({
+      templateFileKey,
+      variables: {
+        client_full_name: "Ada Lovelace",
+        client_first_name: "",
+        first_distribution_age: "",
+        optional_middle_name: "",
+        young_person_retention_age: "21",
+      },
+      firmId: "firm_unit_punch_list",
+      options: {
+        addDraftWatermark: true,
+        documentType: "revocable_trust",
+        clientLastName: "Lovelace",
+        clientFirstName: "Ada",
+      },
+    });
+    holeKey = hole.fileKey;
+
+    assert.ok(hole.fillReport.emptyOptionals.includes("client_first_name"));
+    assert.ok(hole.fillReport.emptyOptionals.includes("first_distribution_age"));
+    assert.ok(hole.fillReport.emptyOptionals.includes("optional_middle_name"));
+    assert.ok(hole.fillReport.leftoverBraces.includes("unresolved_blank"));
+    assert.ok(hole.fillReport.leftoverBraces.includes("young_person_retention_age"));
+    assert.ok(hole.fillReport.leftoverBraces.includes("successor_trustee_full_name"));
+    assert.ok(hole.fillReport.leftoverBraces.includes("has_spouse"));
+    assert.ok(
+      hole.fillReport.leftoverBraces.includes("#children"),
+      `array leftover from generate, got: ${hole.fillReport.leftoverBraces.join(", ")}`,
+    );
+
+    const rows = punchListFromFillReport(hole.fillReport);
+    assert.notEqual(rows, hole.fillReport, "punch list is derived from the generate report, not a stand-in");
+    const tags = rows.map((r) => r.tag);
+    assert.ok(tags.includes("client_first_name"), "required empty from generate is a punch-list row");
+    assert.ok(tags.includes("unresolved_blank"), "leftover from generate is a punch-list row");
+    assert.ok(tags.includes("young_person_retention_age"), "leftover mapper tag from generate is a punch-list row");
+    assert.ok(!tags.includes("first_distribution_age"), "Zod optional / leave-blank empty stays quiet");
+    assert.ok(!tags.includes("optional_middle_name"), "unknown empty optional stays quiet");
+    assert.ok(!tags.includes("client_full_name"), "filled stays off the punch list");
+
+    const firstNameRow = rows.find((r) => r.tag === "client_first_name");
+    assert.ok(firstNameRow);
+    assert.equal(firstNameRow.href, "?section=personal&field=client.firstName");
+    assert.equal(firstNameRow.field, "client.firstName");
+
+    const leftoverKnown = rows.find((r) => r.tag === "young_person_retention_age");
+    assert.ok(leftoverKnown);
+    assert.equal(leftoverKnown.href, "?section=distribution&field=youngPersonRetentionAge");
+
+    const leftoverUnknown = rows.find((r) => r.tag === "unresolved_blank");
+    assert.ok(leftoverUnknown);
+    assert.equal(leftoverUnknown.href, null, "unresolved leftover is disabled — no invented landing");
+    assert.equal(leftoverUnknown.section, null);
+    assert.equal(leftoverUnknown.field, null);
+
+    const composed = rows.find((r) => r.tag === "successor_trustee_full_name");
+    assert.ok(composed, "leftover array/role tag is listed");
+    assert.equal(composed.href, null, "no Field id — not a Go to field link");
+    assert.equal(composed.field, null);
+
+    const hasSpouse = rows.find((r) => r.tag === "has_spouse");
+    assert.ok(hasSpouse, "section-only leftover is listed");
+    assert.equal(hasSpouse.href, null, "has_spouse is not a Field id");
+    assert.equal(hasSpouse.field, null);
+
+    const childrenLoop = rows.find((r) => r.tag === "#children");
+    assert.ok(childrenLoop, "array leftover is listed");
+    assert.equal(childrenLoop.href, null, "array leftover is not a Go to field link");
+    assert.equal(childrenLoop.field, null);
+
+    const persist = generatedDocumentPersistFromGenerate(hole, {
+      intakeSessionId: "intake_punch_list",
+      templateId: null,
+      documentType: "revocable_trust",
+    });
+    const loaded = trustDraftFromStoredDocuments([
+      { documentType: persist.documentType, fileKey: persist.fileKey, fillReport: persist.fillReport },
+    ]);
+    assert.ok(loaded?.fillReport);
+    assert.deepEqual(
+      punchListFromFillReport(loaded.fillReport),
+      rows,
+      "reload punch list is the stored generate report, not a rebuilt object",
+    );
+
+    const fixed = await generateDocument({
+      templateFileKey,
+      variables: {
+        client_full_name: "Ada Lovelace",
+        client_first_name: "Ada",
+        first_distribution_age: "",
+        optional_middle_name: "",
+        young_person_retention_age: "21",
+      },
+      firmId: "firm_unit_punch_list",
+      options: {
+        addDraftWatermark: true,
+        documentType: "revocable_trust",
+        clientLastName: "Lovelace",
+        clientFirstName: "Ada",
+      },
+    });
+    fixedKey = fixed.fileKey;
+    const afterFix = punchListFromFillReport(fixed.fillReport);
+    assert.ok(
+      !afterFix.some((r) => r.tag === "client_first_name"),
+      "after regenerate with the field filled, that punch-list row is gone",
+    );
+    assert.ok(afterFix.some((r) => r.tag === "unresolved_blank"));
+  } finally {
+    await cleanupKeys(templateFileKey, holeKey ?? "", fixedKey ?? "");
+  }
 });
