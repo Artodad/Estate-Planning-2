@@ -33,3 +33,8 @@ export {
   existingFieldIdForMapperKey,
   punchJumpForMapperKey,
 } from "./components/fill-report-punch-list";
+export {
+  leftoverCountFromFillReport,
+  trustDraftDownloadConfirmPhrase,
+} from "./components/trust-draft-download-confirm";
+export { TrustDraftDownloadConfirmDialog } from "./components/TrustDraftDownloadConfirmDialog";
