@@ -20,6 +20,7 @@ import { fileURLToPath } from "node:url";
 import PizZip from "pizzip";
 
 import { generateDocument } from "./generator";
+import { FULL_PLAN_DOCUMENT_ORDER } from "./package";
 import { generatedDocumentPersistFromGenerate, parseStoredFillReport, wordPlainTextFromDocx } from "./fill-report";
 import { DRAFT_TEXT, stampTrustDraftConfirmPhrase } from "./draft-watermark-module";
 import { getFileBuffer } from "./storage";
@@ -1040,6 +1041,58 @@ test("Documents download href: revocable_trust stamps; other types stay ungated"
   assert.ok(
     !documentsRowDownloadHref("pour_over_will", fileKey).includes("download-trust-draft"),
     "non-trust types stay on ungated GET /api/documents/download",
+  );
+});
+
+test("client-detail Trust download joins answers by intakeSessionId; package chip N is 0", () => {
+  const leftovers = leftoverReport(["is_ca_resident", "unresolved_blank", "young_person_retention_age"]);
+  const intake = { id: "sess_client_detail_1", answers: adaAnswers };
+  const intakes = [intake];
+  const doc = {
+    intakeSessionId: "sess_client_detail_1",
+    fillReport: leftovers,
+    documentType: "revocable_trust" as const,
+  };
+
+  const joined = intakes.find((i) => i.id === doc.intakeSessionId);
+  const answers = documentsRowIntakeAnswers(joined?.answers);
+  const n = leftoverCountFromFillReport(parseStoredFillReport(doc.fillReport), answers);
+
+  assert.equal(n, leftoverCountFromFillReport(leftovers, adaAnswers));
+  assert.equal(n, 2, "CA answers skip is_ca_resident; two real leftovers remain");
+  assert.equal(
+    leftoverCountFromFillReport(
+      parseStoredFillReport(doc.fillReport),
+      documentsRowIntakeAnswers(undefined),
+    ),
+    3,
+    "missing join must stay null — {} would skip is_ca_resident",
+  );
+  assert.ok(
+    n < leftoverCountFromFillReport(leftovers, documentsRowIntakeAnswers(undefined)),
+    "joined CA answers drop is_ca_resident so N matches the stamp route",
+  );
+
+  const packageChipN = leftoverCountFromFillReport(
+    parseStoredFillReport(null),
+    documentsRowIntakeAnswers(undefined),
+  );
+  assert.equal(packageChipN, 0, "package persist has no fillReport → skip dialog, still stamp");
+  assert.equal(
+    leftoverCountFromFillReport(parseStoredFillReport(null), documentsRowIntakeAnswers(adaAnswers)),
+    0,
+  );
+  assert.equal(FULL_PLAN_DOCUMENT_ORDER[0], "revocable_trust");
+  assert.ok(
+    FULL_PLAN_DOCUMENT_ORDER.slice(0, 4).includes("revocable_trust"),
+    "Trust is in the first-4 success chips — Door B must use the stamp href",
+  );
+  const chipKey = "generated/pkg/trust-DRAFT.docx";
+  assert.equal(documentsRowDownloadHref("revocable_trust", chipKey), trustDraftStampedDownloadHref(chipKey));
+  assert.ok(!documentsRowDownloadHref("revocable_trust", chipKey).includes("/api/documents/download?"));
+  assert.ok(
+    !documentsRowDownloadHref("pour_over_will", chipKey).includes("download-trust-draft"),
+    "ZIP/other first-4 types stay ungated",
   );
 });
 
