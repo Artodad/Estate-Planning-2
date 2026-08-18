@@ -11,6 +11,12 @@ import { buildGenerateTrustDraftParams } from "./generate-trust-draft";
 import type { StoredTrustDraft } from "./generate-trust-draft";
 import type { PartialIntake } from "@/features/intake/schemas/intake";
 import { TrustDraftFillReport } from "./TrustDraftFillReport";
+import { TrustDraftDownloadConfirmDialog } from "./TrustDraftDownloadConfirmDialog";
+import {
+  leftoverCountFromFillReport,
+  trustDraftDownloadConfirmPhrase,
+  trustDraftStampedDownloadHref,
+} from "./trust-draft-download-confirm";
 
 export { buildGenerateTrustDraftParams, TRUST_DRAFT_DOCUMENT_TYPE } from "./generate-trust-draft";
 
@@ -31,6 +37,11 @@ export function GenerateTrustDraftButton({
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<StoredTrustDraft | null>(initialDraft);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  const leftoverCount = leftoverCountFromFillReport(result?.fillReport, answers);
+  const confirmPhrase = trustDraftDownloadConfirmPhrase(leftoverCount);
+  const stampedHref = result ? trustDraftStampedDownloadHref(result.fileKey) : null;
 
   async function handleGenerate() {
     if (!intakeId) {
@@ -91,12 +102,29 @@ export function GenerateTrustDraftButton({
                   </p>
                 </div>
                 <a
-                  href={`/api/documents/download?fileKey=${encodeURIComponent(result.fileKey)}`}
+                  href={stampedHref ?? "#"}
                   className="inline-flex h-9 shrink-0 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
                   download
+                  data-testid="trust-draft-download"
+                  data-leftover-count={String(leftoverCount)}
+                  onClick={(e) => {
+                    if (leftoverCount > 0) {
+                      e.preventDefault();
+                      setConfirmOpen(true);
+                    }
+                  }}
                 >
                   Download Trust DRAFT
                 </a>
+                {stampedHref && leftoverCount > 0 && (
+                  <TrustDraftDownloadConfirmDialog
+                    open={confirmOpen}
+                    leftoverCount={leftoverCount}
+                    phrase={confirmPhrase}
+                    downloadHref={stampedHref}
+                    onOpenChange={setConfirmOpen}
+                  />
+                )}
               </div>
               {result.fillReport && (
                 <TrustDraftFillReport report={result.fillReport} answers={answers} />

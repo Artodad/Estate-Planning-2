@@ -20,8 +20,9 @@ import { fileURLToPath } from "node:url";
 import PizZip from "pizzip";
 
 import { generateDocument } from "./generator";
-import { generatedDocumentPersistFromGenerate, parseStoredFillReport } from "./fill-report";
-import { DRAFT_TEXT } from "./draft-watermark-module";
+import { generatedDocumentPersistFromGenerate, parseStoredFillReport, wordPlainTextFromDocx } from "./fill-report";
+import { DRAFT_TEXT, stampTrustDraftConfirmPhrase } from "./draft-watermark-module";
+import { getFileBuffer } from "./storage";
 import { mapIntakeToDocVariables } from "./mapper";
 import { marriedCaRichIntake } from "./__fixtures__/intake-answers";
 import type { PartialIntake } from "../intake/schemas/intake";
@@ -42,6 +43,12 @@ import {
   existingFieldIdForMapperKey,
   punchJumpForMapperKey,
 } from "../dashboard/components/fill-report-punch-list";
+import {
+  leftoverCountFromFillReport,
+  TRUST_DRAFT_DOWNLOAD_CLEAN_PHRASE,
+  trustDraftDownloadConfirmPhrase,
+  trustDraftStampedDownloadHref,
+} from "../dashboard/components/trust-draft-download-confirm";
 
 /** Three child rows in the mapper bag so leftover {#children} still has loopCounts.children === 3. */
 const ADA_THREE_CHILDREN = [
@@ -868,5 +875,96 @@ test("computed punch-list skip uses session answers, not a new key table", () =>
     ).some((r) => r.tag === "client_full_name"),
     "key ∈ filledScalars drops leftover client_full_name",
   );
+});
+
+test("download confirm N is punchListFromFillReport length, not leftoverBraces.length", () => {
+  const report = leftoverReport(
+    ["unresolved_blank", "client_full_name", "has_spouse"],
+    { emptyOptionals: ["first_distribution_age", "client_first_name"] },
+  );
+  const rows = punchListFromFillReport(report, adaAnswers);
+  const n = leftoverCountFromFillReport(report, adaAnswers);
+  assert.equal(n, rows.length);
+  assert.ok(n > 0);
+  assert.notEqual(
+    n,
+    report.leftoverBraces.length,
+    "N must not be leftoverBraces.length — computed leftovers and allowed empties differ",
+  );
+  assert.equal(trustDraftDownloadConfirmPhrase(n), `${n} leftovers, download anyway`);
+  assert.equal(trustDraftDownloadConfirmPhrase(0), TRUST_DRAFT_DOWNLOAD_CLEAN_PHRASE);
+  assert.equal(trustDraftDownloadConfirmPhrase(0), "download clean.");
+  assert.equal(
+    leftoverCountFromFillReport(leftoverReport([])),
+    0,
+    "empty punch list is download clean",
+  );
+  assert.match(
+    trustDraftStampedDownloadHref("generated/firm/trust-DRAFT.docx"),
+    /^\/api\/documents\/download-trust-draft\?fileKey=/,
+  );
+  assert.ok(
+    !trustDraftStampedDownloadHref("generated/firm/trust-DRAFT.docx").includes("/api/documents/download?"),
+    "confirm path is Trust-draft-only, not the ungated Documents download",
+  );
+});
+
+test("stamp helper adds confirm phrase on a generated buffer without a second generate", async () => {
+  const stamp = Date.now();
+  const templateFileKey = `templates/unit-download-stamp-${stamp}/stamp.docx`;
+  const body = [
+    paragraphWithRuns(["Client: {client_full_name}"]),
+    paragraphWithRuns(["Hole: {unresolved_blank}"]),
+  ].join("\n");
+  const buf = createDocxFromDocumentXml(wrapDocumentXml(body));
+  await mkdir(path.dirname(resolveStoragePath(templateFileKey)), { recursive: true });
+  await writeFile(resolveStoragePath(templateFileKey), buf);
+
+  let generatedFileKey: string | undefined;
+  try {
+    const result = await generateDocument({
+      templateFileKey,
+      variables: { client_full_name: "Ada Lovelace" },
+      firmId: "firm_unit_download_stamp",
+      options: {
+        addDraftWatermark: true,
+        documentType: "revocable_trust",
+        clientLastName: "Lovelace",
+        clientFirstName: "Ada",
+      },
+    });
+    generatedFileKey = result.fileKey;
+
+    const generatedText = wordPlainTextFromDocx(result.buffer);
+    assert.ok(generatedText.includes(DRAFT_TEXT), "generate stores DRAFT before review");
+    assert.ok(!generatedText.includes("leftovers, download anyway"), "confirm phrase is not written at generate time");
+    assert.ok(!generatedText.includes(TRUST_DRAFT_DOWNLOAD_CLEAN_PHRASE));
+    assert.equal(
+      generatedText.split(DRAFT_TEXT).length - 1,
+      1,
+      "generate applies DRAFT once — do not call applyDraftWatermark again at download",
+    );
+
+    const leftoverPhrase = "3 leftovers, download anyway";
+    const stampedLeftovers = stampTrustDraftConfirmPhrase(result.buffer, leftoverPhrase);
+    const leftoverText = wordPlainTextFromDocx(stampedLeftovers);
+    assert.ok(leftoverText.includes(leftoverPhrase), "leftover confirm phrase sticks on the downloaded bytes");
+    assert.ok(leftoverText.includes(DRAFT_TEXT), "DRAFT remains after stamp");
+    assert.equal(leftoverText.split(DRAFT_TEXT).length - 1, 1, "stamp must not duplicate DRAFT");
+
+    const stampedClean = stampTrustDraftConfirmPhrase(result.buffer, TRUST_DRAFT_DOWNLOAD_CLEAN_PHRASE);
+    const cleanText = wordPlainTextFromDocx(stampedClean);
+    assert.ok(cleanText.includes("download clean."), "clean confirm phrase sticks without a second generate");
+    assert.ok(cleanText.includes(DRAFT_TEXT));
+    assert.equal(cleanText.split(DRAFT_TEXT).length - 1, 1);
+
+    const stored = await getFileBuffer(result.fileKey);
+    const storedText = wordPlainTextFromDocx(stored);
+    assert.ok(storedText.includes(DRAFT_TEXT), "stored artifact stays DRAFT");
+    assert.ok(!storedText.includes(leftoverPhrase), "stamped bytes are not persisted");
+    assert.ok(!storedText.includes(TRUST_DRAFT_DOWNLOAD_CLEAN_PHRASE));
+  } finally {
+    await cleanupKeys(templateFileKey, generatedFileKey ?? "");
+  }
 });
 
