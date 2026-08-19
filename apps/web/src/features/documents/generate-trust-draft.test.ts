@@ -51,6 +51,7 @@ import {
 } from "../dashboard/components/trust-draft-download-confirm";
 import { prefixedPunchListHref } from "../dashboard/components/TrustDraftFillReport";
 import {
+  clientDetailTrustDraftGenerateIntakeId,
   documentsRowDownloadHref,
   documentsRowIntakeAnswers,
   documentsTrustDraftHrefPrefix,
@@ -1087,6 +1088,45 @@ test("client-detail Trust download joins answers by intakeSessionId", () => {
   assert.ok(
     n < leftoverCountFromFillReport(leftovers, documentsRowIntakeAnswers(undefined)),
     "joined CA answers drop is_ca_resident so N matches the stamp route",
+  );
+});
+
+test("client-detail Trust generate: newest intake, gate on no revocable_trust (not empty docs)", () => {
+  const newest = { id: "intake_newest" };
+  const older = { id: "intake_older" };
+  const intakesNewestFirst = [newest, older];
+
+  assert.equal(clientDetailTrustDraftGenerateIntakeId([], []), null);
+  assert.equal(
+    clientDetailTrustDraftGenerateIntakeId(intakesNewestFirst, []),
+    "intake_newest",
+    "empty clientDocs still generate — gate is no Trust, not no docs",
+  );
+  assert.equal(
+    clientDetailTrustDraftGenerateIntakeId(intakesNewestFirst, [
+      { documentType: "healthcare_directive" },
+    ]),
+    "intake_newest",
+    "other leftover .docx do not hide generate",
+  );
+  assert.equal(
+    clientDetailTrustDraftGenerateIntakeId(intakesNewestFirst, [
+      { documentType: "healthcare_directive" },
+      { documentType: "revocable_trust" },
+    ]),
+    null,
+    "any Trust on this matter hides generate",
+  );
+  assert.equal(
+    clientDetailTrustDraftGenerateIntakeId(intakesNewestFirst, [
+      { documentType: "revocable_trust" },
+    ]),
+    null,
+    "Trust on an older intake still counts as has Trust",
+  );
+  assert.equal(
+    clientDetailTrustDraftGenerateIntakeId([older], [{ documentType: "pour_over_will" }]),
+    "intake_older",
   );
 });
 

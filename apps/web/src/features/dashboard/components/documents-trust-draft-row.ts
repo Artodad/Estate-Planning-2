@@ -7,6 +7,19 @@ export function isRevocableTrustDocumentType(documentType: string): boolean {
   return documentType === TRUST_DRAFT_DOCUMENT_TYPE;
 }
 
+/**
+ * Matter-page Trust generate: newest intake (`intakes[0]`) when none of
+ * this matter's docs is revocable_trust. Other leftover .docx do not hide it.
+ */
+export function clientDetailTrustDraftGenerateIntakeId(
+  intakes: { id: string }[],
+  docs: { documentType: string }[],
+): string | null {
+  if (intakes.length < 1) return null;
+  if (docs.some((d) => isRevocableTrustDocumentType(d.documentType))) return null;
+  return intakes[0]?.id ?? null;
+}
+
 /** Session answers or null — never {}. is_ca_resident skip differs. */
 export function documentsRowIntakeAnswers(answers: unknown): PartialIntake | null {
   return (answers ?? null) as PartialIntake | null;

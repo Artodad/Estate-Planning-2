@@ -18,7 +18,9 @@ import {
 import { leftoverCountFromFillReport } from "@/features/dashboard/components/trust-draft-download-confirm";
 import { TrustDraftDocumentsDownload } from "@/features/dashboard/components/TrustDraftDocumentsDownload";
 import { TrustDraftFillReport } from "@/features/dashboard/components/TrustDraftFillReport";
+import { GenerateTrustDraftCta } from "@/features/dashboard/components/GenerateTrustDraftCta";
 import {
+  clientDetailTrustDraftGenerateIntakeId,
   documentsRowDownloadHref,
   documentsRowIntakeAnswers,
   documentsTrustDraftHrefPrefix,
@@ -182,6 +184,10 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
     (d: any) =>
       clientIntakeIds.has(d.intakeSessionId) && !isHiddenEstatePlanPackageRow(d.fileKey),
   );
+  const trustDraftGenerateIntakeId = clientDetailTrustDraftGenerateIntakeId(
+    clientIntakes,
+    clientDocs,
+  );
 
   // Delete navigation handler (passed to client island)
   async function handleDeleteSuccess() {
@@ -278,11 +284,18 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
       {/* Generated Documents */}
       <div className="rounded-lg border bg-card p-4">
         <div className="mb-3 font-medium">Generated Documents (DRAFT)</div>
+        {trustDraftGenerateIntakeId ? (
+          <div className="mb-3">
+            <GenerateTrustDraftCta intakeId={trustDraftGenerateIntakeId} />
+          </div>
+        ) : null}
 
         {clientDocs.length === 0 ? (
-          <div className="text-sm text-muted-foreground">
-            No Trust draft yet. Open the intake and click Generate Trust draft.
-          </div>
+          trustDraftGenerateIntakeId ? null : (
+            <div className="text-sm text-muted-foreground">
+              No generated documents yet.
+            </div>
+          )
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
