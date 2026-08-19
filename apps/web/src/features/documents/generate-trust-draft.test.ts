@@ -1055,11 +1055,27 @@ test("client-detail Trust download joins answers by intakeSessionId", () => {
   };
 
   const joined = intakes.find((i) => i.id === doc.intakeSessionId);
+  const report = parseStoredFillReport(doc.fillReport);
   const answers = documentsRowIntakeAnswers(joined?.answers);
-  const n = leftoverCountFromFillReport(parseStoredFillReport(doc.fillReport), answers);
+  const n = leftoverCountFromFillReport(report, answers);
+  const rows = punchListFromFillReport(report!, answers);
+  const prefix = documentsTrustDraftHrefPrefix(doc.intakeSessionId);
+  const age = rows.find((r) => r.tag === "young_person_retention_age");
+  const blank = rows.find((r) => r.tag === "unresolved_blank");
 
   assert.equal(n, leftoverCountFromFillReport(leftovers, adaAnswers));
   assert.equal(n, 2, "CA answers skip is_ca_resident; two real leftovers remain");
+  assert.equal(rows.length, n, "matter-page list N matches leftoverCount");
+  assert.equal(rows.some((r) => r.tag === "is_ca_resident"), false);
+  assert.ok(blank);
+  assert.ok(age);
+  assert.equal(punchListActionCopy(blank, leftovers), "Still in the draft");
+  assert.equal(punchListActionCopy(age, leftovers), "Go to field");
+  assert.equal(prefix, "/dashboard/intakes/sess_client_detail_1");
+  assert.equal(
+    `${prefixedPunchListHref(age.href, prefix)}#intake-wizard`,
+    "/dashboard/intakes/sess_client_detail_1?section=distribution&field=youngPersonRetentionAge#intake-wizard",
+  );
   assert.equal(
     leftoverCountFromFillReport(
       parseStoredFillReport(doc.fillReport),

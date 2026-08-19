@@ -17,9 +17,11 @@ import {
 
 import { leftoverCountFromFillReport } from "@/features/dashboard/components/trust-draft-download-confirm";
 import { TrustDraftDocumentsDownload } from "@/features/dashboard/components/TrustDraftDocumentsDownload";
+import { TrustDraftFillReport } from "@/features/dashboard/components/TrustDraftFillReport";
 import {
   documentsRowDownloadHref,
   documentsRowIntakeAnswers,
+  documentsTrustDraftHrefPrefix,
   isHiddenEstatePlanPackageRow,
   isRevocableTrustDocumentType,
 } from "@/features/dashboard/components/documents-trust-draft-row";
@@ -298,14 +300,14 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
                     ? clientIntakes.find((i: any) => i.id === doc.intakeSessionId) ??
                       client.intakeSessions?.find((i: { id: string }) => i.id === doc.intakeSessionId)
                     : undefined;
-                  const leftoverCount = isTrust
-                    ? leftoverCountFromFillReport(
-                        parseStoredFillReport(doc.fillReport),
-                        documentsRowIntakeAnswers(intake?.answers),
-                      )
-                    : 0;
+                  const report = isTrust ? parseStoredFillReport(doc.fillReport) : null;
+                  const answers = isTrust
+                    ? documentsRowIntakeAnswers(intake?.answers)
+                    : null;
+                  const leftoverCount = leftoverCountFromFillReport(report, answers);
                   return (
-                  <tr key={doc.id} className="border-b last:border-0" data-document-type={doc.documentType}>
+                  <React.Fragment key={doc.id}>
+                  <tr className="border-b last:border-0" data-document-type={doc.documentType}>
                     <td className="py-2 pr-4 font-medium">{doc.documentType.replace(/_/g, " ")}</td>
                     <td className="py-2 pr-4 text-muted-foreground">
                       {doc.generatedAt ? new Date(doc.generatedAt).toLocaleDateString() : "—"}
@@ -327,6 +329,18 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
                       )}
                     </td>
                   </tr>
+                  {report ? (
+                    <tr className="border-b last:border-0">
+                      <td colSpan={3} className="py-2">
+                        <TrustDraftFillReport
+                          report={report}
+                          answers={answers}
+                          hrefPrefix={documentsTrustDraftHrefPrefix(doc.intakeSessionId)}
+                        />
+                      </td>
+                    </tr>
+                  ) : null}
+                  </React.Fragment>
                   );
                 })}
               </tbody>

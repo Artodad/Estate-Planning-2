@@ -25,10 +25,10 @@ const E2E_IDENTIFIER = process.env.E2E_CLERK_USER_IDENTIFIER;
 const E2E_PASSWORD = process.env.E2E_CLERK_USER_PASSWORD;
 
 /**
- * Client-detail revocable_trust download: same stamp confirm as Documents (#32).
- * No punch list / JUMP_TO on this page. Other types stay ungated.
+ * Client-detail revocable_trust: same punch list + stamp confirm as Documents.
+ * Other types stay ungated Download DRAFT.
  */
-test.describe("Client detail — Trust draft stamp confirm", () => {
+test.describe("Client detail — Trust draft punch list + stamp confirm", () => {
   const hasE2ECredentials = Boolean(E2E_IDENTIFIER && E2E_PASSWORD);
 
   if (!hasE2ECredentials) {
@@ -38,7 +38,7 @@ test.describe("Client detail — Trust draft stamp confirm", () => {
     );
   }
 
-  test("stored revocable_trust download N matches leftoverCount; other types stay ungated", async ({
+  test("revocable_trust row shows punch list, prefixed JUMP_TO, and stamp confirm; other types stay ungated", async ({
     page,
   }) => {
     test.setTimeout(90_000);
@@ -164,6 +164,29 @@ test.describe("Client detail — Trust draft stamp confirm", () => {
         `/api/documents/download?fileKey=${encodeURIComponent(otherKey)}`,
       );
 
+      const punch = page.getByTestId("trust-draft-punch-list");
+      await expect(punch).toBeVisible();
+      await expect(punch.getByText(/Needs attention\s*\(2\)/)).toBeVisible();
+      await expect(punch.locator('[data-tag="is_ca_resident"]')).toHaveCount(0);
+      await expect(punch.locator('[data-tag="unresolved_blank"]')).toHaveCount(1);
+      await expect(punch.locator('[data-tag="young_person_retention_age"]')).toHaveCount(1);
+      await expect(punch.locator('[data-tag="unresolved_blank"]')).toHaveAttribute(
+        "data-punch-door",
+        "none",
+      );
+      await expect(punch.locator('[data-tag="young_person_retention_age"]')).toHaveAttribute(
+        "data-punch-door",
+        "field",
+      );
+      await expect(punch.getByText("Still in the draft")).toBeVisible();
+      await expect(punch.getByText("Go to field")).toBeVisible();
+
+      const ageLink = punch.locator('[data-tag="young_person_retention_age"]');
+      await expect(ageLink).toHaveAttribute(
+        "href",
+        `/dashboard/intakes/${session.id}?section=distribution&field=youngPersonRetentionAge#intake-wizard`,
+      );
+
       await leftoverDownload.click();
       const confirm = page.getByTestId("trust-draft-download-confirm");
       await expect(confirm).toBeVisible();
@@ -177,8 +200,8 @@ test.describe("Client detail — Trust draft stamp confirm", () => {
       await page.getByRole("button", { name: /^Cancel$/ }).click();
       await expect(confirm).toHaveCount(0);
 
-      await expect(page.getByTestId("trust-draft-punch-list")).toHaveCount(0);
-      await expect(page.getByTestId("trust-draft-fill-report")).toHaveCount(0);
+      await expect(page.getByTestId("trust-draft-fill-report")).toHaveCount(1);
+      await expect(otherRow.getByTestId("trust-draft-fill-report")).toHaveCount(0);
       await expect(otherRow.getByTestId("trust-draft-download")).toHaveCount(0);
     } finally {
       await prisma.generatedDocument.deleteMany({
