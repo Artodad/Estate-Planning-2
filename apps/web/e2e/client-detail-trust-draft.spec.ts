@@ -25,7 +25,8 @@ const E2E_IDENTIFIER = process.env.E2E_CLERK_USER_IDENTIFIER;
 const E2E_PASSWORD = process.env.E2E_CLERK_USER_PASSWORD;
 
 /**
- * Client-detail revocable_trust: same punch list + stamp confirm as Documents.
+ * Client-detail: generate Trust when this matter has an intake and no Trust,
+ * then the #37 punch list + stamp confirm once a Trust row exists.
  * Other types stay ungated Download DRAFT.
  */
 test.describe("Client detail — Trust draft punch list + stamp confirm", () => {
@@ -146,6 +147,7 @@ test.describe("Client detail — Trust draft punch list + stamp confirm", () => 
       await expect(otherRow).toBeVisible();
       await expect(page.getByText(zipKey)).toHaveCount(0);
       await expect(page.locator('[data-document-type="pour_over_will"]')).toHaveCount(0);
+      await expect(page.getByRole("button", { name: /Generate Trust draft/i })).toHaveCount(0);
       await expect(page.getByRole("button", { name: /Generate Full Estate Plan/i })).toHaveCount(0);
       await expect(page.getByRole("link", { name: /Download Full ZIP/i })).toHaveCount(0);
 
@@ -206,6 +208,181 @@ test.describe("Client detail — Trust draft punch list + stamp confirm", () => 
     } finally {
       await prisma.generatedDocument.deleteMany({
         where: { firmId, fileKey: { in: [leftoverKey, cleanKey, otherKey, zipKey] } },
+      });
+      await prisma.intakeSession.delete({ where: { id: session.id } }).catch(() => {});
+      await prisma.client.delete({ where: { id: client.id } }).catch(() => {});
+    }
+  });
+
+  test("intake + no docs: Generate Trust draft, no bounce-to-intake copy", async ({
+    page,
+  }) => {
+    test.setTimeout(90_000);
+
+    await page.goto("/dashboard", { waitUntil: "domcontentloaded" });
+    await clerk.signIn({
+      page,
+      signInParams: {
+        strategy: "password",
+        identifier: E2E_IDENTIFIER!,
+        password: E2E_PASSWORD!,
+      },
+    });
+    await page.waitForLoadState("networkidle", { timeout: 15000 }).catch(() => {});
+    await page.goto("/dashboard", { waitUntil: "networkidle" });
+
+    if (page.url().includes("/sign-in")) {
+      throw new Error("Still on sign-in after clerk.signIn — check E2E Clerk credentials / org membership.");
+    }
+
+    let firmId = "";
+    try {
+      await expect(page.getByText(/Firm ID:/i)).toBeVisible({ timeout: 5000 });
+      firmId = ((await page.locator('div:has-text("Firm ID:") code').first().textContent()) || "").trim();
+    } catch {
+      test.skip(true, "Could not scrape Firm ID for client-detail Trust-generate empty-docs test");
+    }
+    if (!firmId) {
+      test.skip(true, "No Firm ID on dashboard");
+    }
+
+    const { prisma } = await import("../src/lib/prisma");
+    const stamp = Date.now();
+    const client = await prisma.client.create({
+      data: {
+        firmId,
+        displayName: `E2E-Client-Trust-Empty ${stamp}`,
+        email: `client-trust-empty-${stamp}@test.local`,
+      },
+    });
+    const session = await prisma.intakeSession.create({
+      data: {
+        clientId: client.id,
+        firmId,
+        status: "in_progress",
+        progress: 0,
+        answers: {},
+      },
+    });
+
+    try {
+      await page.goto(`/dashboard/clients/${client.id}`);
+      await page.waitForLoadState("networkidle", { timeout: 15000 }).catch(() => {});
+
+      await expect(page.getByText(/No Trust draft yet\. Open the intake/i)).toHaveCount(0);
+      await expect(page.getByRole("button", { name: /Generate Trust draft/i })).toBeVisible({
+        timeout: 15000,
+      });
+      await expect(page.getByRole("button", { name: /Generate Full Estate Plan/i })).toHaveCount(0);
+    } finally {
+      await prisma.intakeSession.delete({ where: { id: session.id } }).catch(() => {});
+      await prisma.client.delete({ where: { id: client.id } }).catch(() => {});
+    }
+  });
+
+  test("intake + no Trust: Generate Trust draft (same action errors); leftover .docx stay ungated", async ({
+    page,
+  }) => {
+    test.setTimeout(90_000);
+
+    await page.goto("/dashboard", { waitUntil: "domcontentloaded" });
+    await clerk.signIn({
+      page,
+      signInParams: {
+        strategy: "password",
+        identifier: E2E_IDENTIFIER!,
+        password: E2E_PASSWORD!,
+      },
+    });
+    await page.waitForLoadState("networkidle", { timeout: 15000 }).catch(() => {});
+    await page.goto("/dashboard", { waitUntil: "networkidle" });
+
+    if (page.url().includes("/sign-in")) {
+      throw new Error("Still on sign-in after clerk.signIn — check E2E Clerk credentials / org membership.");
+    }
+
+    let firmId = "";
+    try {
+      await expect(page.getByText(/Firm ID:/i)).toBeVisible({ timeout: 5000 });
+      firmId = ((await page.locator('div:has-text("Firm ID:") code').first().textContent()) || "").trim();
+    } catch {
+      test.skip(true, "Could not scrape Firm ID for client-detail Trust-generate test");
+    }
+    if (!firmId) {
+      test.skip(true, "No Firm ID on dashboard");
+    }
+
+    const { prisma, generatedDocumentHelpers } = await import("../src/lib/prisma");
+    const stamp = Date.now();
+    const client = await prisma.client.create({
+      data: {
+        firmId,
+        displayName: `E2E-Client-Trust-Gen ${stamp}`,
+        email: `client-trust-gen-${stamp}@test.local`,
+      },
+    });
+    const session = await prisma.intakeSession.create({
+      data: {
+        clientId: client.id,
+        firmId,
+        status: "in_progress",
+        progress: 10,
+        answers: {},
+      },
+    });
+    const otherKey = `generated/e2e-client-gen-hc-${stamp}/Ada-Lovelace-Healthcare-DRAFT.docx`;
+    const zipKey = `generated/e2e-client-gen-pkg-${stamp}/Ada-Lovelace-Full-Estate-Plan-Package-DRAFT.zip`;
+    await generatedDocumentHelpers.createForFirm(firmId, {
+      intakeSessionId: session.id,
+      documentType: "healthcare_directive",
+      fileKey: otherKey,
+      status: "generated",
+    });
+    await generatedDocumentHelpers.createForFirm(firmId, {
+      intakeSessionId: session.id,
+      documentType: "pour_over_will",
+      fileKey: zipKey,
+      status: "generated",
+    });
+
+    try {
+      await page.goto(`/dashboard/clients/${client.id}`);
+      await page.waitForLoadState("networkidle", { timeout: 15000 }).catch(() => {});
+
+      await expect(page.getByText(/No Trust draft yet\. Open the intake/i)).toHaveCount(0);
+      const generateBtn = page.getByRole("button", { name: /Generate Trust draft/i });
+      await expect(generateBtn).toBeVisible({ timeout: 15000 });
+      await expect(page.getByRole("button", { name: /Generate Full Estate Plan/i })).toHaveCount(0);
+      await expect(page.getByRole("link", { name: /Download Full ZIP/i })).toHaveCount(0);
+
+      const otherRow = page.locator('[data-document-type="healthcare_directive"]').first();
+      await expect(otherRow).toBeVisible();
+      const otherDownload = otherRow.getByRole("link", { name: /Download DRAFT/ });
+      await expect(otherDownload).toHaveAttribute(
+        "href",
+        `/api/documents/download?fileKey=${encodeURIComponent(otherKey)}`,
+      );
+      await expect(page.getByText(zipKey)).toHaveCount(0);
+      await expect(page.locator('[data-document-type="pour_over_will"]')).toHaveCount(0);
+      await expect(page.getByTestId("trust-draft-punch-list")).toHaveCount(0);
+
+      await generateBtn.click();
+
+      await expect(
+        page.getByText(/Intake has no answers yet|No template fileKey available|Active firm context required/i),
+      ).toBeVisible({ timeout: 20000 });
+
+      await expect(page.getByRole("button", { name: /Generate Full Estate Plan/i })).toHaveCount(0);
+      await expect(page.getByRole("link", { name: /Download Full ZIP/i })).toHaveCount(0);
+      await expect(otherRow.getByRole("link", { name: /Download DRAFT/ })).toBeVisible();
+      await expect(otherRow.getByTestId("trust-draft-download")).toHaveCount(0);
+      await expect(page.getByTestId("trust-draft-punch-list")).toHaveCount(0);
+      await expect(page.getByTestId("trust-draft-fill-report")).toHaveCount(0);
+      await expect(page.getByText(/SCAFFOLD ACTION/i)).toHaveCount(0);
+      await expect(page.getByText(/Full Estate Plan Package generated/i)).toHaveCount(0);
+    } finally {
+      await prisma.generatedDocument.deleteMany({
+        where: { firmId, fileKey: { in: [otherKey, zipKey] } },
       });
       await prisma.intakeSession.delete({ where: { id: session.id } }).catch(() => {});
       await prisma.client.delete({ where: { id: client.id } }).catch(() => {});
