@@ -18,6 +18,14 @@ import {
   updateClientForCurrentFirm,
 } from "@/features/dashboard/server/actions";
 
+import { leftoverCountFromFillReport } from "@/features/dashboard/components/trust-draft-download-confirm";
+import { TrustDraftDocumentsDownload } from "@/features/dashboard/components/TrustDraftDocumentsDownload";
+import {
+  documentsRowDownloadHref,
+  documentsRowIntakeAnswers,
+  isRevocableTrustDocumentType,
+} from "@/features/dashboard/components/documents-trust-draft-row";
+import { parseStoredFillReport } from "@/features/documents/fill-report";
 import { generatedDocumentHelpers } from "@/lib/prisma";
 import { Button } from "@/components/ui/button";
 
@@ -186,16 +194,27 @@ function GenerateAndNotes({
                 >
                   Download Full ZIP
                 </a>
-                {lastPackage.manifest.slice(0, 4).map((m, i) => (
-                  <a
-                    key={i}
-                    href={`/api/documents/download?fileKey=${encodeURIComponent(m.individualFileKey)}`}
-                    className="inline-flex items-center rounded border border-emerald-200 bg-white/70 px-2 py-0.5 text-xs hover:bg-emerald-100 dark:bg-emerald-900/20"
-                    download
-                  >
-                    {m.documentType.replace(/_/g, " ")}
-                  </a>
-                ))}
+                {lastPackage.manifest.slice(0, 4).map((m, i) =>
+                  isRevocableTrustDocumentType(m.documentType) ? (
+                    <TrustDraftDocumentsDownload
+                      key={i}
+                      fileKey={m.individualFileKey}
+                      leftoverCount={leftoverCountFromFillReport(
+                        parseStoredFillReport(null),
+                        documentsRowIntakeAnswers(undefined),
+                      )}
+                    />
+                  ) : (
+                    <a
+                      key={i}
+                      href={documentsRowDownloadHref(m.documentType, m.individualFileKey)}
+                      className="inline-flex items-center rounded border border-emerald-200 bg-white/70 px-2 py-0.5 text-xs hover:bg-emerald-100 dark:bg-emerald-900/20"
+                      download
+                    >
+                      {m.documentType.replace(/_/g, " ")}
+                    </a>
+                  ),
+                )}
               </div>
               <p className="mt-1 text-[10px] text-emerald-600">
                 Every document contains the visible DRAFT watermark. Exact fidelity to your attorney templates.
@@ -390,23 +409,43 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
                 </tr>
               </thead>
               <tbody>
-                {clientDocs.map((doc: any) => (
-                  <tr key={doc.id} className="border-b last:border-0">
+                {clientDocs.map((doc: any) => {
+                  const isTrust = isRevocableTrustDocumentType(doc.documentType);
+                  const intake = isTrust
+                    ? clientIntakes.find((i: any) => i.id === doc.intakeSessionId) ??
+                      client.intakeSessions?.find((i: { id: string }) => i.id === doc.intakeSessionId)
+                    : undefined;
+                  const leftoverCount = isTrust
+                    ? leftoverCountFromFillReport(
+                        parseStoredFillReport(doc.fillReport),
+                        documentsRowIntakeAnswers(intake?.answers),
+                      )
+                    : 0;
+                  return (
+                  <tr key={doc.id} className="border-b last:border-0" data-document-type={doc.documentType}>
                     <td className="py-2 pr-4 font-medium">{doc.documentType.replace(/_/g, " ")}</td>
                     <td className="py-2 pr-4 text-muted-foreground">
                       {doc.generatedAt ? new Date(doc.generatedAt).toLocaleDateString() : "—"}
                     </td>
                     <td className="py-2">
-                      <a
-                        href={`/api/documents/download?fileKey=${encodeURIComponent(doc.fileKey)}`}
-                        className="text-emerald-600 underline hover:text-emerald-700"
-                        download
-                      >
-                        Download DRAFT
-                      </a>
+                      {isTrust ? (
+                        <TrustDraftDocumentsDownload
+                          fileKey={doc.fileKey}
+                          leftoverCount={leftoverCount}
+                        />
+                      ) : (
+                        <a
+                          href={documentsRowDownloadHref(doc.documentType, doc.fileKey)}
+                          className="text-emerald-600 underline hover:text-emerald-700"
+                          download
+                        >
+                          Download DRAFT
+                        </a>
+                      )}
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
