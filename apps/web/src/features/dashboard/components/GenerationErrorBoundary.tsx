@@ -56,7 +56,7 @@ export class GenerationErrorBoundary extends React.Component<
 
       return (
         <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300" role="alert">
-          <div className="font-medium">Document generation encountered an issue.</div>
+          <div className="font-medium">Trust draft generation encountered an issue.</div>
           <p className="mt-1 text-xs">
             Your intake data is safe. Please try again or contact your attorney if the problem persists.
           </p>

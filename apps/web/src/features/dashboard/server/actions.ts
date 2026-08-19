@@ -607,7 +607,7 @@ export async function generateDocumentForIntake(params: {
   } catch (err: any) {
     console.error("[dashboard/actions] generateDocumentForIntake failed:", err);
     // Surface generation errors (including MissingTemplateVariablesError from B) clearly to attorney
-    const msg = err?.message || "Document generation failed. Check intake data and template compatibility.";
+    const msg = err?.message || "Trust draft failed. Check intake answers and the revocable trust template.";
     return { error: msg, details: err?.name || null };
   }
 }

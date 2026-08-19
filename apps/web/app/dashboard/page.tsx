@@ -56,7 +56,7 @@ export default async function DashboardOverviewPage() {
               <CardHeader>
                 <CardTitle>No clients yet</CardTitle>
                 <CardDescription>
-                  Create a client to start an intake and generate draft documents.
+                  Create a client to start an intake, then Generate Trust draft.
                 </CardDescription>
               </CardHeader>
               <CardContent>

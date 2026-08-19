@@ -703,7 +703,7 @@ export function QuestionnaireWizard(props: QuestionnaireWizardProps) {
                     <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-500" />
                     <h3 className="mt-4 text-xl font-semibold">Intake Complete</h3>
                     <p className="mt-2 text-muted-foreground">
-                      This session is ready for document generation. The attorney will review all answers.
+                      Intake complete. The attorney can Generate Trust draft from this session.
                     </p>
                   </div>
                 ) : (
