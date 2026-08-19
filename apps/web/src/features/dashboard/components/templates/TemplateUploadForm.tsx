@@ -526,7 +526,7 @@ export function TemplateUploadForm() {
       </form>
 
       <p className="text-[10px] text-muted-foreground border-t pt-3">
-        After upload, go to any client with a completed intake and click “Generate Full Estate Plan”.
+        After upload, open a completed intake and generate a Trust draft.
         The resolver will pick up templates by documentType automatically.
       </p>
     </div>

@@ -75,7 +75,7 @@ export default async function DocumentsPage() {
             <div className="rounded-lg border border-dashed p-8 text-center">
               <p className="text-lg font-semibold tracking-tight">No documents yet</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Generate a draft package from a client record.
+                Generate a Trust draft from an intake.
               </p>
               <Button asChild className="mt-4" variant="outline">
                 <Link href="/dashboard/clients">Go to Clients</Link>
