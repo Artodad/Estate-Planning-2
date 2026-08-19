@@ -28,8 +28,6 @@ import { Label } from "@/components/ui/label";
 import {
   startIntakeSession,
   createClientForCurrentFirm,
-  generateFullPlanPackageForIntake,
-  getPackageTemplatesForCurrentFirm,
   type CreateClientInput,
 } from "@/features/dashboard/server/actions";
 
@@ -48,7 +46,7 @@ interface ClientsListProps {
  *
  * Search + filters + table + detail dialog for the Clients section.
  * Live list shows firm rows only — never mock matters as a caseload.
- * RoleGuard + start-intake / create-client / generate wiring unchanged.
+ * RoleGuard + start-intake / create-client wiring unchanged. No package generate CTA.
  */
 export function ClientsList({ initialRealClients = [] }: ClientsListProps) {
   const { isHydrated, canManageClients } = useRole();
@@ -73,19 +71,6 @@ export function ClientsList({ initialRealClients = [] }: ClientsListProps) {
   const [createLoading, setCreateLoading] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
-  // Wave B (Phase 6) — Generation loading state for real "Generate Full Plan" paths.
-  // Addresses the research finding that ClientsList generate had no isGenerating affordance
-  // while the package action can take many seconds. Mirrors the stronger pattern in client detail.
-  const [isGenerating, setIsGenerating] = useState(false);
-
-  // Real package generation success state (Phase 5) — additive, shows immediate download links for live data
-  const [lastRealPackage, setLastRealPackage] = useState<null | {
-    fileKey: string;
-    clientName: string;
-    documentCount: number;
-    manifest: Array<{ documentType: string; individualFileKey: string }>;
-  }>(null);
-
   // Firm rows only. An empty firm is an empty list — never MOCK_CLIENTS as a caseload.
   const realRows = Array.isArray(initialRealClients) ? initialRealClients : [];
   const isUsingRealData = realRows.length > 0;
@@ -103,7 +88,7 @@ export function ClientsList({ initialRealClients = [] }: ClientsListProps) {
     // - Uses existing startIntakeSession action (which does RBAC, firm scoping, AuditLog "intake.started")
     // - For real clients (non-mock ids): prefers latest existing session from the raw data, else starts one.
     // - Then navigates to the real /dashboard/intakes/[intakeId] wizard route.
-    // - Mock clients and all other actions (Generate etc.) remain pure no-op + banner.
+    // - Mock clients and all other actions remain pure no-op + banner.
     if (action.includes("Intake")) {
       if (isUsingRealData) {
         try {
@@ -131,82 +116,6 @@ export function ClientsList({ initialRealClients = [] }: ClientsListProps) {
         }
       }
       // For mock clients: do nothing extra — pure scaffold feedback as before.
-    }
-
-    // === REAL "GENERATE FULL PLAN" WIRING (Phase 5) for live DB-backed clients ===
-    // Triggered by the existing "Generate Documents" / "Generate Full Document Package" buttons
-    // when the row comes from real Prisma data (isUsingRealData + non-mock id heuristic).
-    // Uses the dynamic template resolver (getPackageTemplatesForCurrentFirm) + thin package action.
-    // On success: stores lastRealPackage for immediate download links via the live /api/documents/download route.
-    // All mock rows and non-generate actions remain 100% scaffold (existing banner + no-op).
-    if (action.includes("Generate") || action.includes("Full Plan") || action.includes("Full Document Package")) {
-      if (isUsingRealData) {
-        setIsGenerating(true);
-        try {
-          const rawClient = initialRealClients.find((r: any) => r && r.id === client.id);
-          const sessions = (rawClient?.intakeSessions ?? []) as any[];
-          const targetIntakeId: string | null = sessions.length > 0 ? sessions[0].id : null;
-
-          if (!targetIntakeId) {
-            setActionFeedback({
-              action: "Generate failed — start/complete an intake first for this client",
-              clientName: client.name,
-            });
-            setIsGenerating(false);
-            return;
-          }
-
-          // Resolve available templates (now supports partial sets — you don't need all 8)
-          const tplRes = await getPackageTemplatesForCurrentFirm();
-          if ("error" in tplRes) {
-            setActionFeedback({
-              action: `Generate failed: ${tplRes.error}`,
-              clientName: client.name,
-            });
-            setIsGenerating(false);
-            return;
-          }
-
-          const pkgRes = await generateFullPlanPackageForIntake({
-            intakeId: targetIntakeId,
-            templates: tplRes.templates,
-          });
-
-          if ("error" in pkgRes) {
-            toast.error(`Generate failed: ${pkgRes.error}`);
-            setActionFeedback({
-              action: `Generate failed: ${pkgRes.error}`,
-              clientName: client.name,
-            });
-            setIsGenerating(false);
-            return;
-          }
-
-          // Real success — store for download UI (additive, below the feedback banner)
-          setLastRealPackage({
-            fileKey: pkgRes.package.fileKey,
-            clientName: client.name,
-            documentCount: pkgRes.package.documentCount,
-            manifest: pkgRes.package.manifest,
-          });
-
-          toast.success(`Full estate plan package generated for ${client.name} (${pkgRes.package.documentCount} documents)`);
-
-          setActionFeedback({
-            action: `Generated ${pkgRes.package.documentCount}-document estate plan package`,
-            clientName: client.name,
-          });
-          setTimeout(() => setActionFeedback(null), 8000);
-
-          setIsGenerating(false);
-          return; // real path handled; do not fall through to scaffold banner
-        } catch (err) {
-          console.warn("[ClientsList] Real generate failed (non-fatal):", err);
-          // fall through to existing scaffold banner for visibility during transition
-          setIsGenerating(false);
-        }
-      }
-      // Mock rows or non-real path: existing scaffold feedback banner already set at top of handleAction
     }
   };
 
@@ -295,12 +204,6 @@ export function ClientsList({ initialRealClients = [] }: ClientsListProps) {
 
   return (
     <div className="space-y-6">
-      {isGenerating && (
-        <div role="status" className="rounded-md border bg-muted/40 p-3 text-sm">
-          <strong>Generating estate plan package…</strong> This can take a moment. Keep this tab open.
-        </div>
-      )}
-
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 className="text-xl font-semibold tracking-tight">Client matters</h2>
@@ -332,47 +235,6 @@ export function ClientsList({ initialRealClients = [] }: ClientsListProps) {
           <span className="font-medium">{actionFeedback.action}</span>
           {" for "}
           <span className="font-medium">{actionFeedback.clientName}</span>.
-        </div>
-      )}
-
-      {/* Real package generation success + immediate downloads (Phase 5, additive, live data only) */}
-      {lastRealPackage && (
-        <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-200">
-          <div className="font-semibold">
-            ✓ Full Estate Plan Package generated for {lastRealPackage.clientName} ({lastRealPackage.documentCount} documents)
-          </div>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
-            <a
-              href={`/api/documents/download?fileKey=${encodeURIComponent(lastRealPackage.fileKey)}`}
-              className="inline-flex items-center rounded-md bg-emerald-600 px-3 py-1 text-xs font-medium text-white hover:bg-emerald-700"
-              download
-            >
-              Download Full ZIP
-            </a>
-            {lastRealPackage.manifest?.slice(0, 4).map((entry, idx) => (
-              <a
-                key={idx}
-                href={`/api/documents/download?fileKey=${encodeURIComponent(entry.individualFileKey)}`}
-                className="inline-flex items-center rounded border border-emerald-200 bg-white/70 px-2 py-0.5 text-xs hover:bg-emerald-100 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/40"
-                download
-              >
-                {entry.documentType.replace(/_/g, " ")}
-              </a>
-            ))}
-            {lastRealPackage.manifest && lastRealPackage.manifest.length > 4 && (
-              <span className="text-xs text-emerald-600">+{lastRealPackage.manifest.length - 4} more</span>
-            )}
-          </div>
-          <button
-            type="button"
-            className="mt-2 text-xs underline opacity-80 hover:opacity-100"
-            onClick={() => setLastRealPackage(null)}
-          >
-            Dismiss
-          </button>
-          <p className="mt-2 text-xs text-emerald-700 dark:text-emerald-300">
-            Every document is watermarked DRAFT. For a PDF, open the Word file and export from Word or LibreOffice.
-          </p>
         </div>
       )}
 
@@ -410,7 +272,7 @@ export function ClientsList({ initialRealClients = [] }: ClientsListProps) {
       )}
 
       <p className="border-t pt-4 text-xs text-muted-foreground">
-        View opens the matter summary. Intake and Generate stay on this list for owners and staff.
+        View opens the matter summary. Intake stays on this list for owners and staff.
       </p>
 
       {/* Real New Client Dialog (Phase 5 CRUD) — controlled, additive only */}

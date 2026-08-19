@@ -7,13 +7,10 @@ import { requireRole } from "@/features/auth/server/rbac";
 import { OWNER_STAFF } from "@/features/auth";
 import { RoleGuard } from "@/features/auth/components/role-guard";
 import { ErrorCallout } from "@/components/ui/callouts";
-import { GenerationErrorBoundary } from "@/features/dashboard/components/GenerationErrorBoundary";
 
 import {
   getClientByIdForCurrentFirm,
   getIntakesForCurrentFirm,
-  generateFullPlanPackageForIntake,
-  getPackageTemplatesForCurrentFirm,
   deleteClientForCurrentFirm,
   updateClientForCurrentFirm,
 } from "@/features/dashboard/server/actions";
@@ -23,6 +20,7 @@ import { TrustDraftDocumentsDownload } from "@/features/dashboard/components/Tru
 import {
   documentsRowDownloadHref,
   documentsRowIntakeAnswers,
+  isHiddenEstatePlanPackageRow,
   isRevocableTrustDocumentType,
 } from "@/features/dashboard/components/documents-trust-draft-row";
 import { parseStoredFillReport } from "@/features/documents/fill-report";
@@ -44,7 +42,6 @@ import { Button } from "@/components/ui/button";
  *   - Linked Intakes with resume links to the existing wizard
  *   - Generated Documents with live download links via /api/documents/download
  *   - Internal notes (client component)
- *   - Prominent "Generate Full Estate Plan" button (real wiring via the thin package)
  *   - Light delete (with confirmation)
  *
  * All multi-tenancy, RBAC, and audit invariants are inherited from the called actions/helpers.
@@ -55,30 +52,19 @@ interface ClientDetailPageProps {
   params: Promise<{ clientId: string }>;
 }
 
-// Small client island for the prominent generate button + notes (keeps the page mostly server).
-// Re-uses the exact same resolver + package pattern established in ClientsList for consistency.
+// Small client island for notes + delete (keeps the page mostly server).
 function GenerateAndNotes({
   clientId,
   clientDisplayName,
-  latestIntakeId,
   initialNotes = "",
   onDelete,
 }: {
   clientId: string;
   clientDisplayName: string;
-  latestIntakeId: string | null;
   initialNotes?: string;
   onDelete: () => void;
 }) {
   "use client";
-
-  const [isGenerating, setIsGenerating] = React.useState(false);
-  const [lastPackage, setLastPackage] = React.useState<null | {
-    fileKey: string;
-    documentCount: number;
-    manifest: Array<{ documentType: string; individualFileKey: string }>;
-  }>(null);
-  const [genError, setGenError] = React.useState<string | null>(null);
 
   const [notes, setNotes] = React.useState(initialNotes);
   const [notesSaved, setNotesSaved] = React.useState(false);
@@ -103,44 +89,6 @@ function GenerateAndNotes({
     }
   };
 
-  const handleGenerateFullPlan = async () => {
-    if (!latestIntakeId) {
-      setGenError("This client has no intake yet. Start an intake first.");
-      return;
-    }
-
-    setIsGenerating(true);
-    setGenError(null);
-
-    try {
-      const tplRes = await getPackageTemplatesForCurrentFirm();
-      if ("error" in tplRes) {
-        setGenError(tplRes.error);
-        return;
-      }
-
-      const pkgRes = await generateFullPlanPackageForIntake({
-        intakeId: latestIntakeId,
-        templates: tplRes.templates,
-      });
-
-      if ("error" in pkgRes) {
-        setGenError(pkgRes.error);
-        return;
-      }
-
-      setLastPackage({
-        fileKey: pkgRes.package.fileKey,
-        documentCount: pkgRes.package.documentCount,
-        manifest: pkgRes.package.manifest,
-      });
-    } catch (e: any) {
-      setGenError(e?.message || "Generation failed. Please try again.");
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
   const handleDelete = async () => {
     if (!confirm(`Delete client "${clientDisplayName}"? This cannot be undone.`)) return;
     setDeleteError(null);
@@ -158,73 +106,6 @@ function GenerateAndNotes({
 
   return (
     <div className="space-y-6">
-      {/* Prominent Generate Full Plan (owner/staff only) */}
-      <RoleGuard allowed={OWNER_STAFF}>
-        <GenerationErrorBoundary>
-        <div className="rounded-lg border bg-card p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="text-sm font-medium">Full Estate Plan Package</div>
-              <div className="text-xs text-muted-foreground">
-                Generates all 8 coordinated DRAFT documents using your firm templates.
-              </div>
-            </div>
-            <Button
-              onClick={handleGenerateFullPlan}
-              disabled={isGenerating || !latestIntakeId}
-              size="lg"
-            >
-              {isGenerating ? "Generating..." : "Generate Full Estate Plan"}
-            </Button>
-          </div>
-
-          {genError && <ErrorCallout className="mt-3">{genError}</ErrorCallout>}
-          {deleteError && <ErrorCallout className="mt-2">{deleteError}</ErrorCallout>}
-
-          {lastPackage && (
-            <div className="mt-4 rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800 dark:border-emerald-900/50 dark:bg-emerald-950/30 dark:text-emerald-200">
-              <div className="font-semibold">
-                ✓ Package generated ({lastPackage.documentCount} documents)
-              </div>
-              <div className="mt-2 flex flex-wrap gap-2">
-                <a
-                  href={`/api/documents/download?fileKey=${encodeURIComponent(lastPackage.fileKey)}`}
-                  className="inline-flex items-center rounded bg-emerald-600 px-3 py-1 text-xs font-medium text-white hover:bg-emerald-700"
-                  download
-                >
-                  Download Full ZIP
-                </a>
-                {lastPackage.manifest.slice(0, 4).map((m, i) =>
-                  isRevocableTrustDocumentType(m.documentType) ? (
-                    <TrustDraftDocumentsDownload
-                      key={i}
-                      fileKey={m.individualFileKey}
-                      leftoverCount={leftoverCountFromFillReport(
-                        parseStoredFillReport(null),
-                        documentsRowIntakeAnswers(undefined),
-                      )}
-                    />
-                  ) : (
-                    <a
-                      key={i}
-                      href={documentsRowDownloadHref(m.documentType, m.individualFileKey)}
-                      className="inline-flex items-center rounded border border-emerald-200 bg-white/70 px-2 py-0.5 text-xs hover:bg-emerald-100 dark:bg-emerald-900/20"
-                      download
-                    >
-                      {m.documentType.replace(/_/g, " ")}
-                    </a>
-                  ),
-                )}
-              </div>
-              <p className="mt-1 text-[10px] text-emerald-600">
-                Every document contains the visible DRAFT watermark. Exact fidelity to your attorney templates.
-              </p>
-            </div>
-          )}
-        </div>
-        </GenerationErrorBoundary>
-      </RoleGuard>
-
       <div className="rounded-lg border bg-card p-4">
         <div className="mb-2 text-sm font-medium">Internal notes</div>
         <textarea
@@ -248,6 +129,7 @@ function GenerateAndNotes({
       {/* Light delete (owner/staff) */}
       <RoleGuard allowed={OWNER_STAFF}>
         <div>
+          {deleteError && <ErrorCallout className="mb-2">{deleteError}</ErrorCallout>}
           <Button variant="destructive" onClick={handleDelete}>
             Delete Client
           </Button>
@@ -290,13 +172,14 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
       ? intakesRes.intakes.filter((i: any) => i.clientId === client.id)
       : [];
 
-  // Latest intake for the prominent generate button (if any)
-  const latestIntakeId = clientIntakes.length > 0 ? clientIntakes[0].id : null;
-
-  // Generated documents for this client (via existing helper + filter)
+  // Generated documents for this client (via existing helper + filter).
+  // Hide leftover package ZIP / Full-Estate-Plan-Package rows — do not stamp-on-zip.
   const allDocs = await generatedDocumentHelpers.listByFirm(firmId);
   const clientIntakeIds = new Set(clientIntakes.map((i: any) => i.id));
-  const clientDocs = allDocs.filter((d: any) => clientIntakeIds.has(d.intakeSessionId));
+  const clientDocs = allDocs.filter(
+    (d: any) =>
+      clientIntakeIds.has(d.intakeSessionId) && !isHiddenEstatePlanPackageRow(d.fileKey),
+  );
 
   // Delete navigation handler (passed to client island)
   async function handleDeleteSuccess() {
@@ -455,11 +338,10 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
         </p>
       </div>
 
-      {/* Prominent Generate + Notes + Delete island */}
+      {/* Notes + Delete island */}
       <GenerateAndNotes
         clientId={client.id}
         clientDisplayName={client.displayName}
-        latestIntakeId={latestIntakeId}
         initialNotes={client.notes ?? ""}
         onDelete={() => {
           // Server redirect happens inside the island via the delete action + redirect

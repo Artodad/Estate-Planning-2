@@ -8,7 +8,6 @@ import { OWNER_STAFF } from "@/features/auth";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -20,6 +19,7 @@ import { TrustDraftDocumentsDownload } from "@/features/dashboard/components/Tru
 import {
   documentsRowIntakeAnswers,
   documentsTrustDraftHrefPrefix,
+  isHiddenEstatePlanPackageRow,
   isRevocableTrustDocumentType,
 } from "@/features/dashboard/components/documents-trust-draft-row";
 import { parseStoredFillReport } from "@/features/documents/fill-report";
@@ -36,7 +36,7 @@ function trustDraftClientName(answers: PartialIntake | null): string | null {
 /**
  * /dashboard/documents
  * Shows real GeneratedDocument rows + secure downloads.
- * Full coordinated package generation is launched from the Clients section.
+ * Leftover package ZIP / Full-Estate-Plan-Package rows are hidden.
  * revocable_trust rows reuse the intake punch list + stamp confirm.
  */
 export default async function DocumentsPage() {
@@ -62,21 +62,20 @@ export default async function DocumentsPage() {
     realDocs = [];
   }
 
+  const visibleDocs = realDocs.filter((d) => !isHiddenEstatePlanPackageRow(d.fileKey));
+
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle>Documents</CardTitle>
-          <CardDescription>
-            Draft estate plan packages generated for this firm.
-          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          {realDocs.length === 0 ? (
+          {visibleDocs.length === 0 ? (
             <div className="rounded-lg border border-dashed p-8 text-center">
               <p className="text-lg font-semibold tracking-tight">No documents yet</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Generate a draft package from a client record.
+                Generate a Trust draft from an intake.
               </p>
               <Button asChild className="mt-4" variant="outline">
                 <Link href="/dashboard/clients">Go to Clients</Link>
@@ -84,7 +83,7 @@ export default async function DocumentsPage() {
             </div>
           ) : (
             <div className="space-y-3">
-              {realDocs.map((d) => {
+              {visibleDocs.map((d) => {
                 const isTrust = isRevocableTrustDocumentType(d.documentType);
                 if (!isTrust) {
                   return (

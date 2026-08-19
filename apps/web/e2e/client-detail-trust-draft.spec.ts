@@ -97,6 +97,7 @@ test.describe("Client detail — Trust draft stamp confirm", () => {
     const leftoverKey = `generated/e2e-client-trust-${stamp}/Ada-Lovelace-Trust-DRAFT.docx`;
     const cleanKey = `generated/e2e-client-trust-clean-${stamp}/Ada-Lovelace-Trust-DRAFT.docx`;
     const otherKey = `generated/e2e-client-hc-${stamp}/Ada-Lovelace-Healthcare-DRAFT.docx`;
+    const zipKey = `generated/e2e-client-pkg-${stamp}/Ada-Lovelace-Full-Estate-Plan-Package-DRAFT.zip`;
     await generatedDocumentHelpers.createForFirm(firmId, {
       intakeSessionId: session.id,
       documentType: "revocable_trust",
@@ -121,6 +122,12 @@ test.describe("Client detail — Trust draft stamp confirm", () => {
       fileKey: otherKey,
       status: "generated",
     });
+    await generatedDocumentHelpers.createForFirm(firmId, {
+      intakeSessionId: session.id,
+      documentType: "pour_over_will",
+      fileKey: zipKey,
+      status: "generated",
+    });
 
     try {
       await page.goto(`/dashboard/clients/${client.id}`);
@@ -137,6 +144,10 @@ test.describe("Client detail — Trust draft stamp confirm", () => {
       await expect(leftoverDownload).toBeVisible({ timeout: 15000 });
       await expect(cleanDownload).toBeVisible();
       await expect(otherRow).toBeVisible();
+      await expect(page.getByText(zipKey)).toHaveCount(0);
+      await expect(page.locator('[data-document-type="pour_over_will"]')).toHaveCount(0);
+      await expect(page.getByRole("button", { name: /Generate Full Estate Plan/i })).toHaveCount(0);
+      await expect(page.getByRole("link", { name: /Download Full ZIP/i })).toHaveCount(0);
 
       await expect(leftoverDownload).toHaveAttribute(
         "href",
@@ -171,7 +182,7 @@ test.describe("Client detail — Trust draft stamp confirm", () => {
       await expect(otherRow.getByTestId("trust-draft-download")).toHaveCount(0);
     } finally {
       await prisma.generatedDocument.deleteMany({
-        where: { firmId, fileKey: { in: [leftoverKey, cleanKey, otherKey] } },
+        where: { firmId, fileKey: { in: [leftoverKey, cleanKey, otherKey, zipKey] } },
       });
       await prisma.intakeSession.delete({ where: { id: session.id } }).catch(() => {});
       await prisma.client.delete({ where: { id: client.id } }).catch(() => {});

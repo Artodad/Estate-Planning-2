@@ -25,7 +25,7 @@ import { StatusBadge } from "../shared/StatusBadge";
  * ClientDetailDialog
  *
  * Modal detail view for a single client (opened from table/"View").
- * Generate Documents & Start/Resume Intake stay OWNER_STAFF gated.
+ * Start/Resume Intake stays OWNER_STAFF gated. No package generate CTA.
  */
 interface ClientDetailDialogProps {
   client: MockClient;
@@ -146,15 +146,6 @@ export function ClientDetailDialog({
               onClick={() => handleAction("Resume / Start Intake")}
             >
               Resume Intake
-            </Button>
-          </RoleGuard>
-
-          <RoleGuard allowed={OWNER_STAFF}>
-            <Button
-              variant="secondary"
-              onClick={() => handleAction("Generate Full Document Package")}
-            >
-              Generate Documents
             </Button>
           </RoleGuard>
 

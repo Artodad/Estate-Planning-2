@@ -53,8 +53,8 @@ export default async function TemplatesPage() {
   return (
     <div className="space-y-6">
       <SectionCallout>
-        Owner-only. Upload your firm’s actual .docx templates here. They power the “Generate Full Estate Plan”
-        flow (exact fidelity via docxtemplater — zero rewriting of your language). Templates become available
+        Owner-only. Upload your firm’s actual .docx templates here. They power Trust draft generation
+        (exact fidelity via docxtemplater — zero rewriting of your language). Templates become available
         immediately after upload.
       </SectionCallout>
 
@@ -63,8 +63,8 @@ export default async function TemplatesPage() {
         <CardHeader>
           <CardTitle>Upload New Template</CardTitle>
           <CardDescription>
-            Select one of the 8 standard estate planning document types. Your original formatting, headers,
-            footers, numbering, and California-specific provisions are preserved exactly.
+            Upload a firm .docx template. Your original formatting, headers, footers, numbering,
+            and California-specific provisions are preserved exactly.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -102,13 +102,12 @@ export default async function TemplatesPage() {
           ) : (
             <div className="text-sm text-muted-foreground">
               No templates registered yet for this firm. Use the form above to upload your first .docx
-              template. Once you have all 8 document types, the full estate plan package generator will work.
+              template. Trust draft generation uses your revocable trust template.
             </div>
           )}
 
           <div className="pt-3 border-t text-[10px] text-muted-foreground">
-            Any templates you upload here become immediately available. You can now generate a (partial)
-            package with whatever templates you have registered — no need to have all 8 before testing generation.
+            Any templates you upload here become immediately available for Trust draft generation.
             See the Template Preparation Guide for the exact variable names.
           </div>
 

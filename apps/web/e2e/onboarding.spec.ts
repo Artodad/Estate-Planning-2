@@ -1741,7 +1741,8 @@ test.describe('Dashboard Shell + Navigation + Clients + Role Visibility (Sub-age
     await expect(dialog.getByText('12 of 18 answered')).toHaveCount(0);
     await expect(dialog.getByText(/Primary residence: 1234 Oak Grove/)).toHaveCount(0);
 
-    await expect(dialog.getByRole('button', { name: /Resume Intake|Generate Full Document Package/i })).toBeVisible();
+    await expect(dialog.getByRole('button', { name: /Resume Intake/i })).toBeVisible();
+    await expect(dialog.getByRole('button', { name: /Generate Documents|Generate Full Document Package/i })).toHaveCount(0);
     await expect(dialog.getByRole('button', { name: /Send Reminder/i })).toBeVisible();
 
     await page.getByRole('button', { name: /^Close$/i }).click();
@@ -4081,17 +4082,13 @@ test.describe('Phase 5: Dashboard Clients CRUD + Generate Full Plan + Detail Flo
   // ---------------------------------------------------------------------------
   // TEST 3: Generate Full Plan button exists on real client rows (smoke of the new wiring)
   // ---------------------------------------------------------------------------
-  test('Phase 5 — Generate Full Plan UI is present on live client rows', async ({ page }) => {
+  test('Phase 5 — Generate Full Plan UI is hidden on live client rows', async ({ page }) => {
     await signInAsE2E(page);
     await page.goto('/dashboard/clients');
 
-    // Look for the real generate action language introduced in the clients-crud slice
-    // (the button text is "Generate", "Generate Documents", or "Generate Full Estate Plan")
-    const generateButtons = page.getByRole('button', { name: /Generate.*(Plan|Documents|Full)/i });
-    // In a seeded environment with real clients this will find them.
-    // The test is intentionally soft so it doesn't hard-fail in pure sandbox runs.
-    const count = await generateButtons.count();
-    expect(count).toBeGreaterThanOrEqual(0); // always passes; real coverage comes when run against seeded DB
+    await expect(page.getByRole('button', { name: /^Generate$/i })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /Generate.*(Plan|Documents|Full)/i })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: /Download Full ZIP/i })).toHaveCount(0);
   });
 
   // ---------------------------------------------------------------------------
@@ -5085,11 +5082,10 @@ test.describe('Phase 7: Critical Path E2E + Automated Testing Surge (Wave A)', (
   // Next waves (B = real template fidelity, C = beta kit) will add further coverage.
 
   // --------------------------------------------------------------------------
-  // WAVE A (PRIMARY): Browser critical path via live clients table → Generate → download.
-  // Client is created in UI (correct firm); completed intake + template are seeded in DB.
-  // Partial template sets are supported (one revocable_trust is enough).
+  // WAVE A (PRIMARY): Browser path via live clients table — package CTAs are hidden.
+  // The only generate/download loop left is Trust draft (covered in generate-trust-draft.spec).
   // --------------------------------------------------------------------------
-  test('Phase 7 Wave A — Browser critical path: clients list → Generate → success panel → ZIP download (authenticated)', async ({
+  test('Phase 7 Wave A — Clients list and client detail hide package generate / ZIP / chips', async ({
     page,
   }) => {
     test.setTimeout(120_000);
@@ -5127,83 +5123,43 @@ test.describe('Phase 7: Critical Path E2E + Automated Testing Surge (Wave A)', (
     await page.waitForLoadState('networkidle', { timeout: 10000 }).catch(() => {});
     await expect(page.locator('tr', { hasText: displayName })).toBeVisible({ timeout: 15000 });
 
-    let matter: { clientId: string; intakeId: string; displayName: string; firmId: string };
+    const clientRow = page.locator('tr', { hasText: displayName });
+    await expect(clientRow.getByRole('button', { name: /^Generate$/i })).toHaveCount(0);
+    await expect(clientRow.getByRole('button', { name: /Generate Documents|Generate Full Estate Plan/i })).toHaveCount(0);
+    await expect(page.getByRole('link', { name: /Download Full ZIP/i })).toHaveCount(0);
+    await expect(page.getByText(/Full Estate Plan Package generated|all 8 coordinated/i)).toHaveCount(0);
+
+    await clientRow.getByRole('button', { name: /^View$/i }).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toBeVisible({ timeout: 5000 });
+    await expect(dialog.getByRole('button', { name: /Resume Intake/i })).toBeVisible();
+    await expect(dialog.getByRole('button', { name: /Generate Documents|Generate Full Document Package/i })).toHaveCount(0);
+    await dialog.getByRole('button', { name: /^Close$/i }).click();
+
+    let clientId: string | null = null;
     try {
       const { prisma } = await import('../src/lib/prisma');
       const client = await prisma.client.findFirst({
         where: { displayName, email },
-        select: { id: true, firmId: true },
+        select: { id: true },
       });
-      if (!client?.firmId) {
-        test.skip(true, 'Created client row not found in DB after UI create');
-      }
-      await ensurePackageTemplateForFirm(client.firmId);
-      matter = await injectP7CriticalPathMatter(client.firmId, {
-        clientId: client.id,
-        displayName,
-        email,
-      });
-    } catch (err) {
-      test.skip(true, `Could not seed completed intake/template: ${(err as Error).message ?? err}`);
+      clientId = client?.id ?? null;
+    } catch {
+      clientId = null;
     }
 
-    // Reload so the clients list RSC picks up the injected completed intake session
-    await page.reload({ waitUntil: 'networkidle' });
-    const clientRow = page.locator('tr', { hasText: displayName });
-    await expect(clientRow).toBeVisible({ timeout: 15000 });
-
-    // Generate from the live clients table (same server actions as client detail page)
-    await clientRow.getByRole('button', { name: /^Generate$/i }).click();
-    await expect(page.getByText(/Generating full estate plan package/i)).toBeVisible({ timeout: 8000 }).catch(() => {});
-
-    const successHeading = page.getByText(/Full Estate Plan Package generated|Package generated/i);
-    const errorCallout = page.getByRole('alert').filter({
-      hasText: /no active template|no templates registered|no intake|Generation failed|Generate failed/i,
-    });
-
-    const gotSuccess = await successHeading
-      .waitFor({ state: 'visible', timeout: 45000 })
-      .then(() => true)
-      .catch(() => false);
-    const gotError = !gotSuccess
-      ? await errorCallout
-          .waitFor({ state: 'visible', timeout: 5000 })
-          .then(() => true)
-          .catch(() => false)
-      : false;
-
-    if (!gotSuccess && !gotError) {
-      await cleanupP7CriticalPathData();
-      test.skip(true, 'Generate did not show success or error panel within timeout (check dev server + templates)');
+    if (clientId) {
+      await page.goto(`/dashboard/clients/${clientId}`);
+      await page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
+      await expect(page.getByRole('heading', { name: displayName })).toBeVisible({ timeout: 15000 });
+      await expect(page.getByRole('button', { name: /Generate Full Estate Plan/i })).toHaveCount(0);
+      await expect(page.getByRole('link', { name: /Download Full ZIP/i })).toHaveCount(0);
+      await expect(page.getByText(/Full Estate Plan Package|all 8 coordinated/i)).toHaveCount(0);
+      await expect(page.getByRole('button', { name: /Save Notes/i })).toBeVisible();
+      await expect(page.getByRole('button', { name: /Delete Client/i })).toBeVisible();
     }
 
-    if (gotError) {
-      const errText = ((await errorCallout.textContent()) || '').trim();
-      await cleanupP7CriticalPathData();
-      test.skip(true, `Generation error in environment: ${errText}`);
-    }
-
-    await expect(page.getByText(/DRAFT/i).first()).toBeVisible({ timeout: 5000 });
-
-    const zipLink = page.getByRole('link', { name: /Download Full ZIP/i });
-    await expect(zipLink).toBeVisible({ timeout: 5000 });
-    const zipHref = await zipLink.getAttribute('href');
-    expect(zipHref).toMatch(/\/api\/documents\/download\?fileKey=/);
-
-    const downloadRes = await page.request.get(zipHref!);
-    expect(downloadRes.status()).toBe(200);
-    expect(downloadRes.headers()['content-type']).toMatch(/zip|octet-stream/i);
-
-    const { prisma, generatedDocumentHelpers } = await import('../src/lib/prisma');
-    const docs = await generatedDocumentHelpers.listByIntakeForFirm(matter.intakeId, matter.firmId);
-    expect(docs.length).toBeGreaterThan(0);
-
-    const packageAudit = await prisma.auditLog.findFirst({
-      where: { firmId: matter.firmId, action: 'document.package.generated', targetId: matter.intakeId },
-      orderBy: { createdAt: 'desc' },
-    });
-    expect(packageAudit).toBeTruthy();
-
-    await cleanupP7CriticalPathData();
+    await page.goto('/dashboard');
+    await expect(page.getByText(/Packages \(30 days\)/i)).toHaveCount(0);
   });
 });

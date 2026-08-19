@@ -96,6 +96,7 @@ test.describe("Documents — Trust draft punch list + stamp confirm", () => {
     });
     const trustKey = `generated/e2e-docs-trust-${stamp}/Ada-Lovelace-Trust-DRAFT.docx`;
     const otherKey = `generated/e2e-docs-hc-${stamp}/Ada-Lovelace-Healthcare-DRAFT.docx`;
+    const zipKey = `generated/e2e-docs-pkg-${stamp}/Ada-Lovelace-Full-Estate-Plan-Package-DRAFT.zip`;
     await generatedDocumentHelpers.createForFirm(firmId, {
       intakeSessionId: session.id,
       documentType: "revocable_trust",
@@ -114,6 +115,12 @@ test.describe("Documents — Trust draft punch list + stamp confirm", () => {
       fileKey: otherKey,
       status: "generated",
     });
+    await generatedDocumentHelpers.createForFirm(firmId, {
+      intakeSessionId: session.id,
+      documentType: "pour_over_will",
+      fileKey: zipKey,
+      status: "generated",
+    });
 
     try {
       await page.goto("/dashboard/documents");
@@ -123,6 +130,7 @@ test.describe("Documents — Trust draft punch list + stamp confirm", () => {
       const otherRow = page.locator('[data-document-type="healthcare_directive"]').first();
       await expect(trustRow).toBeVisible({ timeout: 15000 });
       await expect(otherRow).toBeVisible();
+      await expect(page.getByText(zipKey)).toHaveCount(0);
 
       const punch = trustRow.getByTestId("trust-draft-punch-list");
       await expect(punch).toBeVisible();
@@ -164,7 +172,7 @@ test.describe("Documents — Trust draft punch list + stamp confirm", () => {
       await expect(otherRow.getByTestId("trust-draft-download")).toHaveCount(0);
     } finally {
       await prisma.generatedDocument.deleteMany({
-        where: { firmId, fileKey: { in: [trustKey, otherKey] } },
+        where: { firmId, fileKey: { in: [trustKey, otherKey, zipKey] } },
       });
       await prisma.intakeSession.delete({ where: { id: session.id } }).catch(() => {});
       await prisma.client.delete({ where: { id: client.id } }).catch(() => {});
