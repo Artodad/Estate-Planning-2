@@ -10,6 +10,19 @@ export function buildGenerateTrustDraftParams(intakeId: string) {
   };
 }
 
+/** Client-detail island: first Trust vs refresh of an existing row. */
+export type GenerateTrustDraftCtaMode = "generate" | "regenerate";
+
+export function generateTrustDraftCtaLabel(
+  mode: GenerateTrustDraftCtaMode,
+  isGenerating: boolean,
+): string {
+  if (mode === "regenerate") {
+    return isGenerating ? "Regenerating…" : "Regenerate";
+  }
+  return isGenerating ? "Generating Trust draft…" : "Generate Trust draft";
+}
+
 /** Latest Trust draft already on GeneratedDocument (newest-first list). */
 export type StoredTrustDraft = {
   fileKey: string;

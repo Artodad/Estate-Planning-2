@@ -225,6 +225,56 @@ export const generatedDocumentHelpers = {
     });
   },
 
+  /** Newest row of this type for an intake (firm-scoped). */
+  async findLatestByIntakeAndTypeForFirm(
+    firmId: string,
+    intakeSessionId: string,
+    documentType: string,
+  ) {
+    return prisma.generatedDocument.findFirst({
+      where: { firmId, intakeSessionId, documentType },
+      orderBy: { createdAt: "desc" },
+    });
+  },
+
+  /**
+   * Update fileKey + fillReport on an existing DRAFT (firm-scoped).
+   * Used to refresh a Trust in place — createForFirm has no unique on
+   * (intakeSessionId, documentType).
+   */
+  async updateForFirm(
+    firmId: string,
+    id: string,
+    data: {
+      fileKey: string;
+      generatedAt?: Date;
+      status?: "pending" | "generated" | "failed";
+      templateId?: string | null;
+      fillReport?: {
+        filledScalars: string[];
+        emptyOptionals: string[];
+        leftoverBraces: string[];
+        loopCounts: Record<string, number>;
+      } | null;
+    },
+  ) {
+    const owned = await prisma.generatedDocument.findFirst({
+      where: { id, firmId },
+      select: { id: true },
+    });
+    if (!owned) {
+      throw new Error("Generated document not found or not accessible in this firm.");
+    }
+    const { fillReport, ...rest } = data;
+    return prisma.generatedDocument.update({
+      where: { id: owned.id },
+      data: {
+        ...rest,
+        ...(fillReport !== undefined ? { fillReport: fillReport as never } : {}),
+      },
+    });
+  },
+
   /** Record a successfully generated DRAFT (called by actions after generateDocument). */
   async createForFirm(
     firmId: string,
