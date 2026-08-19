@@ -61,6 +61,8 @@ import {
   documentsRowIntakeAnswers,
   documentsTrustDraftHrefPrefix,
   existingRevocableTrustToReplace,
+  intakesRowLeftoverCount,
+  intakesRowLeftoverLabel,
   isHiddenEstatePlanPackageRow,
   isRevocableTrustDocumentType,
 } from "../dashboard/components/documents-trust-draft-row";
@@ -1094,6 +1096,55 @@ test("client-detail Trust download joins answers by intakeSessionId", () => {
   assert.ok(
     n < leftoverCountFromFillReport(leftovers, documentsRowIntakeAnswers(undefined)),
     "joined CA answers drop is_ca_resident so N matches the stamp route",
+  );
+});
+
+test("Intakes list leftover N: punch-list length, quiet vs clean, not leftoverBraces.length", () => {
+  const leftovers = leftoverReport(["is_ca_resident", "unresolved_blank", "young_person_retention_age"]);
+  const trust = { documentType: "revocable_trust", fillReport: leftovers };
+  const will = { documentType: "pour_over_will", fillReport: leftovers };
+  const hc = { documentType: "healthcare_directive" };
+  const cleanTrust = { documentType: "revocable_trust", fillReport: leftoverReport([]) };
+
+  const n = intakesRowLeftoverCount([trust], adaAnswers);
+  assert.equal(n, leftoverCountFromFillReport(leftovers, adaAnswers));
+  assert.equal(n, 2, "CA answers skip is_ca_resident; two real leftovers remain");
+  assert.notEqual(n, leftovers.leftoverBraces.length, "N is punch-list length, not leftoverBraces.length");
+  assert.equal(intakesRowLeftoverLabel(n), "2 leftovers");
+  assert.equal(
+    leftoverCountFromFillReport(leftovers, documentsRowIntakeAnswers(adaAnswers)),
+    n,
+    "answers via documentsRowIntakeAnswers — never {}",
+  );
+
+  assert.equal(intakesRowLeftoverCount([cleanTrust], adaAnswers), 0);
+  assert.equal(intakesRowLeftoverLabel(0), "clean");
+
+  assert.equal(intakesRowLeftoverCount([hc], adaAnswers), null, "only HC stays quiet");
+  assert.equal(intakesRowLeftoverCount([], adaAnswers), null);
+  assert.equal(intakesRowLeftoverCount(undefined, adaAnswers), null);
+  assert.equal(intakesRowLeftoverLabel(null), null);
+
+  assert.equal(
+    intakesRowLeftoverCount([will, trust], adaAnswers),
+    2,
+    "Trust in the include still paints when a later Will is also present",
+  );
+  assert.equal(
+    intakesRowLeftoverCount([will], adaAnswers),
+    null,
+    "take 1 any-type (Will only) must stay quiet — include filters to Trust",
+  );
+
+  assert.equal(
+    intakesRowLeftoverCount([trust], documentsRowIntakeAnswers(undefined)),
+    leftoverCountFromFillReport(leftovers, null),
+    "missing answers stay null so is_ca_resident is not skipped",
+  );
+  assert.ok(
+    (intakesRowLeftoverCount([trust], documentsRowIntakeAnswers(undefined)) ?? 0) >
+      (intakesRowLeftoverCount([trust], documentsRowIntakeAnswers({})) ?? 0),
+    "{} would skip is_ca_resident and under-count",
   );
 });
 

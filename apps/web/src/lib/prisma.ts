@@ -1,6 +1,8 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../../generated/prisma/client";
 
+import { TRUST_DRAFT_DOCUMENT_TYPE } from "../features/dashboard/components/generate-trust-draft";
+
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
@@ -99,7 +101,11 @@ export const intakeSessionHelpers = {
       orderBy: { createdAt: "desc" },
       include: {
         client: { select: { id: true, displayName: true, email: true } },
-        generatedDocuments: { take: 1, orderBy: { createdAt: "desc" } },
+        generatedDocuments: {
+          where: { documentType: TRUST_DRAFT_DOCUMENT_TYPE },
+          take: 1,
+          orderBy: { createdAt: "desc" },
+        },
       },
     });
   },

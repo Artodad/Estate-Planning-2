@@ -1,7 +1,8 @@
+import { parseStoredFillReport } from "@/features/documents/fill-report";
 import type { PartialIntake } from "@/features/intake/schemas/intake";
 
 import { TRUST_DRAFT_DOCUMENT_TYPE } from "./generate-trust-draft";
-import { trustDraftStampedDownloadHref } from "./trust-draft-download-confirm";
+import { leftoverCountFromFillReport, trustDraftStampedDownloadHref } from "./trust-draft-download-confirm";
 
 export function isRevocableTrustDocumentType(documentType: string): boolean {
   return documentType === TRUST_DRAFT_DOCUMENT_TYPE;
@@ -59,6 +60,34 @@ export function existingRevocableTrustToReplace<
 /** Session answers or null — never {}. is_ca_resident skip differs. */
 export function documentsRowIntakeAnswers(answers: unknown): PartialIntake | null {
   return (answers ?? null) as PartialIntake | null;
+}
+
+/**
+ * Intakes list leftover N from the row's newest Trust (include already filtered).
+ * No Trust → null (quiet). N is punch-list length, not leftoverBraces.length.
+ */
+export function intakesRowLeftoverCount(
+  generatedDocuments: ReadonlyArray<{
+    documentType: string;
+    fillReport?: unknown;
+  }> | null | undefined,
+  answers: unknown,
+): number | null {
+  const trust = (generatedDocuments ?? []).find((d) =>
+    isRevocableTrustDocumentType(d.documentType),
+  );
+  if (!trust) return null;
+  return leftoverCountFromFillReport(
+    parseStoredFillReport(trust.fillReport),
+    documentsRowIntakeAnswers(answers),
+  );
+}
+
+/** n>0 → "N leftovers"; n===0 → "clean"; no Trust → null. */
+export function intakesRowLeftoverLabel(count: number | null): string | null {
+  if (count == null) return null;
+  if (count > 0) return `${count} leftovers`;
+  return "clean";
 }
 
 export function documentsTrustDraftHrefPrefix(intakeSessionId: string): string {
