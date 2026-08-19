@@ -596,7 +596,7 @@ test("punch list comes from a real generate: leftovers + required empties; allow
     assert.equal(leftoverUnknown.href, null, "unresolved leftover is disabled — no invented landing");
     assert.equal(leftoverUnknown.section, null);
     assert.equal(leftoverUnknown.field, null);
-    assert.equal(punchListActionCopy(leftoverUnknown, hole.fillReport), "No intake field");
+    assert.equal(punchListActionCopy(leftoverUnknown, hole.fillReport), "Still in the draft");
 
     const composed = rows.find((r) => r.tag === "successor_trustee_full_name");
     assert.ok(composed, "leftover role tag is listed");
@@ -852,7 +852,7 @@ test("section-door copy uses loopCounts and alias lookup; cut roles stay closed"
     assert.ok(row);
     assert.equal(row.href, null);
     assert.equal(row.section, null);
-    assert.equal(punchListActionCopy(row, cut), "No intake field");
+    assert.equal(punchListActionCopy(row, cut), "Still in the draft");
   }
 });
 
