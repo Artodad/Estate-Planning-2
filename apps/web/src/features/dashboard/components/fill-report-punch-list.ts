@@ -200,9 +200,9 @@ export function loopCountForPunchTag(
   return null;
 }
 
-/** Field door: "Go to field". Section door: "N noun — Open Section" or "Open Section". */
+/** Field door: "Go to field". Section door: "N noun — Open Section" or "Open Section". No door: "Still in the draft". */
 export function punchListActionCopy(row: PunchListRow, report: DocumentFillReport): string {
-  if (!row.href) return "No intake field";
+  if (!row.href) return "Still in the draft";
   if (row.field) return "Go to field";
   const sectionLabel = row.section ? camelSplitSectionKey(row.section) : "";
   const loop = loopCountForPunchTag(row.tag, report);
