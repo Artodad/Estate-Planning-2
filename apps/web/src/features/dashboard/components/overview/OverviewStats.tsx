@@ -13,12 +13,10 @@ export function OverviewStats({
   totalClients = 0,
   documentsGenerated = 0,
   intakesInProgress = 0,
-  recentPackages = 0,
 }: {
   totalClients?: number;
   documentsGenerated?: number;
   intakesInProgress?: number;
-  recentPackages?: number;
 }) {
   return (
     <RoleGuard
@@ -31,7 +29,7 @@ export function OverviewStats({
         </Card>
       }
     >
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
         <Card>
           <CardContent className="pt-4">
             <div className="text-2xl font-semibold tabular-nums">{totalClients}</div>
@@ -50,13 +48,6 @@ export function OverviewStats({
           <CardContent className="pt-4">
             <div className="text-2xl font-semibold tabular-nums">{intakesInProgress}</div>
             <div className="text-sm text-muted-foreground">Intakes In Progress</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="pt-4">
-            <div className="text-2xl font-semibold tabular-nums">{recentPackages}</div>
-            <div className="text-sm text-muted-foreground">Packages (30 days)</div>
           </CardContent>
         </Card>
       </div>

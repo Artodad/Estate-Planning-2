@@ -20,7 +20,6 @@ import { fileURLToPath } from "node:url";
 import PizZip from "pizzip";
 
 import { generateDocument } from "./generator";
-import { FULL_PLAN_DOCUMENT_ORDER } from "./package";
 import { generatedDocumentPersistFromGenerate, parseStoredFillReport, wordPlainTextFromDocx } from "./fill-report";
 import { DRAFT_TEXT, stampTrustDraftConfirmPhrase } from "./draft-watermark-module";
 import { getFileBuffer } from "./storage";
@@ -55,6 +54,7 @@ import {
   documentsRowDownloadHref,
   documentsRowIntakeAnswers,
   documentsTrustDraftHrefPrefix,
+  isHiddenEstatePlanPackageRow,
   isRevocableTrustDocumentType,
 } from "../dashboard/components/documents-trust-draft-row";
 
@@ -1044,7 +1044,7 @@ test("Documents download href: revocable_trust stamps; other types stay ungated"
   );
 });
 
-test("client-detail Trust download joins answers by intakeSessionId; package chip N is 0", () => {
+test("client-detail Trust download joins answers by intakeSessionId", () => {
   const leftovers = leftoverReport(["is_ca_resident", "unresolved_blank", "young_person_retention_age"]);
   const intake = { id: "sess_client_detail_1", answers: adaAnswers };
   const intakes = [intake];
@@ -1072,27 +1072,27 @@ test("client-detail Trust download joins answers by intakeSessionId; package chi
     n < leftoverCountFromFillReport(leftovers, documentsRowIntakeAnswers(undefined)),
     "joined CA answers drop is_ca_resident so N matches the stamp route",
   );
+});
 
-  const packageChipN = leftoverCountFromFillReport(
-    parseStoredFillReport(null),
-    documentsRowIntakeAnswers(undefined),
-  );
-  assert.equal(packageChipN, 0, "package persist has no fillReport → skip dialog, still stamp");
+test("leftover package ZIP / Full-Estate-Plan-Package rows hide; other leftover .docx stay visible", () => {
   assert.equal(
-    leftoverCountFromFillReport(parseStoredFillReport(null), documentsRowIntakeAnswers(adaAnswers)),
-    0,
+    isHiddenEstatePlanPackageRow(
+      "generated/2026-05-26/Smith-John-Full-Estate-Plan-Package-DRAFT-2026-05-26.zip",
+    ),
+    true,
   );
-  assert.equal(FULL_PLAN_DOCUMENT_ORDER[0], "revocable_trust");
-  assert.ok(
-    FULL_PLAN_DOCUMENT_ORDER.slice(0, 4).includes("revocable_trust"),
-    "Trust is in the first-4 success chips — Door B must use the stamp href",
+  assert.equal(isHiddenEstatePlanPackageRow("generated/pkg/archive.zip"), true);
+  assert.equal(
+    isHiddenEstatePlanPackageRow("generated/pkg/Smith-Full-Estate-Plan-Package-DRAFT.docx"),
+    true,
   );
-  const chipKey = "generated/pkg/trust-DRAFT.docx";
-  assert.equal(documentsRowDownloadHref("revocable_trust", chipKey), trustDraftStampedDownloadHref(chipKey));
-  assert.ok(!documentsRowDownloadHref("revocable_trust", chipKey).includes("/api/documents/download?"));
-  assert.ok(
-    !documentsRowDownloadHref("pour_over_will", chipKey).includes("download-trust-draft"),
-    "ZIP/other first-4 types stay ungated",
+  assert.equal(
+    isHiddenEstatePlanPackageRow("generated/pkg/Ada-Lovelace-Trust-DRAFT.docx"),
+    false,
+  );
+  assert.equal(
+    isHiddenEstatePlanPackageRow("generated/pkg/Ada-Lovelace-Healthcare-DRAFT.docx"),
+    false,
   );
 });
 

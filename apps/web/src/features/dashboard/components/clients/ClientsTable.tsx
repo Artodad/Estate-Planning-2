@@ -26,7 +26,7 @@ import { ClientDetailDialog } from "./ClientDetailDialog";
  * - Intake Progress (number + visual bar)
  * - Documents (StatusBadge)
  * - Last Activity (relative)
- * - Actions (View always + role-gated Start/Generate)
+ * - Actions (View always + role-gated Start/Resume Intake)
  *
  * Row click also opens detail dialog (nice UX).
  * All actions clearly scaffold-labeled via title + dialog content.
@@ -140,18 +140,6 @@ export function ClientsTable({ clients, onAction }: ClientsTableProps) {
                         onClick={() => onAction("Start / Resume Intake", client)}
                       >
                         Intake
-                      </Button>
-                    </RoleGuard>
-
-                    <RoleGuard allowed={OWNER_STAFF}>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 px-2.5 text-xs"
-                        title="Generate documents for this client"
-                        onClick={() => onAction("Generate Documents", client)}
-                      >
-                        Generate
                       </Button>
                     </RoleGuard>
                   </div>

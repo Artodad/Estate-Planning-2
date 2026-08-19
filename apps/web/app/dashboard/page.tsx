@@ -47,7 +47,6 @@ export default async function DashboardOverviewPage() {
         totalClients={stats.totalClients}
         intakesInProgress={stats.intakesInProgress}
         documentsGenerated={stats.documentsGenerated}
-        recentPackages={stats.recentPackages}
       />
 
       <RoleGuard allowed={OWNER_STAFF}>

@@ -22,3 +22,9 @@ export function documentsRowDownloadHref(documentType: string, fileKey: string):
   }
   return `/api/documents/download?fileKey=${encodeURIComponent(fileKey)}`;
 }
+
+/** Leftover package ZIP / Full-Estate-Plan-Package rows stay hidden — do not stamp-on-zip. */
+export function isHiddenEstatePlanPackageRow(fileKey: string): boolean {
+  const key = fileKey.toLowerCase();
+  return key.endsWith(".zip") || key.includes("full-estate-plan-package");
+}

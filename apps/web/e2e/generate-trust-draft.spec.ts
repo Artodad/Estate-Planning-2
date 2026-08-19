@@ -80,6 +80,9 @@ test.describe("Generate Trust draft — intake UI calls generateDocumentForIntak
     await expect(page.locator("tr", { hasText: displayName })).toBeVisible({
       timeout: 15000,
     });
+    await expect(
+      page.locator("tr", { hasText: displayName }).getByRole("button", { name: /^Generate$/i }),
+    ).toHaveCount(0);
 
     const intakeBtn = page
       .locator("tr", { hasText: displayName })
