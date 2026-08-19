@@ -14,6 +14,10 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
+import {
+  intakesRowLeftoverCount,
+  intakesRowLeftoverLabel,
+} from "@/features/dashboard/components/documents-trust-draft-row";
 import { getIntakesForCurrentFirm } from "@/features/dashboard/server/actions";
 
 function formatIntakeStatus(status: string | null | undefined): string {
@@ -75,10 +79,17 @@ export default async function IntakesPage() {
             </div>
           ) : (
             <div className="space-y-2">
-              {realIntakes.map((item: any) => (
+              {realIntakes.map((item: any) => {
+                const leftoverCount = intakesRowLeftoverCount(
+                  item.generatedDocuments,
+                  item.answers,
+                );
+                const leftoverLabel = intakesRowLeftoverLabel(leftoverCount);
+                return (
                 <Link
                   key={item.id}
                   href={`/dashboard/intakes/${item.id}`}
+                  data-intake-id={item.id}
                   className="flex items-center justify-between rounded-md border p-3 text-sm transition hover:bg-muted/50"
                 >
                   <div className="min-w-0">
@@ -89,10 +100,19 @@ export default async function IntakesPage() {
                     </div>
                   </div>
                   <div className="shrink-0 text-right text-xs tabular-nums text-muted-foreground">
-                    {item.progress}%
+                    {leftoverLabel ? (
+                      <div
+                        data-testid="intake-leftover"
+                        data-leftover-count={String(leftoverCount)}
+                      >
+                        {leftoverLabel}
+                      </div>
+                    ) : null}
+                    <div>{item.progress}%</div>
                   </div>
                 </Link>
-              ))}
+                );
+              })}
             </div>
           )}
 
