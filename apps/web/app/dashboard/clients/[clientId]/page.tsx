@@ -20,6 +20,8 @@ import { TrustDraftDocumentsDownload } from "@/features/dashboard/components/Tru
 import { TrustDraftFillReport } from "@/features/dashboard/components/TrustDraftFillReport";
 import { GenerateTrustDraftCta } from "@/features/dashboard/components/GenerateTrustDraftCta";
 import {
+  clientDetailNewestTrustDraftRow,
+  clientDetailTrustDraftCtaMode,
   clientDetailTrustDraftGenerateIntakeId,
   documentsRowDownloadHref,
   documentsRowIntakeAnswers,
@@ -188,6 +190,8 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
     clientIntakes,
     clientDocs,
   );
+  const trustDraftCtaMode = clientDetailTrustDraftCtaMode(clientDocs);
+  const newestTrustDraft = clientDetailNewestTrustDraftRow(clientDocs);
 
   // Delete navigation handler (passed to client island)
   async function handleDeleteSuccess() {
@@ -284,14 +288,14 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
       {/* Generated Documents */}
       <div className="rounded-lg border bg-card p-4">
         <div className="mb-3 font-medium">Generated Documents (DRAFT)</div>
-        {trustDraftGenerateIntakeId ? (
+        {trustDraftGenerateIntakeId && trustDraftCtaMode === "generate" ? (
           <div className="mb-3">
-            <GenerateTrustDraftCta intakeId={trustDraftGenerateIntakeId} />
+            <GenerateTrustDraftCta intakeId={trustDraftGenerateIntakeId} mode="generate" />
           </div>
         ) : null}
 
         {clientDocs.length === 0 ? (
-          trustDraftGenerateIntakeId ? null : (
+          trustDraftGenerateIntakeId && trustDraftCtaMode === "generate" ? null : (
             <div className="text-sm text-muted-foreground">
               No generated documents yet.
             </div>
@@ -327,10 +331,18 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
                     </td>
                     <td className="py-2">
                       {isTrust ? (
-                        <TrustDraftDocumentsDownload
-                          fileKey={doc.fileKey}
-                          leftoverCount={leftoverCount}
-                        />
+                        <div className="flex flex-wrap items-center gap-2">
+                          {newestTrustDraft && doc.id === newestTrustDraft.id ? (
+                            <GenerateTrustDraftCta
+                              intakeId={doc.intakeSessionId}
+                              mode="regenerate"
+                            />
+                          ) : null}
+                          <TrustDraftDocumentsDownload
+                            fileKey={doc.fileKey}
+                            leftoverCount={leftoverCount}
+                          />
+                        </div>
                       ) : (
                         <a
                           href={documentsRowDownloadHref(doc.documentType, doc.fileKey)}

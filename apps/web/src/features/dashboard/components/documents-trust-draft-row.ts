@@ -8,16 +8,52 @@ export function isRevocableTrustDocumentType(documentType: string): boolean {
 }
 
 /**
- * Matter-page Trust generate: newest intake (`intakes[0]`) when none of
- * this matter's docs is revocable_trust. Other leftover .docx do not hide it.
+ * Matter-page Trust generate/regenerate intake id.
+ * - No Trust: newest intake (`intakes[0]`). Other leftover .docx do not hide it.
+ * - Has Trust: that newest Trust row's `intakeSessionId` — never `intakes[0]`,
+ *   which may be a different session.
  */
 export function clientDetailTrustDraftGenerateIntakeId(
   intakes: { id: string }[],
-  docs: { documentType: string }[],
+  docs: { documentType: string; intakeSessionId?: string }[],
 ): string | null {
+  const newestTrust = clientDetailNewestTrustDraftRow(docs);
+  if (newestTrust) {
+    return newestTrust.intakeSessionId ?? null;
+  }
   if (intakes.length < 1) return null;
-  if (docs.some((d) => isRevocableTrustDocumentType(d.documentType))) return null;
   return intakes[0]?.id ?? null;
+}
+
+/** Above-table Generate vs in-row Regenerate. Docs are newest-first. */
+export function clientDetailTrustDraftCtaMode(
+  docs: { documentType: string }[],
+): "generate" | "regenerate" {
+  return clientDetailNewestTrustDraftRow(docs) ? "regenerate" : "generate";
+}
+
+/** Newest Trust on a newest-first list — one Regenerate per matter. */
+export function clientDetailNewestTrustDraftRow<
+  T extends { documentType: string },
+>(docs: T[]): T | undefined {
+  return docs.find((d) => isRevocableTrustDocumentType(d.documentType));
+}
+
+/**
+ * Persist replace target: newest revocable_trust for this intake.
+ * Other types always create. Empty list → create.
+ */
+export function existingRevocableTrustToReplace<
+  T extends { documentType: string; intakeSessionId: string },
+>(documentType: string, intakeSessionId: string, existingNewestFirst: readonly T[]): T | null {
+  if (!isRevocableTrustDocumentType(documentType)) return null;
+  return (
+    existingNewestFirst.find(
+      (d) =>
+        d.intakeSessionId === intakeSessionId &&
+        isRevocableTrustDocumentType(d.documentType),
+    ) ?? null
+  );
 }
 
 /** Session answers or null — never {}. is_ca_resident skip differs. */

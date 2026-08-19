@@ -13,6 +13,7 @@ import { mapIntakeToDocVariables } from "@/features/documents/mapper";
 import { generateDocument } from "@/features/documents/generator";
 import { generatedDocumentPersistFromGenerate } from "@/features/documents/fill-report";
 import { trustDraftFromStoredDocuments } from "@/features/dashboard/components/stored-trust-draft";
+import { TRUST_DRAFT_DOCUMENT_TYPE } from "@/features/dashboard/components/generate-trust-draft";
 import type { DocumentFillReport, DocumentType } from "@/features/documents/types";
 import {
   generateFullPlanPackage,
@@ -565,15 +566,32 @@ export async function generateDocumentForIntake(params: {
       },
     });
 
-    // 5. Persist the GeneratedDocument record (firm-scoped)
-    const created = await generatedDocumentHelpers.createForFirm(
-      firmId,
-      generatedDocumentPersistFromGenerate(genResult, {
-        intakeSessionId: intakeId,
-        templateId: resolvedTemplateId,
-        documentType,
-      }),
-    );
+    // 5. Persist the GeneratedDocument record (firm-scoped).
+    // Same fill path always. First Trust creates; a later revocable_trust for
+    // this intake updates that row in place (fileKey + fillReport) so
+    // client-detail does not grow a second punch list. Other types still create.
+    const persistPayload = generatedDocumentPersistFromGenerate(genResult, {
+      intakeSessionId: intakeId,
+      templateId: resolvedTemplateId,
+      documentType,
+    });
+    const existingTrust =
+      documentType === TRUST_DRAFT_DOCUMENT_TYPE
+        ? await generatedDocumentHelpers.findLatestByIntakeAndTypeForFirm(
+            firmId,
+            intakeId,
+            documentType,
+          )
+        : null;
+    const persisted = existingTrust
+      ? await generatedDocumentHelpers.updateForFirm(firmId, existingTrust.id, {
+          fileKey: persistPayload.fileKey,
+          fillReport: persistPayload.fillReport,
+          generatedAt: persistPayload.generatedAt,
+          status: persistPayload.status,
+          templateId: persistPayload.templateId,
+        })
+      : await generatedDocumentHelpers.createForFirm(firmId, persistPayload);
 
     // 6. Audit (minimal, non-PII)
     logAuditEvent({
@@ -581,7 +599,7 @@ export async function generateDocumentForIntake(params: {
       actorClerkId: ctx.userId,
       action: "document.generated",
       targetType: "generatedDocument",
-      targetId: created.id,
+      targetId: persisted.id,
       metadata: {
         intakeId,
         documentType,
@@ -594,13 +612,13 @@ export async function generateDocumentForIntake(params: {
     return {
       success: true,
       generated: {
-        id: created.id,
+        id: persisted.id,
         fileKey: genResult.fileKey,
         documentType,
-        status: created.status,
-        generatedAt: created.generatedAt?.toISOString() ?? new Date().toISOString(),
+        status: persisted.status,
+        generatedAt: persisted.generatedAt?.toISOString() ?? new Date().toISOString(),
         fillReport:
-          trustDraftFromStoredDocuments([created])?.fillReport ?? genResult.fillReport,
+          trustDraftFromStoredDocuments([persisted])?.fillReport ?? genResult.fillReport,
       },
       firmId,
     };

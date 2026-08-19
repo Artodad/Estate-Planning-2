@@ -27,6 +27,8 @@ const E2E_PASSWORD = process.env.E2E_CLERK_USER_PASSWORD;
 /**
  * Client-detail: generate Trust when this matter has an intake and no Trust,
  * then the #37 punch list + stamp confirm once a Trust row exists.
+ * Has-trust: same GenerateTrustDraftCta island in the newest Trust row
+ * Download cell, labeled Regenerate — not a second card.
  * Other types stay ungated Download DRAFT.
  */
 test.describe("Client detail — Trust draft punch list + stamp confirm", () => {
@@ -151,6 +153,13 @@ test.describe("Client detail — Trust draft punch list + stamp confirm", () => 
       await expect(page.getByRole("button", { name: /Generate Full Estate Plan/i })).toHaveCount(0);
       await expect(page.getByRole("link", { name: /Download Full ZIP/i })).toHaveCount(0);
 
+      const regenerate = page.getByTestId("trust-draft-generate-cta");
+      await expect(regenerate).toHaveCount(1);
+      await expect(regenerate).toHaveAttribute("data-mode", "regenerate");
+      await expect(regenerate).toHaveText("Regenerate");
+      await expect(cleanDownload.locator("xpath=ancestor::td[1]").getByTestId("trust-draft-generate-cta")).toHaveCount(1);
+      await expect(leftoverDownload.locator("xpath=ancestor::td[1]").getByTestId("trust-draft-generate-cta")).toHaveCount(0);
+
       await expect(leftoverDownload).toHaveAttribute(
         "href",
         `/api/documents/download-trust-draft?fileKey=${encodeURIComponent(leftoverKey)}`,
@@ -205,9 +214,117 @@ test.describe("Client detail — Trust draft punch list + stamp confirm", () => 
       await expect(page.getByTestId("trust-draft-fill-report")).toHaveCount(1);
       await expect(otherRow.getByTestId("trust-draft-fill-report")).toHaveCount(0);
       await expect(otherRow.getByTestId("trust-draft-download")).toHaveCount(0);
+      await expect(otherRow.getByTestId("trust-draft-generate-cta")).toHaveCount(0);
     } finally {
       await prisma.generatedDocument.deleteMany({
         where: { firmId, fileKey: { in: [leftoverKey, cleanKey, otherKey, zipKey] } },
+      });
+      await prisma.intakeSession.delete({ where: { id: session.id } }).catch(() => {});
+      await prisma.client.delete({ where: { id: client.id } }).catch(() => {});
+    }
+  });
+
+  test("has Trust: Regenerate on newest row (empty-answers reuses generate error); no above-table Generate", async ({
+    page,
+  }) => {
+    test.setTimeout(90_000);
+
+    await page.goto("/dashboard", { waitUntil: "domcontentloaded" });
+    await clerk.signIn({
+      page,
+      signInParams: {
+        strategy: "password",
+        identifier: E2E_IDENTIFIER!,
+        password: E2E_PASSWORD!,
+      },
+    });
+    await page.waitForLoadState("networkidle", { timeout: 15000 }).catch(() => {});
+    await page.goto("/dashboard", { waitUntil: "networkidle" });
+
+    if (page.url().includes("/sign-in")) {
+      throw new Error("Still on sign-in after clerk.signIn — check E2E Clerk credentials / org membership.");
+    }
+
+    let firmId = "";
+    try {
+      await expect(page.getByText(/Firm ID:/i)).toBeVisible({ timeout: 5000 });
+      firmId = ((await page.locator('div:has-text("Firm ID:") code').first().textContent()) || "").trim();
+    } catch {
+      test.skip(true, "Could not scrape Firm ID for client-detail Trust-regenerate test");
+    }
+    if (!firmId) {
+      test.skip(true, "No Firm ID on dashboard");
+    }
+
+    const { prisma, generatedDocumentHelpers } = await import("../src/lib/prisma");
+    const stamp = Date.now();
+    const client = await prisma.client.create({
+      data: {
+        firmId,
+        displayName: `E2E-Client-Trust-Regen ${stamp}`,
+        email: `client-trust-regen-${stamp}@test.local`,
+      },
+    });
+    const session = await prisma.intakeSession.create({
+      data: {
+        clientId: client.id,
+        firmId,
+        status: "in_progress",
+        progress: 10,
+        answers: {},
+      },
+    });
+    const leftoverKey = `generated/e2e-client-regen-${stamp}/Ada-Lovelace-Trust-DRAFT.docx`;
+    await generatedDocumentHelpers.createForFirm(firmId, {
+      intakeSessionId: session.id,
+      documentType: "revocable_trust",
+      fileKey: leftoverKey,
+      status: "generated",
+      fillReport: {
+        filledScalars: [],
+        emptyOptionals: [],
+        leftoverBraces: ["unresolved_blank"],
+        loopCounts: {},
+      },
+    });
+
+    try {
+      await page.goto(`/dashboard/clients/${client.id}`);
+      await page.waitForLoadState("networkidle", { timeout: 15000 }).catch(() => {});
+
+      await expect(page.getByRole("button", { name: /Generate Trust draft/i })).toHaveCount(0);
+      await expect(page.getByRole("button", { name: /Generate Full Estate Plan/i })).toHaveCount(0);
+      await expect(page.getByRole("link", { name: /Download Full ZIP/i })).toHaveCount(0);
+
+      const regenerate = page.getByTestId("trust-draft-generate-cta");
+      await expect(regenerate).toBeVisible({ timeout: 15000 });
+      await expect(regenerate).toHaveAttribute("data-mode", "regenerate");
+      await expect(regenerate).toHaveText("Regenerate");
+      await expect(page.getByTestId("trust-draft-download")).toBeVisible();
+      await expect(page.getByTestId("trust-draft-punch-list")).toHaveCount(1);
+
+      const clientUrl = page.url();
+      await regenerate.click();
+
+      await expect(
+        page.getByText(/Intake has no answers yet|No template fileKey available|Active firm context required/i),
+      ).toBeVisible({ timeout: 20000 });
+
+      expect(page.url()).toBe(clientUrl);
+      await expect(page.getByRole("button", { name: /Generate Trust draft/i })).toHaveCount(0);
+      await expect(page.getByRole("button", { name: /Generate Full Estate Plan/i })).toHaveCount(0);
+      await expect(page.getByTestId("trust-draft-generate-cta")).toHaveCount(1);
+      await expect(page.getByTestId("trust-draft-punch-list")).toHaveCount(1);
+      await expect(page.getByTestId("trust-draft-fill-report")).toHaveCount(1);
+      await expect(page.getByText(/SCAFFOLD ACTION/i)).toHaveCount(0);
+
+      const trustRows = await prisma.generatedDocument.count({
+        where: { firmId, intakeSessionId: session.id, documentType: "revocable_trust" },
+      });
+      expect(trustRows).toBe(1);
+    } finally {
+      await prisma.generatedDocument.deleteMany({
+        where: { firmId, fileKey: leftoverKey },
       });
       await prisma.intakeSession.delete({ where: { id: session.id } }).catch(() => {});
       await prisma.client.delete({ where: { id: client.id } }).catch(() => {});
@@ -273,6 +390,8 @@ test.describe("Client detail — Trust draft punch list + stamp confirm", () => 
       await expect(page.getByRole("button", { name: /Generate Trust draft/i })).toBeVisible({
         timeout: 15000,
       });
+      await expect(page.getByTestId("trust-draft-generate-cta")).toHaveAttribute("data-mode", "generate");
+      await expect(page.getByRole("button", { name: /^Regenerate$/ })).toHaveCount(0);
       await expect(page.getByRole("button", { name: /Generate Full Estate Plan/i })).toHaveCount(0);
     } finally {
       await prisma.intakeSession.delete({ where: { id: session.id } }).catch(() => {});
@@ -352,6 +471,8 @@ test.describe("Client detail — Trust draft punch list + stamp confirm", () => 
       await expect(page.getByText(/No Trust draft yet\. Open the intake/i)).toHaveCount(0);
       const generateBtn = page.getByRole("button", { name: /Generate Trust draft/i });
       await expect(generateBtn).toBeVisible({ timeout: 15000 });
+      await expect(generateBtn).toHaveAttribute("data-mode", "generate");
+      await expect(page.getByRole("button", { name: /^Regenerate$/ })).toHaveCount(0);
       await expect(page.getByRole("button", { name: /Generate Full Estate Plan/i })).toHaveCount(0);
       await expect(page.getByRole("link", { name: /Download Full ZIP/i })).toHaveCount(0);
 

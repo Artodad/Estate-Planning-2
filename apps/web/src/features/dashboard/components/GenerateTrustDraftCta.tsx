@@ -8,15 +8,28 @@ import { GenerationErrorBoundary } from "@/features/dashboard/components/Generat
 import { ErrorCallout } from "@/components/ui/callouts";
 import { Button } from "@/components/ui/button";
 import { RoleGuard, OWNER_STAFF } from "@/features/auth";
-import { buildGenerateTrustDraftParams } from "./generate-trust-draft";
+import {
+  buildGenerateTrustDraftParams,
+  generateTrustDraftCtaLabel,
+  type GenerateTrustDraftCtaMode,
+} from "./generate-trust-draft";
 
 /**
  * Thin Trust-draft generate for client-detail. Same click path as intake
  * (generateDocumentForIntake + buildGenerateTrustDraftParams). After success,
  * refresh so the existing #37 Trust row is the only review surface — this
  * island does not own a punch list.
+ *
+ * Two modes, one island: Generate (above the table) or Regenerate (Download
+ * cell of the newest Trust row).
  */
-export function GenerateTrustDraftCta({ intakeId }: { intakeId: string }) {
+export function GenerateTrustDraftCta({
+  intakeId,
+  mode = "generate",
+}: {
+  intakeId: string;
+  mode?: GenerateTrustDraftCtaMode;
+}) {
   const router = useRouter();
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,8 +65,10 @@ export function GenerateTrustDraftCta({ intakeId }: { intakeId: string }) {
             onClick={handleGenerate}
             disabled={isGenerating || !intakeId}
             size="sm"
+            data-testid="trust-draft-generate-cta"
+            data-mode={mode}
           >
-            {isGenerating ? "Generating Trust draft…" : "Generate Trust draft"}
+            {generateTrustDraftCtaLabel(mode, isGenerating)}
           </Button>
           {error && <ErrorCallout>{error}</ErrorCallout>}
         </div>

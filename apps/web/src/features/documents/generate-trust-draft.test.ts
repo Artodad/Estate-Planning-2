@@ -34,7 +34,10 @@ import {
   wrapDocumentXml,
 } from "./template-normalize/docx-fixture";
 import { createRecordingNullGetter } from "./docxtemplater-options";
-import { buildGenerateTrustDraftParams } from "../dashboard/components/generate-trust-draft";
+import {
+  buildGenerateTrustDraftParams,
+  generateTrustDraftCtaLabel,
+} from "../dashboard/components/generate-trust-draft";
 import { trustDraftFromStoredDocuments } from "../dashboard/components/stored-trust-draft";
 import {
   punchListFromFillReport,
@@ -51,10 +54,13 @@ import {
 } from "../dashboard/components/trust-draft-download-confirm";
 import { prefixedPunchListHref } from "../dashboard/components/TrustDraftFillReport";
 import {
+  clientDetailNewestTrustDraftRow,
+  clientDetailTrustDraftCtaMode,
   clientDetailTrustDraftGenerateIntakeId,
   documentsRowDownloadHref,
   documentsRowIntakeAnswers,
   documentsTrustDraftHrefPrefix,
+  existingRevocableTrustToReplace,
   isHiddenEstatePlanPackageRow,
   isRevocableTrustDocumentType,
 } from "../dashboard/components/documents-trust-draft-row";
@@ -1091,12 +1097,13 @@ test("client-detail Trust download joins answers by intakeSessionId", () => {
   );
 });
 
-test("client-detail Trust generate: newest intake, gate on no revocable_trust (not empty docs)", () => {
+test("client-detail Trust generate: newest intake when no Trust; Trust row intake when has Trust", () => {
   const newest = { id: "intake_newest" };
   const older = { id: "intake_older" };
   const intakesNewestFirst = [newest, older];
 
   assert.equal(clientDetailTrustDraftGenerateIntakeId([], []), null);
+  assert.equal(clientDetailTrustDraftCtaMode([]), "generate");
   assert.equal(
     clientDetailTrustDraftGenerateIntakeId(intakesNewestFirst, []),
     "intake_newest",
@@ -1104,30 +1111,111 @@ test("client-detail Trust generate: newest intake, gate on no revocable_trust (n
   );
   assert.equal(
     clientDetailTrustDraftGenerateIntakeId(intakesNewestFirst, [
-      { documentType: "healthcare_directive" },
+      { documentType: "healthcare_directive", intakeSessionId: "intake_newest" },
     ]),
     "intake_newest",
     "other leftover .docx do not hide generate",
   );
   assert.equal(
-    clientDetailTrustDraftGenerateIntakeId(intakesNewestFirst, [
-      { documentType: "healthcare_directive" },
-      { documentType: "revocable_trust" },
-    ]),
-    null,
-    "any Trust on this matter hides generate",
+    clientDetailTrustDraftCtaMode([{ documentType: "healthcare_directive" }]),
+    "generate",
   );
   assert.equal(
     clientDetailTrustDraftGenerateIntakeId(intakesNewestFirst, [
+      { documentType: "healthcare_directive", intakeSessionId: "intake_newest" },
+      { documentType: "revocable_trust", intakeSessionId: "intake_older" },
+    ]),
+    "intake_older",
+    "has-trust uses that Trust row's intake, not intakes[0]",
+  );
+  assert.equal(
+    clientDetailTrustDraftCtaMode([
+      { documentType: "healthcare_directive" },
       { documentType: "revocable_trust" },
     ]),
-    null,
-    "Trust on an older intake still counts as has Trust",
+    "regenerate",
+    "has-trust is in-row Regenerate, not above-table Generate",
+  );
+  assert.equal(
+    clientDetailTrustDraftGenerateIntakeId(intakesNewestFirst, [
+      { documentType: "revocable_trust", intakeSessionId: "intake_older" },
+    ]),
+    "intake_older",
+    "Trust on an older intake still returns that row's intake",
   );
   assert.equal(
     clientDetailTrustDraftGenerateIntakeId([older], [{ documentType: "pour_over_will" }]),
     "intake_older",
   );
+});
+
+test("client-detail one Regenerate per matter: newest Trust row only", () => {
+  const leftover = {
+    id: "trust_leftover",
+    documentType: "revocable_trust",
+    intakeSessionId: "sess_same",
+  };
+  const newest = {
+    id: "trust_clean",
+    documentType: "revocable_trust",
+    intakeSessionId: "sess_same",
+  };
+  const other = {
+    id: "hc",
+    documentType: "healthcare_directive",
+    intakeSessionId: "sess_same",
+  };
+  const docsNewestFirst = [newest, leftover, other];
+
+  assert.equal(clientDetailNewestTrustDraftRow(docsNewestFirst)?.id, "trust_clean");
+  assert.equal(
+    clientDetailTrustDraftGenerateIntakeId([{ id: "sess_other" }], docsNewestFirst),
+    "sess_same",
+    "Regenerate intake is the newest Trust row, not intakes[0]",
+  );
+  assert.equal(clientDetailTrustDraftCtaMode(docsNewestFirst), "regenerate");
+  assert.equal(
+    clientDetailNewestTrustDraftRow([leftover, newest])?.id,
+    "trust_leftover",
+    "first Trust in the list is newest when caller passes newest-first",
+  );
+});
+
+test("Trust persist replace: newest revocable_trust for that intake; other types create", () => {
+  const leftover = {
+    id: "old",
+    documentType: "revocable_trust",
+    intakeSessionId: "s1",
+  };
+  const newest = {
+    id: "new",
+    documentType: "revocable_trust",
+    intakeSessionId: "s1",
+  };
+  const otherIntakeTrust = {
+    id: "other_sess",
+    documentType: "revocable_trust",
+    intakeSessionId: "s2",
+  };
+  const will = { id: "will", documentType: "pour_over_will", intakeSessionId: "s1" };
+  const docs = [newest, leftover, otherIntakeTrust, will];
+
+  assert.equal(existingRevocableTrustToReplace("revocable_trust", "s1", docs)?.id, "new");
+  assert.equal(
+    existingRevocableTrustToReplace("pour_over_will", "s1", docs),
+    null,
+    "other types always create",
+  );
+  assert.equal(existingRevocableTrustToReplace("revocable_trust", "s2", docs)?.id, "other_sess");
+  assert.equal(existingRevocableTrustToReplace("revocable_trust", "s3", docs), null);
+  assert.equal(existingRevocableTrustToReplace("revocable_trust", "s1", []), null);
+});
+
+test("client-detail CTA labels: Generate vs Regenerate", () => {
+  assert.equal(generateTrustDraftCtaLabel("generate", false), "Generate Trust draft");
+  assert.equal(generateTrustDraftCtaLabel("generate", true), "Generating Trust draft…");
+  assert.equal(generateTrustDraftCtaLabel("regenerate", false), "Regenerate");
+  assert.equal(generateTrustDraftCtaLabel("regenerate", true), "Regenerating…");
 });
 
 test("leftover package ZIP / Full-Estate-Plan-Package rows hide; other leftover .docx stay visible", () => {
