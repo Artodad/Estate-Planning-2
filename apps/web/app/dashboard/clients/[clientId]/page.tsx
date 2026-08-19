@@ -279,7 +279,7 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
 
         {clientDocs.length === 0 ? (
           <div className="text-sm text-muted-foreground">
-            No documents generated yet for this client.
+            No Trust draft yet. Open the intake and click Generate Trust draft.
           </div>
         ) : (
           <div className="overflow-x-auto">

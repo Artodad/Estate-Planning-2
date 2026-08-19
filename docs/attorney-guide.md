@@ -2,7 +2,7 @@
 
 **Core Guarantee**: The Estate Planning Engine never rewrites, modernizes, or improves your original Word templates. Every output is an exact-fidelity merge of your language + client data, with a visible DRAFT header/watermark on every page.
 
-## The 8 Core Documents (Always Generated as a Coordinated Package)
+## Core documents (Trust draft is the startable loop)
 
 1. Revocable Living Trust
 2. Pour-over Will
@@ -24,7 +24,7 @@ Every generated page includes a clear **"DRAFT – For Attorney Review Only"** h
 **Do not** expect an automated "Export PDF" button. Automated conversion (LibreOffice, pdf-lib, etc.) risks layout drift on complex attorney templates (tables, numbered paragraphs, headers/footers, CA-specific provisions).
 
 **Correct workflow** (guarantees 100% fidelity):
-1. Download the .docx (individual or Full Package ZIP).
+1. Download the Trust draft .docx.
 2. Open in Microsoft Word (preferred) or LibreOffice.
 3. File → Save As / Export → PDF.
 4. Review the PDF in Print Layout exactly as your client will see it.
@@ -58,8 +58,8 @@ All production templates should go through structured side-by-side review with r
 1. Attorney invites client (magic link via Resend).
 2. Client completes the 10-section adaptive wizard (CA branching, auto-save, resume, DRAFT status).
 3. Attorney reviews answers in dashboard.
-4. One-click "Generate Full Estate Plan" (or single document).
-5. 8-document ZIP + individual .docx downloads appear immediately (secure route, audit logged).
+4. Open the completed intake and click Generate Trust draft.
+5. The Trust draft .docx is ready. Use the punch list for leftover blanks, then download the DRAFT.
 6. Attorney downloads, reviews in Word, customizes, removes DRAFT, executes with client.
 
 All privileged actions (generation, download, client data changes) are audited with firmId + minimal metadata.

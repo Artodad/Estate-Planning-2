@@ -159,7 +159,7 @@ export function ClientsList({ initialRealClients = [] }: ClientsListProps) {
 
       // Wave B: Also surface via sonner (modern toast) for better UX
       toast.success(`Client created: ${newName}`, {
-        description: "The client is now available for intakes and document generation.",
+        description: "The client is now available for intake and Trust draft.",
       });
 
       // Close + reset
@@ -242,7 +242,7 @@ export function ClientsList({ initialRealClients = [] }: ClientsListProps) {
         <div className="rounded-lg border border-dashed p-8 text-center">
           <h3 className="text-lg font-semibold tracking-tight">No clients yet</h3>
           <p className="mt-1 text-sm text-muted-foreground">
-            Create a client to start an intake and generate draft documents.
+            Create a client to start an intake, then Generate Trust draft.
           </p>
           <RoleGuard allowed={OWNER_STAFF}>
             <Button

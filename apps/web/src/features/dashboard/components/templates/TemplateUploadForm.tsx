@@ -284,7 +284,7 @@ export function TemplateUploadForm() {
 
       if (state.normalizeReport?.skipped) {
         toast.success(
-          "Template uploaded as-is (auto-normalize skipped). It is now available for document generation.",
+          "Template uploaded as-is (auto-normalize skipped). It is now available for Trust draft.",
         );
       } else {
         const repairs = state.normalizeReport?.repairCount ?? 0;
@@ -372,7 +372,7 @@ export function TemplateUploadForm() {
               ))}
             </select>
             <p className="text-[10px] text-muted-foreground">
-              Must match the type used in generation (the 8 canonical estate plan docs).
+              Must match the document type. Trust draft uses Revocable Living Trust.
             </p>
           </div>
         </div>
