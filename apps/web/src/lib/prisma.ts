@@ -2,6 +2,11 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../../generated/prisma/client";
 
 import { TRUST_DRAFT_DOCUMENT_TYPE } from "../features/dashboard/components/generate-trust-draft";
+import {
+  overviewClientCountWhere,
+  overviewDocumentCountWhere,
+  overviewIntakesInProgressWhere,
+} from "../features/dashboard/server/overview-stats-counts";
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
@@ -66,6 +71,13 @@ export const clientHelpers = {
     });
   },
 
+  /** Count every Client for the firm. No status filter. */
+  async countByFirm(firmId: string) {
+    return prisma.client.count({
+      where: overviewClientCountWhere(firmId),
+    });
+  },
+
   /** Get one client (with sessions) — returns null if not owned by firm. */
   async getByIdForFirm(id: string, firmId: string) {
     return prisma.client.findFirst({
@@ -107,6 +119,18 @@ export const intakeSessionHelpers = {
           orderBy: { createdAt: "desc" },
         },
       },
+    });
+  },
+
+  /**
+   * Count Intakes In Progress for Overview.
+   * Exact current .length semantics: status === "IN_PROGRESS" (dead — schema
+   * writes "in_progress") OR progress 1–99 with completedAt null.
+   * Do not slim listByFirm — leftover N still needs answers + newest Trust.
+   */
+  async countInProgressByFirm(firmId: string) {
+    return prisma.intakeSession.count({
+      where: overviewIntakesInProgressWhere(firmId),
     });
   },
 
@@ -200,6 +224,16 @@ export const generatedDocumentHelpers = {
       include: {
         template: { select: { name: true, documentType: true } },
       },
+    });
+  },
+
+  /**
+   * Count every GeneratedDocument row for the firm.
+   * Unbounded (Overview previously used listByFirm take 1000). No ZIP hide.
+   */
+  async countByFirm(firmId: string) {
+    return prisma.generatedDocument.count({
+      where: overviewDocumentCountWhere(firmId),
     });
   },
 

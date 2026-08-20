@@ -1080,30 +1080,22 @@ export async function getOverviewStatsForCurrentFirm(): Promise<
   try {
     const thirtyDaysAgo = new Date(Date.now() - 1000 * 60 * 60 * 24 * 30);
 
-    // Real counts using existing firm-scoped helpers where possible
-    const [clients, intakes, docs, recentPackageEvents, recentAudit] = await Promise.all([
-      clientHelpers.listByFirm(firmId), // we only need length; helper already scopes
-      intakeSessionHelpers.listByFirm(firmId),
-      generatedDocumentHelpers.listByFirm(firmId, 1000), // light cap; we only need length + recent filter
-      // Count package generations in last 30d via direct prisma (light)
-      prisma.auditLog.count({
-        where: {
-          firmId,
-          action: "document.package.generated",
-          createdAt: { gte: thirtyDaysAgo },
-        },
-      }),
-      // Recent activity — use the canonical shared helper (Phase 6 Wave A: stop duplicating queries)
-      getRecentAuditLogsForFirm(firmId, 8),
-    ]);
-
-    const totalClients = clients.length;
-
-    const intakesInProgress = intakes.filter(
-      (i: any) => i.status === "IN_PROGRESS" || (i.progress > 0 && i.progress < 100 && !i.completedAt)
-    ).length;
-
-    const documentsGenerated = docs.length;
+    // Count queries only — do not listByFirm (answers / last-2 sessions / Trust include).
+    // Documents Generated is unbounded (was take 1000). No ZIP hide.
+    const [totalClients, intakesInProgress, documentsGenerated, recentPackageEvents, recentAudit] =
+      await Promise.all([
+        clientHelpers.countByFirm(firmId),
+        intakeSessionHelpers.countInProgressByFirm(firmId),
+        generatedDocumentHelpers.countByFirm(firmId),
+        prisma.auditLog.count({
+          where: {
+            firmId,
+            action: "document.package.generated",
+            createdAt: { gte: thirtyDaysAgo },
+          },
+        }),
+        getRecentAuditLogsForFirm(firmId, 8),
+      ]);
 
     const recentActivity: RecentActivityItem[] = recentAudit.map((log) => {
       let summary = log.action;
