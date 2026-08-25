@@ -148,6 +148,29 @@ function exportSignInIdentifier(value: string): void {
   appendFileSync(githubEnv, `E2E_CLERK_USER_IDENTIFIER=${value}\n`);
 }
 
+/** Specs use strategy: password. Enable that factor on the resolved Clerk user (CI only). */
+async function ensurePasswordStrategy(
+  secret: string,
+  userId: string,
+  password: string,
+): Promise<void> {
+  const res = await fetch(`${CLERK_API}/users/${userId}`, {
+    method: "PATCH",
+    headers: {
+      Authorization: `Bearer ${secret}`,
+      "Content-Type": "application/json",
+      "Clerk-API-Version": "2025-04-10",
+    },
+    body: JSON.stringify({
+      password,
+      skip_password_checks: true,
+    }),
+  });
+  if (!res.ok) {
+    throw new Error(`Clerk API PATCH /users (password strategy) failed: ${res.status}`);
+  }
+}
+
 async function lookupClerkUser(secret: string, identifier: string): Promise<ClerkUser> {
   if (identifier.startsWith("user_")) {
     return fetchFullUser(secret, identifier);
@@ -242,6 +265,7 @@ async function main(): Promise<void> {
   const user = await lookupClerkUser(secret, identifier);
   const signIn = signInIdentifier(user, identifier);
   exportSignInIdentifier(signIn.value);
+  await ensurePasswordStrategy(secret, user.id, requireEnv("E2E_CLERK_USER_PASSWORD"));
 
   const memberships = unwrapList<ClerkOrgMembership>(
     await clerkGet(secret, `/users/${user.id}/organization_memberships`),
@@ -275,7 +299,7 @@ async function main(): Promise<void> {
     });
 
     console.log(
-      `E2E seed: Firm ${firm.id} + owner User linked to Clerk org and user (signInIdentifierKind=${signIn.kind})`,
+      `E2E seed: Firm ${firm.id} + owner User linked to Clerk org and user (signInIdentifierKind=${signIn.kind}; passwordStrategy=ensured)`,
     );
   } finally {
     await prisma.$disconnect();
