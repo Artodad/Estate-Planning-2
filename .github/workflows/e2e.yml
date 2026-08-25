@@ -81,9 +81,11 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
-      - name: Apply Prisma migrations
+      # Out-of-order migration folders (P3018): do not rewrite history on this slice.
+      # db push applies the current schema to empty Actions Postgres without walking folders.
+      - name: Push Prisma schema
         working-directory: apps/web
-        run: pnpm exec prisma migrate deploy
+        run: pnpm exec prisma db push
 
       - name: Install Playwright Chromium
         working-directory: apps/web
