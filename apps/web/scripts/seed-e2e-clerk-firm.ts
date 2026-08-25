@@ -4,6 +4,7 @@
  *
  * Required env: DATABASE_URL (localhost), CLERK_SECRET_KEY, E2E_CLERK_USER_IDENTIFIER
  */
+import { appendFileSync } from "node:fs";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../generated/prisma/client";
 
@@ -12,8 +13,18 @@ const CLERK_API = "https://api.clerk.com/v1";
 type ClerkUser = {
   id: string;
   username?: string | null;
-  email_addresses?: Array<{ email_address?: string; emailAddress?: string }>;
-  emailAddresses?: Array<{ email_address?: string; emailAddress?: string }>;
+  primary_email_address_id?: string | null;
+  primaryEmailAddressId?: string | null;
+  email_addresses?: Array<{
+    id?: string;
+    email_address?: string;
+    emailAddress?: string;
+  }>;
+  emailAddresses?: Array<{
+    id?: string;
+    email_address?: string;
+    emailAddress?: string;
+  }>;
 };
 
 type ClerkOrgMembership = {
@@ -107,30 +118,67 @@ async function lookupUsers(
   }
 }
 
-function pickUser(users: ClerkUser[], identifier: string): ClerkUser | undefined {
-  return users.find((u) => userMatchesIdentifier(u, identifier)) ?? (users.length === 1 ? users[0] : undefined);
+async function fetchFullUser(secret: string, userId: string): Promise<ClerkUser> {
+  return (await clerkGet(secret, `/users/${userId}`)) as ClerkUser;
+}
+
+function primaryEmail(user: ClerkUser): string | undefined {
+  const rows = user.email_addresses ?? user.emailAddresses ?? [];
+  const primaryId = user.primary_email_address_id ?? user.primaryEmailAddressId;
+  if (primaryId) {
+    const row = rows.find((e) => e.id === primaryId);
+    const email = row?.email_address ?? row?.emailAddress;
+    if (email) return email;
+  }
+  return emailsOf(user)[0];
+}
+
+/** Password sign-in identifier Clerk's frontend will accept. */
+function signInIdentifier(user: ClerkUser, fallback: string): { value: string; kind: string } {
+  const email = primaryEmail(user);
+  if (email) return { value: email, kind: "email" };
+  if (user.username) return { value: user.username, kind: "username" };
+  return { value: fallback, kind: "fallback" };
+}
+
+function exportSignInIdentifier(value: string): void {
+  const githubEnv = process.env.GITHUB_ENV;
+  if (!githubEnv) return;
+  // Playwright specs read E2E_CLERK_USER_IDENTIFIER for clerk.signIn password strategy.
+  appendFileSync(githubEnv, `E2E_CLERK_USER_IDENTIFIER=${value}\n`);
 }
 
 async function lookupClerkUser(secret: string, identifier: string): Promise<ClerkUser> {
   if (identifier.startsWith("user_")) {
-    return (await clerkGet(secret, `/users/${identifier}`)) as ClerkUser;
+    return fetchFullUser(secret, identifier);
   }
 
-  const attempts: URLSearchParams[] = [
+  const filtered: URLSearchParams[] = [
     new URLSearchParams({ email_address: identifier, limit: "10" }),
     new URLSearchParams({ "email_address[]": identifier, limit: "10" }),
     new URLSearchParams({ username: identifier, limit: "10" }),
-    new URLSearchParams({ query: identifier, limit: "50" }),
+    new URLSearchParams({ phone_number: identifier, limit: "10" }),
   ];
 
   const counts: number[] = [];
-  for (const search of attempts) {
+  for (const search of filtered) {
     const users = await lookupUsers(secret, search);
     counts.push(users.length);
-    const match = pickUser(users, identifier);
-    if (match) {
-      return match;
+    const match = users.find((u) => userMatchesIdentifier(u, identifier));
+    if (match?.id) {
+      return fetchFullUser(secret, match.id);
     }
+    // List payloads often omit emails; a 1-hit filtered query is still that identifier.
+    if (users.length === 1 && users[0]?.id) {
+      return fetchFullUser(secret, users[0].id);
+    }
+  }
+
+  const queried = await lookupUsers(secret, new URLSearchParams({ query: identifier, limit: "50" }));
+  counts.push(queried.length);
+  const exact = queried.find((u) => userMatchesIdentifier(u, identifier));
+  if (exact?.id) {
+    return fetchFullUser(secret, exact.id);
   }
 
   throw new Error(
@@ -192,6 +240,9 @@ async function main(): Promise<void> {
   const identifier = requireEnv("E2E_CLERK_USER_IDENTIFIER");
 
   const user = await lookupClerkUser(secret, identifier);
+  const signIn = signInIdentifier(user, identifier);
+  exportSignInIdentifier(signIn.value);
+
   const memberships = unwrapList<ClerkOrgMembership>(
     await clerkGet(secret, `/users/${user.id}/organization_memberships`),
   );
@@ -215,10 +266,7 @@ async function main(): Promise<void> {
       });
     }
 
-    const email =
-      emailsOf(user).find((e) => e.toLowerCase() === identifier.toLowerCase()) ??
-      emailsOf(user)[0] ??
-      (identifier.includes("@") ? identifier : "e2e@example.com");
+    const email = primaryEmail(user) ?? (identifier.includes("@") ? identifier : "e2e@example.com");
 
     await prisma.user.upsert({
       where: { clerkId: user.id },
@@ -226,7 +274,9 @@ async function main(): Promise<void> {
       create: { clerkId: user.id, email, role: "owner", firmId: firm.id },
     });
 
-    console.log(`E2E seed: Firm ${firm.id} + owner User linked to Clerk org and user`);
+    console.log(
+      `E2E seed: Firm ${firm.id} + owner User linked to Clerk org and user (signInIdentifierKind=${signIn.kind})`,
+    );
   } finally {
     await prisma.$disconnect();
   }
