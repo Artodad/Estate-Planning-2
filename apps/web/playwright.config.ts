@@ -13,6 +13,7 @@ const baseURL = `http://localhost:${PORT}`;
 
 export default defineConfig({
   testDir: './e2e',
+  timeout: process.env.CI ? 90_000 : 30_000,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: [['html', { open: 'never' }], ['list']],

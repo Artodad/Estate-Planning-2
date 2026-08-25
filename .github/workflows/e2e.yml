@@ -87,6 +87,12 @@ jobs:
         working-directory: apps/web
         run: pnpm exec prisma db push
 
+      # Empty Actions Postgres has schema but no Firm/User. Local Neon already has
+      # rows linked to the Clerk e2e user; CI must seed that pair or dashboard is /onboarding.
+      - name: Seed Clerk e2e Firm + owner
+        working-directory: apps/web
+        run: pnpm exec tsx scripts/seed-e2e-clerk-firm.ts
+
       - name: Install Playwright Chromium
         working-directory: apps/web
         run: pnpm exec playwright install --with-deps chromium
