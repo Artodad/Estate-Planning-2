@@ -12,7 +12,8 @@ const CLERK_API = "https://api.clerk.com/v1";
 type ClerkUser = {
   id: string;
   username?: string | null;
-  email_addresses?: Array<{ email_address: string }>;
+  email_addresses?: Array<{ email_address?: string; emailAddress?: string }>;
+  emailAddresses?: Array<{ email_address?: string; emailAddress?: string }>;
 };
 
 type ClerkOrgMembership = {
@@ -22,12 +23,15 @@ type ClerkOrgMembership = {
 
 type ClerkSession = {
   last_active_organization_id?: string | null;
+  lastActiveOrganizationId?: string | null;
   last_active_at?: number | null;
+  lastActiveAt?: number | null;
   updated_at?: number | null;
+  updatedAt?: number | null;
 };
 
 function requireEnv(name: string): string {
-  const value = process.env[name];
+  const value = process.env[name]?.trim().replace(/^["']|["']$/g, "");
   if (!value) {
     throw new Error(`Missing required env: ${name}`);
   }
@@ -42,20 +46,25 @@ function assertLocalDatabaseUrl(url: string): void {
   }
 }
 
-async function clerkGet<T>(secret: string, path: string, query?: Record<string, string>): Promise<T> {
+async function clerkGet(
+  secret: string,
+  path: string,
+  search?: URLSearchParams,
+): Promise<unknown> {
   const url = new URL(`${CLERK_API}${path}`);
-  if (query) {
-    for (const [key, value] of Object.entries(query)) {
-      url.searchParams.set(key, value);
-    }
+  if (search) {
+    url.search = search.toString();
   }
   const res = await fetch(url, {
-    headers: { Authorization: `Bearer ${secret}` },
+    headers: {
+      Authorization: `Bearer ${secret}`,
+      "Clerk-API-Version": "2025-04-10",
+    },
   });
   if (!res.ok) {
     throw new Error(`Clerk API ${path} failed: ${res.status}`);
   }
-  return (await res.json()) as T;
+  return res.json();
 }
 
 function unwrapList<T>(payload: unknown): T[] {
@@ -72,7 +81,10 @@ function unwrapList<T>(payload: unknown): T[] {
 }
 
 function emailsOf(user: ClerkUser): string[] {
-  return (user.email_addresses ?? []).map((e) => e.email_address).filter(Boolean);
+  const rows = user.email_addresses ?? user.emailAddresses ?? [];
+  return rows
+    .map((e) => e.email_address ?? e.emailAddress)
+    .filter((e): e is string => Boolean(e));
 }
 
 function userMatchesIdentifier(user: ClerkUser, identifier: string): boolean {
@@ -84,30 +96,58 @@ function userMatchesIdentifier(user: ClerkUser, identifier: string): boolean {
   );
 }
 
+async function lookupUsers(
+  secret: string,
+  search: URLSearchParams,
+): Promise<ClerkUser[]> {
+  try {
+    return unwrapList<ClerkUser>(await clerkGet(secret, "/users", search));
+  } catch {
+    return [];
+  }
+}
+
+function pickUser(users: ClerkUser[], identifier: string): ClerkUser | undefined {
+  return users.find((u) => userMatchesIdentifier(u, identifier)) ?? (users.length === 1 ? users[0] : undefined);
+}
+
 async function lookupClerkUser(secret: string, identifier: string): Promise<ClerkUser> {
   if (identifier.startsWith("user_")) {
-    return clerkGet<ClerkUser>(secret, `/users/${identifier}`);
+    return (await clerkGet(secret, `/users/${identifier}`)) as ClerkUser;
   }
 
-  try {
-    const byEmail = unwrapList<ClerkUser>(
-      await clerkGet(secret, "/users", { email_address: identifier }),
-    );
-    const exactEmail = byEmail.find((u) => userMatchesIdentifier(u, identifier));
-    if (exactEmail) {
-      return exactEmail;
+  const attempts: URLSearchParams[] = [
+    new URLSearchParams({ email_address: identifier, limit: "10" }),
+    new URLSearchParams({ "email_address[]": identifier, limit: "10" }),
+    new URLSearchParams({ username: identifier, limit: "10" }),
+    new URLSearchParams({ query: identifier, limit: "50" }),
+  ];
+
+  const counts: number[] = [];
+  for (const search of attempts) {
+    const users = await lookupUsers(secret, search);
+    counts.push(users.length);
+    const match = pickUser(users, identifier);
+    if (match) {
+      return match;
     }
-  } catch {
-    // Identifier may be a username; fall through to query search.
   }
 
-  const byQuery = unwrapList<ClerkUser>(await clerkGet(secret, "/users", { query: identifier }));
-  const exactQuery = byQuery.find((u) => userMatchesIdentifier(u, identifier));
-  if (exactQuery) {
-    return exactQuery;
-  }
+  throw new Error(
+    `Clerk e2e user not found for E2E_CLERK_USER_IDENTIFIER (looksLikeEmail=${identifier.includes("@")}; resultCounts=${counts.join(",")})`,
+  );
+}
 
-  throw new Error("Clerk e2e user not found for E2E_CLERK_USER_IDENTIFIER");
+function membershipOrgId(m: ClerkOrgMembership): string | undefined {
+  return m.organization?.id;
+}
+
+function sessionOrgId(s: ClerkSession): string | null | undefined {
+  return s.last_active_organization_id ?? s.lastActiveOrganizationId;
+}
+
+function sessionActivity(s: ClerkSession): number {
+  return s.last_active_at ?? s.lastActiveAt ?? s.updated_at ?? s.updatedAt ?? 0;
 }
 
 function pickActiveOrg(
@@ -116,7 +156,7 @@ function pickActiveOrg(
 ): { orgId: string; name: string; slug: string | null } {
   const byId = new Map<string, { orgId: string; name: string; slug: string | null }>();
   for (const m of memberships) {
-    const orgId = m.organization?.id;
+    const orgId = membershipOrgId(m);
     if (!orgId) continue;
     byId.set(orgId, {
       orgId,
@@ -129,16 +169,17 @@ function pickActiveOrg(
   }
 
   const sessionOrg = [...sessions]
-    .sort((a, b) => (b.last_active_at ?? b.updated_at ?? 0) - (a.last_active_at ?? a.updated_at ?? 0))
-    .map((s) => s.last_active_organization_id)
+    .sort((a, b) => sessionActivity(b) - sessionActivity(a))
+    .map((s) => sessionOrgId(s))
     .find((id): id is string => Boolean(id && byId.has(id)));
   if (sessionOrg) {
     return byId.get(sessionOrg)!;
   }
 
-  const admin = memberships.find((m) => m.role === "org:admin" && m.organization?.id);
-  if (admin?.organization?.id) {
-    return byId.get(admin.organization.id)!;
+  const admin = memberships.find((m) => m.role === "org:admin" && membershipOrgId(m));
+  const adminId = admin ? membershipOrgId(admin) : undefined;
+  if (adminId) {
+    return byId.get(adminId)!;
   }
 
   return [...byId.values()][0];
@@ -155,7 +196,7 @@ async function main(): Promise<void> {
     await clerkGet(secret, `/users/${user.id}/organization_memberships`),
   );
   const sessions = unwrapList<ClerkSession>(
-    await clerkGet(secret, "/sessions", { user_id: user.id }),
+    await clerkGet(secret, "/sessions", new URLSearchParams({ user_id: user.id })),
   );
   const org = pickActiveOrg(memberships, sessions);
 
