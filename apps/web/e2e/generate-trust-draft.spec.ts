@@ -44,7 +44,7 @@ test.describe("Generate Trust draft — intake UI calls generateDocumentForIntak
   test("intake page button calls generateDocumentForIntake (empty-answers error, not scaffold)", async ({
     page,
   }) => {
-    test.setTimeout(90_000);
+    test.setTimeout(60_000);
 
     await signInE2E(page);
     await page.waitForLoadState("networkidle", { timeout: 15000 }).catch(() => {});

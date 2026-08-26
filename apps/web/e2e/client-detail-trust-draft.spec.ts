@@ -44,7 +44,7 @@ test.describe("Client detail — Trust draft punch list + stamp confirm", () => 
   test("revocable_trust row shows punch list, prefixed JUMP_TO, and stamp confirm; other types stay ungated", async ({
     page,
   }) => {
-    test.setTimeout(90_000);
+    test.setTimeout(60_000);
 
     await signInE2E(page);
     await page.waitForLoadState("networkidle", { timeout: 15000 }).catch(() => {});
@@ -218,7 +218,7 @@ test.describe("Client detail — Trust draft punch list + stamp confirm", () => 
   test("has Trust: Regenerate on newest row (empty-answers reuses generate error); no above-table Generate", async ({
     page,
   }) => {
-    test.setTimeout(90_000);
+    test.setTimeout(60_000);
 
     await signInE2E(page);
     await page.waitForLoadState("networkidle", { timeout: 15000 }).catch(() => {});
@@ -316,7 +316,7 @@ test.describe("Client detail — Trust draft punch list + stamp confirm", () => 
   test("intake + no docs: Generate Trust draft, no bounce-to-intake copy", async ({
     page,
   }) => {
-    test.setTimeout(90_000);
+    test.setTimeout(60_000);
 
     await signInE2E(page);
     await page.waitForLoadState("networkidle", { timeout: 15000 }).catch(() => {});
@@ -375,7 +375,7 @@ test.describe("Client detail — Trust draft punch list + stamp confirm", () => 
   test("intake + no Trust: Generate Trust draft (same action errors); leftover .docx stay ungated", async ({
     page,
   }) => {
-    test.setTimeout(90_000);
+    test.setTimeout(60_000);
 
     await signInE2E(page);
     await page.waitForLoadState("networkidle", { timeout: 15000 }).catch(() => {});

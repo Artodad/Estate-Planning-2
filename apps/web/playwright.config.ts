@@ -13,8 +13,8 @@ const baseURL = `http://localhost:${PORT}`;
 
 export default defineConfig({
   testDir: './e2e',
-  timeout: process.env.CI ? 90_000 : 30_000,
-  retries: process.env.CI ? 2 : 0,
+  timeout: process.env.CI ? 60_000 : 30_000,
+  retries: process.env.CI ? 1 : 0,
   workers: process.env.CI ? 1 : undefined,
   reporter: [['html', { open: 'never' }], ['list']],
   globalSetup: fileURLToPath(import.meta.resolve('./e2e/global.setup.ts')),

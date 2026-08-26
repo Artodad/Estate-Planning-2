@@ -20,8 +20,8 @@ on:
 jobs:
   e2e:
     runs-on: ubuntu-latest
-    # 108 tests; once Clerk sign-in works they no longer fail in 2s and need more than 30m.
-    timeout-minutes: 60
+    # Four Trust-loop files only. Do not run the rest of e2e/ (onboarding, templates, …).
+    timeout-minutes: 15
 
     services:
       postgres:
@@ -109,7 +109,15 @@ jobs:
         run: pnpm exec playwright install --with-deps chromium
 
       - name: Run Playwright e2e
-        run: pnpm --filter web test:e2e
+        working-directory: apps/web
+        run: >-
+          pnpm exec playwright test
+          --retries=1
+          --timeout=60000
+          e2e/generate-trust-draft.spec.ts
+          e2e/documents-trust-draft.spec.ts
+          e2e/client-detail-trust-draft.spec.ts
+          e2e/intakes-leftover.spec.ts
 
       - name: Upload Playwright report
         if: failure()

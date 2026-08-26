@@ -42,7 +42,7 @@ test.describe("Intakes list — leftover N on the existing row", () => {
   test("Trust leftovers paint N; clean is clean; no Trust stays quiet; click opens review", async ({
     page,
   }) => {
-    test.setTimeout(90_000);
+    test.setTimeout(60_000);
 
     await signInE2E(page);
     await page.waitForLoadState("networkidle", { timeout: 15000 }).catch(() => {});
