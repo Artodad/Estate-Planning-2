@@ -3,6 +3,7 @@
 import "server-only";
 
 import { z } from "zod";
+import { shouldPaintOverviewActivity } from "@/features/dashboard/server/overview-stats-counts";
 
 import { checkOwnerOrStaff } from "@/features/auth/server/rbac";
 import { clientHelpers, intakeSessionHelpers, templateHelpers, generatedDocumentHelpers, prisma } from "@/lib/prisma";
@@ -1049,7 +1050,7 @@ export async function updateClientForCurrentFirm(
 export interface OverviewStats {
   totalClients: number;
   intakesInProgress: number;
-  documentsGenerated: number; // total GeneratedDocument rows for the firm
+  documentsGenerated: number; // product rows only (same hide as Documents table)
   recentPackages: number; // count of "document.package.generated" events in last 30d
 }
 
@@ -1081,7 +1082,7 @@ export async function getOverviewStatsForCurrentFirm(): Promise<
     const thirtyDaysAgo = new Date(Date.now() - 1000 * 60 * 60 * 24 * 30);
 
     // Count queries only — do not listByFirm (answers / last-2 sessions / Trust include).
-    // Documents Generated is unbounded (was take 1000). No ZIP hide.
+    // Documents Generated is unbounded (was take 1000) and excludes hidden ZIP / non-Trust.
     const [totalClients, intakesInProgress, documentsGenerated, recentPackageEvents, recentAudit] =
       await Promise.all([
         clientHelpers.countByFirm(firmId),
@@ -1097,10 +1098,11 @@ export async function getOverviewStatsForCurrentFirm(): Promise<
         getRecentAuditLogsForFirm(firmId, 8),
       ]);
 
-    const recentActivity: RecentActivityItem[] = recentAudit.map((log) => {
+    const recentActivity: RecentActivityItem[] = recentAudit.flatMap((log) => {
+      if (!shouldPaintOverviewActivity(log.action)) return [];
+
       let summary = log.action;
       if (log.action === "client.created") summary = "New client added";
-      else if (log.action === "document.package.generated") summary = "Full estate plan package generated";
       else if (log.action === "document.generated") summary = "Document generated";
       else if (log.action === "intake.started") summary = "Intake started";
       else if (log.action === "intake.completed") summary = "Intake completed";
@@ -1112,14 +1114,14 @@ export async function getOverviewStatsForCurrentFirm(): Promise<
         if (m.displayName) summary = `${summary} — ${m.displayName}`;
       }
 
-      return {
+      return [{
         id: log.id,
         createdAt: log.createdAt.toISOString(),
         action: log.action,
         summary,
         targetType: log.targetType,
         targetId: log.targetId,
-      };
+      }];
     });
 
     return {

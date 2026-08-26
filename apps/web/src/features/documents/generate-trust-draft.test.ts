@@ -13,13 +13,14 @@
 
 import { strict as assert } from "node:assert";
 import test from "node:test";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { mkdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import PizZip from "pizzip";
 
 import { generateDocument } from "./generator";
+import { generateFullPlanPackage, FULL_PLAN_DOCUMENT_ORDER } from "./package";
 import { generatedDocumentPersistFromGenerate, parseStoredFillReport, wordPlainTextFromDocx } from "./fill-report";
 import { DRAFT_TEXT, stampTrustDraftConfirmPhrase } from "./draft-watermark-module";
 import { getFileBuffer } from "./storage";
@@ -1439,7 +1440,7 @@ test("client-detail CTA labels: Generate vs Regenerate", () => {
   assert.equal(generateTrustDraftCtaLabel("regenerate", true), "Regenerating…");
 });
 
-test("leftover package ZIP / Full-Estate-Plan-Package rows hide; other leftover .docx stay visible", () => {
+test("leftover package ZIP / Full-Estate-Plan-Package / non-Trust types hide; only revocable_trust is a product row", () => {
   assert.equal(
     isHiddenEstatePlanPackageRow(
       "generated/2026-05-26/Smith-John-Full-Estate-Plan-Package-DRAFT-2026-05-26.zip",
@@ -1452,12 +1453,66 @@ test("leftover package ZIP / Full-Estate-Plan-Package rows hide; other leftover 
     true,
   );
   assert.equal(
-    isHiddenEstatePlanPackageRow("generated/pkg/Ada-Lovelace-Trust-DRAFT.docx"),
+    isHiddenEstatePlanPackageRow("generated/pkg/Ada-Lovelace-Trust-DRAFT.docx", "revocable_trust"),
     false,
   );
   assert.equal(
     isHiddenEstatePlanPackageRow("generated/pkg/Ada-Lovelace-Healthcare-DRAFT.docx"),
     false,
+    "fileKey-only leftover .docx is not a ZIP hide; type decides the product row",
   );
+  for (const leftoverType of [
+    "pour_over_will",
+    "durable_poa",
+    "healthcare_directive",
+    "hipaa",
+    "certificate_of_trust",
+    "personal_property_memo",
+    "trust_funding",
+  ]) {
+    assert.equal(
+      isHiddenEstatePlanPackageRow(`generated/pkg/${leftoverType}-DRAFT.docx`, leftoverType),
+      true,
+      leftoverType,
+    );
+  }
+});
+
+test("package engine stays in code; live UI does not import generateFullPlanPackage*", () => {
+  assert.equal(typeof generateFullPlanPackage, "function");
+  assert.ok(FULL_PLAN_DOCUMENT_ORDER.includes("revocable_trust"));
+  assert.equal(FULL_PLAN_DOCUMENT_ORDER.length, 8);
+  const actionsSrc = readFileSync(
+    path.join(WEB_ROOT, "src/features/dashboard/server/actions.ts"),
+    "utf8",
+  );
+  assert.match(actionsSrc, /export async function generateFullPlanPackageForIntake/);
+  assert.match(actionsSrc, /export async function getPackageTemplatesForCurrentFirm/);
+  assert.match(actionsSrc, /FULL_PLAN_DOCUMENT_ORDER/);
+
+  const liveRoots = [
+    path.join(WEB_ROOT, "app/dashboard"),
+    path.join(WEB_ROOT, "src/features/dashboard/components"),
+  ];
+  const importOrCall =
+    /(?:import\s+[^;]*\b(?:generateFullPlanPackage(?:ForIntake)?|getPackageTemplatesForCurrentFirm)\b|\b(?:generateFullPlanPackage(?:ForIntake)?|getPackageTemplatesForCurrentFirm)\s*\()/;
+  const hits: string[] = [];
+
+  function walk(dir: string) {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walk(full);
+        continue;
+      }
+      if (!/\.(ts|tsx)$/.test(entry.name)) continue;
+      const src = readFileSync(full, "utf8");
+      if (importOrCall.test(src)) {
+        hits.push(path.relative(WEB_ROOT, full));
+      }
+    }
+  }
+  for (const root of liveRoots) walk(root);
+  assert.deepEqual(hits, [], "live dashboard UI/CTA must not call quarantined package generate");
 });
 

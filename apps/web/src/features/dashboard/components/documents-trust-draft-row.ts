@@ -101,8 +101,21 @@ export function documentsRowDownloadHref(documentType: string, fileKey: string):
   return `/api/documents/download?fileKey=${encodeURIComponent(fileKey)}`;
 }
 
-/** Leftover package ZIP / Full-Estate-Plan-Package rows stay hidden — do not stamp-on-zip. */
-export function isHiddenEstatePlanPackageRow(fileKey: string): boolean {
+/**
+ * Leftover ZIP / Full-Estate-Plan-Package / non-Trust rows stay hidden.
+ * Only revocable_trust is a product row. Do not stamp-on-zip.
+ * Files stay in storage — this is display honesty, not a delete.
+ */
+export function isHiddenEstatePlanPackageRow(
+  fileKey: string,
+  documentType?: string | null,
+): boolean {
   const key = fileKey.toLowerCase();
-  return key.endsWith(".zip") || key.includes("full-estate-plan-package");
+  if (key.endsWith(".zip") || key.includes("full-estate-plan-package")) {
+    return true;
+  }
+  if (documentType != null && documentType !== "" && !isRevocableTrustDocumentType(documentType)) {
+    return true;
+  }
+  return false;
 }

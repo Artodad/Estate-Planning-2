@@ -87,12 +87,14 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
       : [];
 
   // Generated documents for this client (via existing helper + filter).
-  // Hide leftover package ZIP / Full-Estate-Plan-Package rows — do not stamp-on-zip.
+  // Hide leftover ZIP / package / non-Trust rows — do not stamp-on-zip.
+  // Files stay in storage; only revocable_trust is a product row.
   const allDocs = await generatedDocumentHelpers.listByFirm(firmId);
   const clientIntakeIds = new Set(clientIntakes.map((i: any) => i.id));
   const clientDocs = allDocs.filter(
     (d: any) =>
-      clientIntakeIds.has(d.intakeSessionId) && !isHiddenEstatePlanPackageRow(d.fileKey),
+      clientIntakeIds.has(d.intakeSessionId) &&
+      !isHiddenEstatePlanPackageRow(d.fileKey, d.documentType),
   );
   const trustDraftGenerateIntakeId = clientDetailTrustDraftGenerateIntakeId(
     clientIntakes,
