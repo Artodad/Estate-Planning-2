@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { clerk } from "@clerk/testing/playwright";
+import { signInE2E } from "./clerk-e2e-signin";
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -46,15 +46,7 @@ test.describe("Generate Trust draft — intake UI calls generateDocumentForIntak
   }) => {
     test.setTimeout(90_000);
 
-    await page.goto("/dashboard/clients", { waitUntil: "domcontentloaded" });
-    await clerk.signIn({
-      page,
-      signInParams: {
-        strategy: "password",
-        identifier: E2E_IDENTIFIER!,
-        password: E2E_PASSWORD!,
-      },
-    });
+    await signInE2E(page);
     await page.waitForLoadState("networkidle", { timeout: 15000 }).catch(() => {});
     await page.goto("/dashboard/clients", { waitUntil: "networkidle" });
 
