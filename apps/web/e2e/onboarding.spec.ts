@@ -2843,17 +2843,9 @@ test.describe('Phase 3: Adaptive Questionnaire Flows (Wizard + Persistence + Iso
     // === The assertions that document the desired (currently broken) behavior ===
     // After the reload, the wizard should treat previously completed sections as navigable.
 
-    // Assets should be reachable (not locked in sidebar)
-    const assetsNav = page.locator('nav button, aside button').filter({ hasText: /Assets/i }).first();
-    // We expect it to be enabled after proper resume reconstruction.
-    // If the guard bug still exists this will be disabled — the test will surface it.
-    await expect(assetsNav).toBeEnabled({ timeout: 5000 }).catch(() => {
-      console.warn('[phase3-resume-guard] Assets nav still disabled after reload — known resume visitedSections bug (see autonomous fill session)');
-    });
-
-    // Try to navigate to Assets (or at least confirm the form allows progression)
-    await assetsNav.click({ force: true }).catch(() => {});
-    await page.waitForTimeout(600);
+    // Assets is quarantined from Trust-visible nav — Decision Makers is the live later section.
+    const assetsNav = page.locator('nav button, aside button').filter({ hasText: /^Assets$/i });
+    await expect(assetsNav).toHaveCount(0);
 
     // Decision Makers should also eventually be unlockable in a healthy resume
     const dmNav = page.locator('nav button, aside button').filter({ hasText: /Decision Makers/i }).first();

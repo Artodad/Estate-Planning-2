@@ -431,10 +431,9 @@ test.describe("Intake Questionnaire — Full Coverage (All Fields, Sections, Gua
         .catch(() => {});
     }
 
-    // Advance through remaining sections with representative fields (assets 7 types/5 ownership incl community, etc.)
-    // Targeted explicit for critical enums (CA community, guardian_minor) + headings + numeric progress + reload conditional re-verify (tightens "every" claim surgically without duplicating generic renderer)
+    // Advance through remaining Trust-visible sections (decision makers → distribution → review)
     await page
-      .getByRole("heading", { name: /Assets/i })
+      .getByRole("heading", { name: /Decision Makers/i })
       .waitFor({ state: "visible", timeout: 5000 })
       .catch(() => {});
     const ownershipSel = page
@@ -511,7 +510,7 @@ test.describe("Intake Questionnaire — Full Coverage (All Fields, Sections, Gua
       // Nav locked: jump buttons disabled or no-op
       const anyJump = page
         .locator("nav button, aside button")
-        .filter({ hasText: /Family|Assets/i })
+        .filter({ hasText: /Family|Decision Makers/i })
         .first();
       if (await anyJump.isVisible().catch(() => false)) {
         await expect(anyJump).toBeDisabled({ timeout: 3000 });

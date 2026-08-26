@@ -90,24 +90,14 @@ const E2E_PASSWORD = process.env.E2E_CLERK_USER_PASSWORD;
  * - No exhaustive conditionals, no validation error paths, no jump nav matrix,
  *   no deep array manipulation. Those belong in the larger comprehensive suite.
  *
- * SECTIONS EXERCISED (in order from SECTIONS_CONFIG + machine)
+ * SECTIONS EXERCISED (Trust-visible walk)
  * 1. Personal Information (client + maritalStatus + CA resident)
  * 2. Family & Relationships (1 child with minor flag + 1 pet)
- * 3. Assets (1 asset with "community" ownership — CA-critical)
- * 4. Liabilities (1 liability)
- * 5. Decision Makers (1 maker with role)
- * 6–10. Gifts, Distribution, Charitable, Healthcare, Prior Planning (light but
- *        real interaction — enough to prove the submit path works on the
- *        current generic + specific renderers)
- * 11. Review & Complete (arrival only)
+ * 3. Decision Makers (1 maker with role)
+ * 4. Distribution Wishes (empty residuary still valid)
+ * 5. Review & Complete (arrival only)
  *
- * DEPRIORITIZATION NOTES (per request)
- * - Later sections (charitable, priorPlanning, gifts, parts of distribution)
- *   currently have thinner / more generic UIs. We still advance through them
- *   with whatever fields are present so we catch submit regressions, but we
- *   do not over-invest in filling every possible sub-field here.
- * - The critical early path (personal → family → assets) receives the most
- *   realistic data + reload checks.
+ * Quarantined from nav: assets, liabilities, gifts, charitable, healthcare, priorPlanning.
  *
  * RUN (from apps/web/)
  *   npx playwright test e2e/intake-wizard-smoke.spec.ts --project=chromium
@@ -361,56 +351,18 @@ All other tests (unit + any that don't need real Clerk E2E users) will continue 
 
     await submitSectionForm(page);
 
-    // ========================================================================
-    // SECTION 3: Assets (add 1 with community ownership — CA critical)
-    // ========================================================================
-    await waitForSection(
-      page,
-      /^Assets$/i,
-      page.getByRole("button", { name: /Add Entry/i }),
-    );
-
-    const addAsset = page.getByRole("button", { name: /Add Entry/i });
-    if (await addAsset.isVisible({ timeout: 3000 }).catch(() => false)) {
-      await addAsset.click();
-
-      // Type select (first one in the card)
-      const typeSelect = page
-        .locator('select[name*="assets.0.type"], select')
-        .first();
-      if (await typeSelect.isVisible().catch(() => false)) {
-        await typeSelect.selectOption("real_estate");
-      }
-
-      await page
-        .locator('input[name*="assets.0.description"]')
-        .first()
-        .fill("Primary residence - 123 Smoke St");
-
-      // Estimated value (number input)
-      const valueInput = page
-        .locator('input[name*="assets.0.estimatedValue"]')
-        .first();
-      if (await valueInput.isVisible().catch(() => false)) {
-        await valueInput.fill("1250000");
-      }
-
-      // Ownership — explicitly choose "community" (most important CA path)
-      const ownershipSelect = page.locator('select[name*="assets.0.ownership"]');
-      if (await ownershipSelect.isVisible().catch(() => false)) {
-        await ownershipSelect.selectOption("community");
-      }
-
-      await page
-        .locator('input[name*="assets.0.location"]')
-        .first()
-        .fill("San Francisco County, CA");
-    }
-
-    await expect(page.locator('input[name*="assets.0.description"]')).toHaveValue(
-      /Primary residence/i,
-    );
-    await submitSectionForm(page);
+    const sidebar = page.locator("aside nav");
+    await expect(sidebar.getByRole("button", { name: /Personal Information/i })).toBeVisible();
+    await expect(sidebar.getByRole("button", { name: /Family & Relationships/i })).toBeVisible();
+    await expect(sidebar.getByRole("button", { name: /Decision Makers/i })).toBeVisible();
+    await expect(sidebar.getByRole("button", { name: /Distribution Wishes/i })).toBeVisible();
+    await expect(sidebar.getByRole("button", { name: /Review & Complete/i })).toBeVisible();
+    await expect(sidebar.getByRole("button", { name: /^Assets$/i })).toHaveCount(0);
+    await expect(sidebar.getByRole("button", { name: /Liabilities/i })).toHaveCount(0);
+    await expect(sidebar.getByRole("button", { name: /Specific Gifts|Gifts/i })).toHaveCount(0);
+    await expect(sidebar.getByRole("button", { name: /Charitable/i })).toHaveCount(0);
+    await expect(sidebar.getByRole("button", { name: /Healthcare/i })).toHaveCount(0);
+    await expect(sidebar.getByRole("button", { name: /Prior Planning/i })).toHaveCount(0);
 
     // ========================================================================
     // Sidebar navigation: jump back to completed sections (JUMP_TO regression)
@@ -438,36 +390,10 @@ All other tests (unit + any that don't need real Clerk E2E users) will continue 
     );
     await expect(page.getByText(/Dashboard Error/i)).toHaveCount(0);
 
-    await page.locator("aside nav").getByRole("button", { name: /^Assets$/i }).click();
-    await waitForSection(
-      page,
-      /^Assets$/i,
-      page.getByRole("button", { name: /Add Entry/i }),
-    );
-    await expect(
-      page.locator('input[name*="assets.0.description"]'),
-    ).toHaveValue(/Primary residence/i);
-
-    // Continue from Liabilities (machine stays on assets until we submit — jump forward via sidebar)
-    await page.locator("aside nav").getByRole("button", { name: /Liabilities/i }).click();
-    await waitForSection(
-      page,
-      /Liabilities/i,
-      page.getByRole("button", { name: /Add Entry/i }),
-    );
+    await page.locator("aside nav").getByRole("button", { name: /Decision Makers/i }).click();
 
     // ========================================================================
-    // SECTION 4: Liabilities (add 1 mortgage — schema-aligned fields)
-    // ========================================================================
-    await page.getByRole("button", { name: /Add Entry/i }).click();
-    await page.locator('select[name*="liabilities.0.type"]').selectOption("mortgage");
-    await page.locator('input[name*="liabilities.0.creditor"]').fill("Chase Mortgage");
-    await page.locator('input[name*="liabilities.0.balance"]').fill("780000");
-
-    await submitSectionForm(page);
-
-    // ========================================================================
-    // SECTION 5: Decision Makers (add 1 — exercises role select)
+    // SECTION 3: Decision Makers (add 1 — exercises role select)
     // ========================================================================
     await waitForSection(
       page,
@@ -499,53 +425,18 @@ All other tests (unit + any that don't need real Clerk E2E users) will continue 
     await submitSectionForm(page);
 
     // ========================================================================
-    // SECTION 6: Specific Gifts (schema-aligned beneficiary + description)
+    // SECTION 4: Distribution Wishes (empty residuary is valid)
     // ========================================================================
     await waitForSection(
       page,
-      /Specific Gifts|Gifts/i,
-      page.getByRole("button", { name: /Add Entry/i }),
-    );
-
-    await page.getByRole("button", { name: /Add Entry/i }).click();
-    await page
-      .locator('input[name*="specificGifts.0.beneficiary"]')
-      .fill("Alex Tester");
-    await page
-      .locator('input[name*="specificGifts.0.description"]')
-      .fill("Grandmother's watch");
-    await page
-      .locator('input[name*="specificGifts.0.amount"]')
-      .fill("5000")
-      .catch(() => {});
-
-    await submitSectionForm(page);
-
-    // ========================================================================
-    // SECTIONS 7–10: advance through remaining optional sections
-    // ========================================================================
-    for (const sectionLabel of [
       /Distribution Wishes/i,
-      /Charitable Intent/i,
-      /Healthcare & End-of-Life/i,
-      /Prior Planning/i,
-    ]) {
-      await waitForSection(
-        page,
-        sectionLabel,
-        page.locator("form"),
-      ).catch(() => {});
-
-      // Residuary is optional (empty array is valid) — fill notes only on this smoke path
-      if (sectionLabel.source.includes("Distribution")) {
-        await page
-          .locator('textarea[name*="minorTrustProvisions"]')
-          .fill("Distribute at age 25")
-          .catch(() => {});
-      }
-
-      await submitSectionForm(page);
-    }
+      page.locator("form"),
+    );
+    await page
+      .locator('textarea[name*="minorTrustProvisions"]')
+      .fill("Distribute at age 25")
+      .catch(() => {});
+    await submitSectionForm(page);
 
     // ========================================================================
     // FINAL: We should now be on Review & Complete

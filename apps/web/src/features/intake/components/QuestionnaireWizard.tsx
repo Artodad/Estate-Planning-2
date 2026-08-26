@@ -11,6 +11,7 @@ import {
   questionnaireMachine,
   getInitialContext,
   SECTIONS_CONFIG,
+  getLiveSectionsConfig,
   guards,
   type IntakeContext,
 } from "../machine";
@@ -175,12 +176,13 @@ export function QuestionnaireWizard(props: QuestionnaireWizardProps) {
 
   const context = state.context as IntakeContext;
   const machineState = state.value as string;
-  // Map machine state → active section key. `idle` is pre-START; `completed` shows the finish screen.
+  // Map machine state → active section key. `idle` is pre-START.
+  // After complete, keep currentSection so punch JUMP_TO can focus a Field.
   const currentSection =
     machineState === "idle"
       ? context.currentSection || "personal"
       : machineState === "completed"
-        ? "review"
+        ? context.currentSection || "review"
         : machineState || "personal";
   const progress = context.progress ?? 0;
   const answers = context.answers;
@@ -372,13 +374,14 @@ export function QuestionnaireWizard(props: QuestionnaireWizardProps) {
   }
 
   // Same-page punch click: re-fire JUMP_TO when ?section=&field= changes.
+  // After complete, force JUMP_TO still lands (machine stays completed).
   useEffect(() => {
-    if (!isHydrated || isCompleted) return;
+    if (!isHydrated) return;
     if (!punchSection || !(SECTION_ORDER as readonly string[]).includes(punchSection)) {
       return;
     }
     send({ type: "JUMP_TO", section: punchSection, force: true });
-  }, [isHydrated, isCompleted, punchSection, punchField, send]);
+  }, [isHydrated, punchSection, punchField, send]);
 
   // After the section paints, focus the existing Field id. No id → no focus.
   useEffect(() => {
@@ -444,9 +447,10 @@ export function QuestionnaireWizard(props: QuestionnaireWizardProps) {
   }, [send]);
 
   const getNextSectionKey = useCallback((section: string) => {
-    const idx = SECTIONS_CONFIG.findIndex((s) => s.key === section);
-    if (idx === -1 || idx >= SECTIONS_CONFIG.length - 1) return "review";
-    return SECTIONS_CONFIG[idx + 1].key;
+    const live = getLiveSectionsConfig();
+    const idx = live.findIndex((s) => s.key === section);
+    if (idx === -1 || idx >= live.length - 1) return "review";
+    return live[idx + 1].key;
   }, []);
 
   const handleSectionSubmit = useCallback(
@@ -514,14 +518,14 @@ export function QuestionnaireWizard(props: QuestionnaireWizardProps) {
     />
   );
 
-  // --- Section nav items (locked via guards) ---
-  const navItems = SECTIONS_CONFIG.map((sec) => {
+  // --- Section nav items (Trust-visible set only; sidebar locked after complete) ---
+  const navItems = getLiveSectionsConfig(answers).map((sec) => {
     const isCurrent = currentSection === sec.key;
     const complete = sectionIsCompleteFn(
       sec.key === "gifts" ? "gifts" : sec.key,
       answers
     );
-    // Once the whole intake is completed, lock all section navigation.
+    // Casual sidebar stays locked after complete; punch uses force JUMP_TO.
     const canNav = !isCompleted && canJumpTo(sec.key);
     return {
       ...sec,
@@ -698,7 +702,7 @@ export function QuestionnaireWizard(props: QuestionnaireWizardProps) {
             {/* The Form (or Review Summary) — fully dynamic and RHF-driven */}
             <Card className="shadow-sm">
               <CardContent className="pt-6">
-                {isCompleted ? (
+                {isCompleted && currentSection === "review" ? (
                   <div className="py-8 text-center">
                     <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-500" />
                     <h3 className="mt-4 text-xl font-semibold">Intake Complete</h3>

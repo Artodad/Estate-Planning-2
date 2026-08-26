@@ -290,6 +290,24 @@ export const SECTION_ORDER = [
 
 export type SectionKey = (typeof SECTION_ORDER)[number];
 
+/**
+ * Trust-visible walk. Single source of truth for live SectionKeys.
+ * Quarantined keys stay on SECTION_ORDER + SECTION_SCHEMAS + FullIntake
+ * (empty-default completeness for generate). Do not use hasMinorChildren /
+ * isMarriedAndCA / hasSpouse as section gates.
+ */
+export const TRUST_VISIBLE_SECTION_KEYS = [
+  'personal',
+  'family',
+  'decisionMakers',
+  'distribution',
+  'review',
+] as const satisfies readonly SectionKey[];
+
+export function isTrustVisibleSection(section: string): section is SectionKey {
+  return (TRUST_VISIBLE_SECTION_KEYS as readonly string[]).includes(section);
+}
+
 export type FullIntake = z.infer<typeof FullIntakeSchema>;
 export type PartialIntake = Partial<FullIntake>;
 
@@ -356,12 +374,14 @@ export function canProceedToNext(currentSection: string, answers: PartialIntake,
   const currentOk = sectionIsComplete(currentSection, answers);
   if (!currentOk) return false;
 
-  // MVP: all prior sections in order must be complete (branch-aware via their own guards inside schema)
-  const idx = SECTION_ORDER.indexOf(currentSection as SectionKey);
+  const applicable = getApplicableSections(answers);
+  const idx = applicable.indexOf(currentSection as SectionKey);
+  // Quarantined current (punch landing): current completeness is enough.
+  if (idx === -1) return true;
   if (idx <= 0) return true;
 
   for (let i = 0; i < idx; i++) {
-    const prior = SECTION_ORDER[i];
+    const prior = applicable[i];
     if (prior === 'review') continue;
     if (!sectionIsComplete(prior, answers)) return false;
   }
@@ -387,7 +407,7 @@ export function calculateProgress(answers: PartialIntake, visitedSections: strin
   let totalWeight = 0;
   let achieved = 0;
 
-  const applicable = SECTION_ORDER.filter((s) => s !== 'review');
+  const applicable = getApplicableSections(answers).filter((s) => s !== 'review');
 
   for (const sec of applicable) {
     const weight = SECTION_WEIGHTS[sec] ?? 5;
@@ -408,7 +428,6 @@ export function calculateProgress(answers: PartialIntake, visitedSections: strin
   return Math.min(100, Math.max(0, pct));
 }
 
-export function getApplicableSections(answers: PartialIntake): readonly SectionKey[] {
-  // Future: filter e.g. hide gifts if no specific intent, but MVP shows all
-  return SECTION_ORDER;
+export function getApplicableSections(_answers?: PartialIntake): readonly SectionKey[] {
+  return TRUST_VISIBLE_SECTION_KEYS;
 }
