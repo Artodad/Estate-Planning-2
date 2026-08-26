@@ -29,4 +29,12 @@ export const WIZARD_CONTROL_IDS = new Set<string>([
   "minorTrustProvisions",
   "primaryPhysician",
   "careInstructions",
+  // First-row useFieldArray Field name/ids QuestionnaireWizard already sets (id={name}).
+  "children.0.firstName",
+  "children.0.lastName",
+  "children.0.dateOfBirth",
+  "children.0.relationship",
+  "children.0.guardianPreference",
+  "residuary.0.name",
+  "residuary.0.relationship",
 ]);

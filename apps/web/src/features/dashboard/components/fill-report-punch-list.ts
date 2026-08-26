@@ -5,6 +5,8 @@
  * Jump href needs a wizard section; Field id is optional (section door).
  * After a Field miss, derive section from SECTION_SCHEMAS shape / nest /
  * DecisionMakerSchema.role — no mapper-key → field / section / required tables.
+ * Children / residuary leftovers may take a field door to the first existing
+ * loop Field id already in WIZARD_CONTROL_IDS (not a children.0 key table).
  * Session answers drop computed leftovers (full names / has_spouse / is_ca_resident)
  * when the parts that compose them are already present.
  */
@@ -75,6 +77,96 @@ export function existingFieldIdForMapperKey(key: string): string | null {
   const nested = snakeToNestedId(key);
   if (nested && WIZARD_CONTROL_IDS.has(nested)) return nested;
   return null;
+}
+
+/** Zod object / default / optional / array — enough to find an RHF array prefix. */
+function looksLikeZodArray(schema: unknown): boolean {
+  let current: unknown = schema;
+  for (let i = 0; i < 8 && current && typeof current === "object"; i++) {
+    const rec = current as {
+      def?: { type?: string; innerType?: unknown };
+      _def?: { type?: string; typeName?: string; innerType?: unknown };
+      unwrap?: () => unknown;
+    };
+    const type = rec.def?.type ?? rec._def?.type ?? rec._def?.typeName;
+    if (type === "array" || type === "ZodArray") return true;
+    if (typeof rec.unwrap === "function") {
+      current = rec.unwrap();
+      continue;
+    }
+    const inner = rec.def?.innerType ?? rec._def?.innerType;
+    if (!inner || inner === current) break;
+    current = inner;
+  }
+  return false;
+}
+
+/**
+ * RHF array prefix the wizard already uses (`children` / `residuary`), or null.
+ * Walks SECTION_SCHEMAS / nest — not a mapper-key → Field table.
+ */
+function rhfArrayPrefixForMapperKey(key: string): string | null {
+  const camel = snakeToCamel(key);
+  for (const schema of Object.values(SECTION_SCHEMAS)) {
+    const shape = zodObjectShape(schema);
+    if (!shape) continue;
+    for (const name of [key, camel]) {
+      if (name in shape && looksLikeZodArray(shape[name])) return name;
+    }
+  }
+  const nested = snakeToNestedId(key);
+  if (!nested) return null;
+  const [top, ...rest] = nested.split(".");
+  const remainder = rest.join(".");
+  if (!remainder || !isWizardSectionKey(top) || top === "review") return null;
+  const schema = SECTION_SCHEMAS[top as keyof typeof SECTION_SCHEMAS];
+  const shape = zodObjectShape(schema);
+  if (!shape || !(remainder in shape) || !looksLikeZodArray(shape[remainder])) return null;
+  return remainder;
+}
+
+/** First WIZARD_CONTROL_IDS member that belongs to this loop (`children.0.firstName`). */
+function firstExistingLoopFieldId(key: string): string | null {
+  const prefix = rhfArrayPrefixForMapperKey(key);
+  if (!prefix) return null;
+  const needle = `${prefix}.`;
+  for (const id of WIZARD_CONTROL_IDS) {
+    if (id.startsWith(needle)) return id;
+  }
+  return null;
+}
+
+function loopCountHits(report: DocumentFillReport | null | undefined, name: string): boolean {
+  if (!report) return false;
+  return Object.hasOwn(report.loopCounts, name) && report.loopCounts[name] > 0;
+}
+
+/** Session array length at the RHF prefix — not used for punch N / loopCounts copy. */
+function answersLoopLength(answers: PartialIntake | null | undefined, prefix: string): number {
+  if (answers == null) return 0;
+  for (const value of Object.values(answers)) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) continue;
+    if (!Object.hasOwn(value, prefix)) continue;
+    const arr = (value as Record<string, unknown>)[prefix];
+    if (Array.isArray(arr)) return arr.length;
+  }
+  return 0;
+}
+
+/**
+ * A first-row Field is only in the DOM when the array has a row.
+ * loopCounts from generate, or a non-empty session array at that prefix.
+ */
+function loopHasRenderableRow(
+  key: string,
+  report?: DocumentFillReport | null,
+  answers?: PartialIntake | null,
+): boolean {
+  if (loopCountHits(report, key)) return true;
+  const prefix = rhfArrayPrefixForMapperKey(key);
+  if (prefix && loopCountHits(report, prefix)) return true;
+  if (prefix && answersLoopLength(answers, prefix) > 0) return true;
+  return false;
 }
 
 function zodObjectShape(schema: unknown): Record<string, unknown> | null {
@@ -149,14 +241,23 @@ function isRequiredWizardField(fieldId: string): boolean {
   return type.safeParse(undefined).success === false;
 }
 
-export function punchJumpForMapperKey(key: string): {
+export function punchJumpForMapperKey(
+  key: string,
+  report?: DocumentFillReport | null,
+  answers?: PartialIntake | null,
+): {
   section: SectionKey | null;
   field: string | null;
 } {
-  const field = existingFieldIdForMapperKey(key);
-  const section = field ? sectionForFieldId(field) : sectionForMapperKey(key);
+  const mapped = existingFieldIdForMapperKey(key);
+  const section = mapped ? sectionForFieldId(mapped) : sectionForMapperKey(key);
   if (!restoreJumpSection(section)) return { section: null, field: null };
-  return { section, field };
+  if (mapped) return { section, field: mapped };
+  const loopField = firstExistingLoopFieldId(key);
+  if (loopField && loopHasRenderableRow(key, report, answers)) {
+    return { section, field: loopField };
+  }
+  return { section, field: null };
 }
 
 export function punchListHref(section: SectionKey | null, field: string | null): string | null {
@@ -271,7 +372,7 @@ export function punchListFromFillReport(
     const key = resolveFillTagToMapperKey(tag);
     if (key && computedTagPartsPresent(key, report, answers)) return;
     const { section, field } = key
-      ? punchJumpForMapperKey(key)
+      ? punchJumpForMapperKey(key, report, answers)
       : { section: null, field: null };
 
     if (emptyOptional) {

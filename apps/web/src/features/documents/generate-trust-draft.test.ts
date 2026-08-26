@@ -47,7 +47,9 @@ import {
   punchJumpForMapperKey,
   punchListHref,
   isWizardSectionKey,
+  loopCountForPunchTag,
 } from "../dashboard/components/fill-report-punch-list";
+import { WIZARD_CONTROL_IDS } from "../intake/components/wizard-control-ids";
 import {
   leftoverCountFromFillReport,
   TRUST_DRAFT_DOWNLOAD_CLEAN_PHRASE,
@@ -74,6 +76,11 @@ const ADA_THREE_CHILDREN = [
   { full_name: "Annabella King" },
   { full_name: "Byron King" },
   { full_name: "Allegra Byron" },
+];
+
+const ADA_TWO_RESIDUARY = [
+  { name: "Annabella King", relationship: "daughter" },
+  { name: "Byron King", relationship: "son" },
 ];
 
 const FIXTURE_REL = "src/features/documents/__fixtures__/trust-family-fidelity-labels.docx";
@@ -618,7 +625,7 @@ test("punch list comes from a real generate: leftovers + required empties; allow
     );
     assert.equal(hole.fillReport.loopCounts.children, 3);
 
-    const rows = punchListFromFillReport(hole.fillReport, {});
+    const rows = punchListFromFillReport(hole.fillReport, null);
     assert.notEqual(rows, hole.fillReport, "punch list is derived from the generate report, not a stand-in");
     const tags = rows.map((r) => r.tag);
     assert.ok(tags.includes("client_first_name"), "required empty from generate is a punch-list row");
@@ -674,9 +681,14 @@ test("punch list comes from a real generate: leftovers + required empties; allow
 
     const childrenLoop = rows.find((r) => r.tag === "#children");
     assert.ok(childrenLoop, "array leftover is listed");
-    assert.equal(childrenLoop.href, "?section=family");
-    assert.equal(childrenLoop.field, null);
-    assert.equal(punchListActionCopy(childrenLoop, hole.fillReport), "3 children — Open Family");
+    assert.ok(WIZARD_CONTROL_IDS.has("children.0.firstName"), "wizard already sets this Field id");
+    assert.equal(childrenLoop.field, "children.0.firstName");
+    assert.equal(childrenLoop.href, "?section=family&field=children.0.firstName");
+    assert.equal(punchListActionCopy(childrenLoop, hole.fillReport), "Go to field");
+    assert.deepEqual(loopCountForPunchTag(childrenLoop.tag, hole.fillReport), {
+      count: 3,
+      noun: "children",
+    });
 
     const persist = generatedDocumentPersistFromGenerate(hole, {
       intakeSessionId: "intake_punch_list",
@@ -688,7 +700,7 @@ test("punch list comes from a real generate: leftovers + required empties; allow
     ]);
     assert.ok(loaded?.fillReport);
     assert.deepEqual(
-      punchListFromFillReport(loaded.fillReport, {}),
+      punchListFromFillReport(loaded.fillReport, null),
       rows,
       "reload punch list is the stored generate report, not a rebuilt object",
     );
@@ -712,7 +724,7 @@ test("punch list comes from a real generate: leftovers + required empties; allow
       },
     });
     fixedKey = fixed.fileKey;
-    const afterFix = punchListFromFillReport(fixed.fillReport, {});
+    const afterFix = punchListFromFillReport(fixed.fillReport, null);
     assert.ok(
       !afterFix.some((r) => r.tag === "client_first_name"),
       "after regenerate with the field filled, that punch-list row is gone",
@@ -830,9 +842,10 @@ test("computed leftovers drop when Ada answers supply the parts; real holes stay
 
     const children = rows.find((r) => r.tag === "#children");
     assert.ok(children);
-    assert.equal(children.href, "?section=family");
+    assert.equal(children.href, "?section=family&field=children.0.firstName");
+    assert.equal(children.field, "children.0.firstName");
     assert.equal(hole.fillReport.loopCounts.children, 3);
-    assert.equal(punchListActionCopy(children, hole.fillReport), "3 children — Open Family");
+    assert.equal(punchListActionCopy(children, hole.fillReport), "Go to field");
 
     const marriedMissingLast: PartialIntake = {
       personal: {
@@ -861,6 +874,107 @@ test("computed leftovers drop when Ada answers supply the parts; real holes stay
   }
 });
 
+test("Ada generate leftover residuary loop doors to existing Field; empty children stay section", async () => {
+  const stamp = Date.now();
+  const templateFileKey = `templates/unit-punch-residuary-${stamp}/punch.docx`;
+  const body = [
+    `    <w:p><w:r><w:instrText>{#distribution_residuary}</w:instrText></w:r></w:p>`,
+    `    <w:p><w:r><w:instrText>{#children}</w:instrText></w:r></w:p>`,
+    `    <w:p><w:r><w:instrText>{unresolved_blank}</w:instrText></w:r></w:p>`,
+    `    <w:p><w:r><w:instrText>{young_person_retention_age}</w:instrText></w:r></w:p>`,
+    `    <w:p><w:r><w:instrText>{healthcare_instructions}</w:instrText></w:r></w:p>`,
+    `    <w:p><w:r><w:instrText>{#assets}</w:instrText></w:r></w:p>`,
+  ].join("\n");
+  const buf = createDocxFromDocumentXml(wrapDocumentXml(body));
+  await mkdir(path.dirname(resolveStoragePath(templateFileKey)), { recursive: true });
+  await writeFile(resolveStoragePath(templateFileKey), buf);
+
+  let filledKey: string | undefined;
+  let emptyKey: string | undefined;
+  try {
+    const filled = await generateDocument({
+      templateFileKey,
+      variables: {
+        children: ADA_THREE_CHILDREN,
+        distribution_residuary: ADA_TWO_RESIDUARY,
+        young_person_retention_age: "21",
+      },
+      firmId: "firm_unit_punch_residuary",
+      options: {
+        addDraftWatermark: true,
+        documentType: "revocable_trust",
+        clientLastName: "Lovelace",
+        clientFirstName: "Ada",
+      },
+    });
+    filledKey = filled.fileKey;
+    assert.ok(filled.fillReport.leftoverBraces.includes("#distribution_residuary"));
+    assert.ok(filled.fillReport.leftoverBraces.includes("#children"));
+    assert.equal(filled.fillReport.loopCounts.distribution_residuary, 2);
+    assert.equal(filled.fillReport.loopCounts.children, 3);
+
+    const rows = punchListFromFillReport(filled.fillReport, null);
+    const residuary = rows.find((r) => r.tag === "#distribution_residuary");
+    assert.ok(residuary);
+    assert.ok(WIZARD_CONTROL_IDS.has("residuary.0.name"), "wizard already sets this Field id");
+    assert.equal(residuary.field, "residuary.0.name");
+    assert.equal(residuary.href, "?section=distribution&field=residuary.0.name");
+    assert.equal(punchListActionCopy(residuary, filled.fillReport), "Go to field");
+
+    const children = rows.find((r) => r.tag === "#children");
+    assert.ok(children);
+    assert.equal(children.href, "?section=family&field=children.0.firstName");
+    assert.equal(punchListActionCopy(children, filled.fillReport), "Go to field");
+
+    const age = rows.find((r) => r.tag === "young_person_retention_age");
+    assert.ok(age);
+    assert.equal(age.href, "?section=distribution&field=youngPersonRetentionAge");
+    assert.equal(punchListActionCopy(age, filled.fillReport), "Go to field");
+
+    const blank = rows.find((r) => r.tag === "unresolved_blank");
+    assert.ok(blank);
+    assert.equal(blank.href, null);
+    assert.equal(punchListActionCopy(blank, filled.fillReport), "Still in the draft");
+
+    const hc = rows.find((r) => r.tag === "healthcare_instructions");
+    assert.ok(hc);
+    assert.equal(hc.href, null, "no healthcare landing");
+    const assets = rows.find((r) => r.tag === "#assets");
+    assert.ok(assets);
+    assert.equal(assets.href, null, "no assets landing");
+
+    const empty = await generateDocument({
+      templateFileKey,
+      variables: {
+        children: [],
+        distribution_residuary: [],
+        young_person_retention_age: "21",
+      },
+      firmId: "firm_unit_punch_residuary_empty",
+      options: {
+        addDraftWatermark: true,
+        documentType: "revocable_trust",
+        clientLastName: "Lovelace",
+        clientFirstName: "Ada",
+      },
+    });
+    emptyKey = empty.fileKey;
+    assert.equal(empty.fillReport.loopCounts.children, 0);
+    assert.equal(empty.fillReport.loopCounts.distribution_residuary, 0);
+    const emptyRows = punchListFromFillReport(empty.fillReport, null);
+    const emptyChildren = emptyRows.find((r) => r.tag === "#children");
+    assert.ok(emptyChildren);
+    assert.equal(emptyChildren.field, null);
+    assert.equal(emptyChildren.href, "?section=family");
+    const emptyResiduary = emptyRows.find((r) => r.tag === "#distribution_residuary");
+    assert.ok(emptyResiduary);
+    assert.equal(emptyResiduary.field, null);
+    assert.equal(emptyResiduary.href, "?section=distribution");
+  } finally {
+    await cleanupKeys(templateFileKey, filledKey ?? "", emptyKey ?? "");
+  }
+});
+
 test("section-door copy uses loopCounts and alias lookup; cut roles stay closed", () => {
   const report = leftoverReport(["#kids", "#distribution_residuary", "residuary", "executor_name"], {
     loopCounts: { children: 3, distribution_residuary: 2 },
@@ -868,23 +982,41 @@ test("section-door copy uses loopCounts and alias lookup; cut roles stay closed"
   const rows = punchListFromFillReport(report);
   const kids = rows.find((r) => r.tag === "#kids");
   assert.ok(kids);
-  assert.equal(kids.href, "?section=family");
-  assert.equal(kids.field, null);
-  assert.equal(punchListActionCopy(kids, report), "3 children — Open Family");
+  assert.equal(kids.href, "?section=family&field=children.0.firstName");
+  assert.equal(kids.field, "children.0.firstName");
+  assert.equal(punchListActionCopy(kids, report), "Go to field");
+  assert.deepEqual(loopCountForPunchTag(kids.tag, report), { count: 3, noun: "children" });
 
   const residuaryLoop = rows.find((r) => r.tag === "#distribution_residuary");
   assert.ok(residuaryLoop);
-  assert.equal(residuaryLoop.href, "?section=distribution");
-  assert.equal(punchListActionCopy(residuaryLoop, report), "2 distribution_residuary — Open Distribution");
+  assert.equal(residuaryLoop.href, "?section=distribution&field=residuary.0.name");
+  assert.equal(residuaryLoop.field, "residuary.0.name");
+  assert.equal(punchListActionCopy(residuaryLoop, report), "Go to field");
+  assert.deepEqual(loopCountForPunchTag(residuaryLoop.tag, report), {
+    count: 2,
+    noun: "distribution_residuary",
+  });
 
   const residuaryScalar = rows.find((r) => r.tag === "residuary");
   assert.ok(residuaryScalar);
-  assert.equal(residuaryScalar.href, "?section=distribution");
-  assert.equal(
-    punchListActionCopy(residuaryScalar, report),
-    "Open Distribution",
-    "bare scalar leftover does not take loopCounts",
+  assert.equal(residuaryScalar.href, "?section=distribution&field=residuary.0.name");
+  assert.equal(punchListActionCopy(residuaryScalar, report), "Go to field");
+  assert.equal(loopCountForPunchTag(residuaryScalar.tag, report), null);
+
+  const emptyKids = leftoverReport(["#children"], { loopCounts: { children: 0 } });
+  const emptyRow = punchListFromFillReport(emptyKids).find((r) => r.tag === "#children");
+  assert.ok(emptyRow);
+  assert.equal(emptyRow.field, null, "empty children array has no row Field — section door");
+  assert.equal(emptyRow.href, "?section=family");
+  assert.equal(punchListActionCopy(emptyRow, emptyKids), "0 children — Open Family");
+
+  const quietLoops = punchListFromFillReport(
+    leftoverReport([], {
+      emptyOptionals: ["children", "distribution_residuary"],
+      loopCounts: { children: 3, distribution_residuary: 2 },
+    }),
   );
+  assert.equal(quietLoops.length, 0, "emptyOptionals of loop keys stay quiet even when a field door exists");
 
   const executorAlias = leftoverReport(["executor_name"]);
   const executorRow = punchListFromFillReport(executorAlias).find((r) => r.tag === "executor_name");
@@ -1033,7 +1165,7 @@ test("Documents punch JUMP_TO prefixes intakeSessionId; punchListFromFillReport 
   assert.ok(age);
   assert.ok(children);
   assert.equal(age.href, "?section=distribution&field=youngPersonRetentionAge");
-  assert.equal(children.href, "?section=family");
+  assert.equal(children.href, "?section=family&field=children.0.firstName");
 
   const prefix = documentsTrustDraftHrefPrefix("sess_docs_1");
   assert.equal(prefix, "/dashboard/intakes/sess_docs_1");
@@ -1043,7 +1175,7 @@ test("Documents punch JUMP_TO prefixes intakeSessionId; punchListFromFillReport 
   );
   assert.equal(
     prefixedPunchListHref(children.href, prefix),
-    "/dashboard/intakes/sess_docs_1?section=family",
+    "/dashboard/intakes/sess_docs_1?section=family&field=children.0.firstName",
   );
   assert.equal(
     prefixedPunchListHref(age.href),
