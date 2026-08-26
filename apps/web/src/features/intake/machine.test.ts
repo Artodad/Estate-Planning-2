@@ -27,6 +27,7 @@ import {
   guards,
   calculateProgressFn as calculateProgress,
   SECTIONS_CONFIG,
+  getLiveSectionsConfig,
   hasMinorChildren,
   isMarriedAndCA,
   hasSpouseOrPartner,
@@ -34,7 +35,13 @@ import {
   canProceedToNext,
   type IntakeInput,
 } from "./machine";
-import type { PartialIntake } from "./schemas/intake";
+import {
+  getApplicableSections,
+  restoreJumpSection,
+  TRUST_VISIBLE_SECTION_KEYS,
+  TRUST_WIZARD_DECISION_MAKER_ROLES,
+  type PartialIntake,
+} from "./schemas/intake";
 
 // --- Test helpers ---
 function makeSeed(overrides: Partial<IntakeInput> = {}): IntakeInput {
@@ -142,7 +149,7 @@ test("SUBMIT_SECTION, PREV, navigation with guards", () => {
   });
   actor.send({ type: "NEXT" });
   snap = actor.getSnapshot();
-  assert.equal(snap.value, "assets");
+  assert.equal(snap.value, "decisionMakers");
   actor.stop();
 });
 
@@ -363,17 +370,11 @@ test("COMPLETE only from review when all sections complete (canComplete guard)",
   // Seed full data already present; jump through visited + complete priors via JUMP (allowed by canJump when data makes sections complete)
   // Then land on review and COMPLETE
   actor.getSnapshot();
-  // Manually drive to review by successive NEXT (guards pass because completeAnswers seeded)
+  // Manually drive to review by successive NEXT (Trust-visible walk)
   const chain = [
     "family",
-    "assets",
-    "liabilities",
     "decisionMakers",
-    "gifts",
     "distribution",
-    "charitable",
-    "healthcare",
-    "priorPlanning",
     "review",
   ];
   for (const nextSec of chain) {
@@ -809,7 +810,8 @@ test("calculateProgress: 0 / partial / full + visited 30% credit using exact wei
     family: { children: [] } as any,
   };
   const p2 = calculateProgress(partial, ["personal", "family", "assets"]);
-  assert.ok(p2 > 25 && p2 < 50);
+  // Live weights only (personal 15 + family 15) / (15+15+15+12) ≈ 53
+  assert.ok(p2 > 40 && p2 < 70, `expected live-set partial progress, got ${p2}`);
 
   // Full realistic complete set -> 100
   const full: PartialIntake = {
@@ -893,16 +895,16 @@ test("JUMP_TO transitions between sections (backward and forward when priors com
     data: { children: [], pets: [] },
   });
   snap = actor.getSnapshot();
-  assert.equal(snap.value, "assets");
+  assert.equal(snap.value, "decisionMakers");
 
   actor.send({ type: "JUMP_TO", section: "personal" });
   snap = actor.getSnapshot();
   assert.equal(snap.value, "personal");
 
-  actor.send({ type: "JUMP_TO", section: "assets" });
+  actor.send({ type: "JUMP_TO", section: "decisionMakers" });
   snap = actor.getSnapshot();
-  assert.equal(snap.value, "assets");
-  assert.equal(snap.context.currentSection, "assets");
+  assert.equal(snap.value, "decisionMakers");
+  assert.equal(snap.context.currentSection, "decisionMakers");
 });
 
 test("canProceed / canJump / canSubmitCurrent / canComplete guard matrix (deterministic initial states)", () => {
@@ -1038,4 +1040,199 @@ test("SECTION_SCHEMAS behaviors via guards: enum values, sharePercent bounds 0-1
     },
   } as any;
   assert.equal(sectionIsComplete("personal", okDate), true);
+});
+
+test("wizard live-section set is Trust-visible only (nav/progress/complete share one source)", () => {
+  const live = getApplicableSections({});
+  assert.deepEqual([...live], [
+    "personal",
+    "family",
+    "decisionMakers",
+    "distribution",
+    "review",
+  ]);
+  assert.deepEqual([...TRUST_VISIBLE_SECTION_KEYS], [...live]);
+
+  const nav = getLiveSectionsConfig({});
+  assert.deepEqual(
+    nav.map((s) => s.key),
+    ["personal", "family", "decisionMakers", "distribution", "review"],
+  );
+  assert.ok(!nav.some((s) => s.key === "assets"));
+  assert.ok(!nav.some((s) => s.key === "gifts"));
+  assert.ok(!nav.some((s) => s.key === "healthcare"));
+  assert.ok(!nav.some((s) => s.key === "charitable"));
+  assert.ok(!nav.some((s) => s.key === "liabilities"));
+  assert.ok(!nav.some((s) => s.key === "priorPlanning"));
+  assert.ok(SECTIONS_CONFIG.some((s) => s.key === "assets"), "quarantined keys stay on config");
+
+  // Skip stubs stay unused as section gates
+  assert.deepEqual(
+    [...getApplicableSections({
+      personal: { maritalStatus: "married", isCAResident: true } as any,
+      family: { children: [{ firstName: "K", lastName: "M", isMinor: true }] } as any,
+    })],
+    [...TRUST_VISIBLE_SECTION_KEYS],
+  );
+});
+
+test("canComplete does not require quarantined keys; empty residuary still valid", () => {
+  const liveOnly: PartialIntake = {
+    personal: {
+      client: { firstName: "Done", lastName: "User" },
+      maritalStatus: "single",
+      isCAResident: true,
+    } as any,
+    family: { children: [] } as any,
+    decisionMakers: [],
+    distribution: { residuary: [] },
+  } as any;
+
+  assert.equal(sectionIsComplete("personal", liveOnly), true);
+  assert.equal(sectionIsComplete("family", liveOnly), true);
+  assert.equal(sectionIsComplete("decisionMakers", liveOnly), true);
+  assert.equal(sectionIsComplete("distribution", liveOnly), true);
+  assert.equal(guards.canComplete({ context: { answers: liveOnly } as any }), true);
+
+  const missingFamily = { ...liveOnly, family: undefined };
+  assert.equal(guards.canComplete({ context: { answers: missingFamily } as any }), false);
+});
+
+test("old quarantined answers stay in JSON and do not block complete", () => {
+  const withAssets: PartialIntake = {
+    personal: {
+      client: { firstName: "Old", lastName: "Session" },
+      maritalStatus: "single",
+      isCAResident: true,
+    } as any,
+    family: { children: [] } as any,
+    assets: [
+      {
+        description: "Primary residence",
+        type: "real_estate",
+        ownership: "community",
+      },
+    ],
+    specificGifts: [{ beneficiary: "Jane", description: "Ring" }],
+    decisionMakers: [],
+    distribution: { residuary: [] },
+  } as any;
+
+  assert.equal(guards.canComplete({ context: { answers: withAssets } as any }), true);
+
+  const actor = startActor(makeSeed({ answers: withAssets }));
+  actor.send({ type: "START" });
+  actor.send({ type: "NEXT" }); // family
+  actor.send({ type: "NEXT" }); // decisionMakers
+  actor.send({ type: "NEXT" }); // distribution
+  actor.send({ type: "NEXT" }); // review
+  let snap = actor.getSnapshot();
+  assert.equal(snap.value, "review");
+  assert.equal((snap.context.answers as any).assets[0].description, "Primary residence");
+  assert.equal((snap.context.answers as any).specificGifts[0].beneficiary, "Jane");
+
+  snap = sendAndGetSnapshot(actor, { type: "COMPLETE" });
+  assert.equal(snap.value, "completed");
+  assert.equal((snap.context.answers as any).assets[0].description, "Primary residence");
+});
+
+test("JUMP_TO after completed is not a no-op (force punch lands; status stays completed)", () => {
+  const liveOnly: PartialIntake = {
+    personal: {
+      client: { firstName: "Done", lastName: "User" },
+      maritalStatus: "single",
+      isCAResident: true,
+    } as any,
+    family: { children: [] } as any,
+    decisionMakers: [],
+    distribution: { residuary: [] },
+  } as any;
+
+  const actor = startActor(makeSeed({ answers: liveOnly }));
+  actor.send({ type: "START" });
+  for (const _ of ["family", "decisionMakers", "distribution", "review"]) {
+    actor.send({ type: "NEXT" });
+  }
+  let snap = actor.getSnapshot();
+  assert.equal(snap.value, "review");
+
+  snap = sendAndGetSnapshot(actor, { type: "COMPLETE" });
+  assert.equal(snap.value, "completed");
+  assert.equal(snap.context.currentSection, "review");
+
+  snap = sendAndGetSnapshot(actor, {
+    type: "JUMP_TO",
+    section: "distribution",
+    force: true,
+  });
+  assert.equal(snap.value, "completed", "must not clear completed status");
+  assert.equal(snap.context.currentSection, "distribution");
+});
+
+test("JUMP_TO healthcare / assets is rejected (machine + restore); force cannot open quarantined", () => {
+  const liveOnly: PartialIntake = {
+    personal: {
+      client: { firstName: "Done", lastName: "User" },
+      maritalStatus: "single",
+      isCAResident: true,
+    } as any,
+    family: { children: [] } as any,
+    decisionMakers: [],
+    distribution: { residuary: [] },
+  } as any;
+
+  const actor = startActor(makeSeed({ answers: liveOnly }));
+  actor.send({ type: "START" });
+
+  for (const quarantined of ["healthcare", "assets", "liabilities", "gifts", "charitable", "priorPlanning"]) {
+    assert.equal(
+      guards.canJump({
+        context: actor.getSnapshot().context as any,
+        event: { type: "JUMP_TO", section: quarantined, force: true } as any,
+      }),
+      false,
+      `force must not open ${quarantined}`,
+    );
+    const before = actor.getSnapshot();
+    actor.send({ type: "JUMP_TO", section: quarantined, force: true });
+    const after = actor.getSnapshot();
+    assert.equal(after.value, before.value);
+    assert.equal(after.context.currentSection, before.context.currentSection);
+  }
+
+  assert.equal(restoreJumpSection("healthcare"), null);
+  assert.equal(restoreJumpSection("assets"), null);
+  assert.equal(restoreJumpSection("gifts"), null);
+  assert.equal(restoreJumpSection("distribution"), "distribution");
+  assert.equal(restoreJumpSection("personal"), "personal");
+  assert.equal(restoreJumpSection(undefined), null);
+
+  for (const _ of ["family", "decisionMakers", "distribution", "review"]) {
+    actor.send({ type: "NEXT" });
+  }
+  let snap = sendAndGetSnapshot(actor, { type: "COMPLETE" });
+  assert.equal(snap.value, "completed");
+
+  snap = sendAndGetSnapshot(actor, {
+    type: "JUMP_TO",
+    section: "healthcare",
+    force: true,
+  });
+  assert.equal(snap.value, "completed");
+  assert.equal(snap.context.currentSection, "review", "healthcare must not land after complete");
+
+  snap = sendAndGetSnapshot(actor, {
+    type: "JUMP_TO",
+    section: "distribution",
+    force: true,
+  });
+  assert.equal(snap.context.currentSection, "distribution");
+});
+
+test("Trust wizard picker roles are successor_trustee + alternate only", () => {
+  assert.deepEqual([...TRUST_WIZARD_DECISION_MAKER_ROLES], ["successor_trustee", "alternate"]);
+  assert.ok(!(TRUST_WIZARD_DECISION_MAKER_ROLES as readonly string[]).includes("executor"));
+  assert.ok(!(TRUST_WIZARD_DECISION_MAKER_ROLES as readonly string[]).includes("healthcare_agent"));
+  assert.ok(!(TRUST_WIZARD_DECISION_MAKER_ROLES as readonly string[]).includes("financial_poa"));
+  assert.ok(!(TRUST_WIZARD_DECISION_MAKER_ROLES as readonly string[]).includes("guardian_minor"));
 });

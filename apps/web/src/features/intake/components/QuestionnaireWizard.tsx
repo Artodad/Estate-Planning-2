@@ -11,15 +11,17 @@ import {
   questionnaireMachine,
   getInitialContext,
   SECTIONS_CONFIG,
+  getLiveSectionsConfig,
   guards,
   type IntakeContext,
 } from "../machine";
 import * as IntakeSchemas from "../schemas/intake";
 import {
   SECTION_SCHEMAS,
-  SECTION_ORDER,
   sectionIsComplete as sectionIsCompleteFn,
   calculateProgress as calculateProgressFn,
+  restoreJumpSection,
+  TRUST_WIZARD_DECISION_MAKER_ROLES,
   type PartialIntake,
   type SectionKey,
 } from "../schemas/intake";
@@ -175,12 +177,13 @@ export function QuestionnaireWizard(props: QuestionnaireWizardProps) {
 
   const context = state.context as IntakeContext;
   const machineState = state.value as string;
-  // Map machine state → active section key. `idle` is pre-START; `completed` shows the finish screen.
+  // Map machine state → active section key. `idle` is pre-START.
+  // After complete, keep currentSection so punch JUMP_TO can focus a Field.
   const currentSection =
     machineState === "idle"
       ? context.currentSection || "personal"
       : machineState === "completed"
-        ? "review"
+        ? context.currentSection || "review"
         : machineState || "personal";
   const progress = context.progress ?? 0;
   const answers = context.answers;
@@ -244,8 +247,9 @@ export function QuestionnaireWizard(props: QuestionnaireWizardProps) {
         currentSection: restoreSection,
         visitedSections: draft?.visitedSections ?? [],
       });
-      if (restoreSection && restoreSection !== "personal") {
-        send({ type: "JUMP_TO", section: restoreSection });
+      const restore = restoreJumpSection(restoreSection);
+      if (restore && restore !== "personal") {
+        send({ type: "JUMP_TO", section: restore });
       }
     } else {
       send({ type: "START" });
@@ -372,13 +376,15 @@ export function QuestionnaireWizard(props: QuestionnaireWizardProps) {
   }
 
   // Same-page punch click: re-fire JUMP_TO when ?section=&field= changes.
+  // After complete, force JUMP_TO still lands (machine stays completed).
   useEffect(() => {
-    if (!isHydrated || isCompleted) return;
-    if (!punchSection || !(SECTION_ORDER as readonly string[]).includes(punchSection)) {
+    if (!isHydrated) return;
+    const livePunch = restoreJumpSection(punchSection);
+    if (!livePunch) {
       return;
     }
-    send({ type: "JUMP_TO", section: punchSection, force: true });
-  }, [isHydrated, isCompleted, punchSection, punchField, send]);
+    send({ type: "JUMP_TO", section: livePunch, force: true });
+  }, [isHydrated, punchSection, punchField, send]);
 
   // After the section paints, focus the existing Field id. No id → no focus.
   useEffect(() => {
@@ -444,9 +450,10 @@ export function QuestionnaireWizard(props: QuestionnaireWizardProps) {
   }, [send]);
 
   const getNextSectionKey = useCallback((section: string) => {
-    const idx = SECTIONS_CONFIG.findIndex((s) => s.key === section);
-    if (idx === -1 || idx >= SECTIONS_CONFIG.length - 1) return "review";
-    return SECTIONS_CONFIG[idx + 1].key;
+    const live = getLiveSectionsConfig();
+    const idx = live.findIndex((s) => s.key === section);
+    if (idx === -1 || idx >= live.length - 1) return "review";
+    return live[idx + 1].key;
   }, []);
 
   const handleSectionSubmit = useCallback(
@@ -514,14 +521,14 @@ export function QuestionnaireWizard(props: QuestionnaireWizardProps) {
     />
   );
 
-  // --- Section nav items (locked via guards) ---
-  const navItems = SECTIONS_CONFIG.map((sec) => {
+  // --- Section nav items (Trust-visible set only; sidebar locked after complete) ---
+  const navItems = getLiveSectionsConfig(answers).map((sec) => {
     const isCurrent = currentSection === sec.key;
     const complete = sectionIsCompleteFn(
       sec.key === "gifts" ? "gifts" : sec.key,
       answers
     );
-    // Once the whole intake is completed, lock all section navigation.
+    // Casual sidebar stays locked after complete; punch uses force JUMP_TO.
     const canNav = !isCompleted && canJumpTo(sec.key);
     return {
       ...sec,
@@ -698,7 +705,7 @@ export function QuestionnaireWizard(props: QuestionnaireWizardProps) {
             {/* The Form (or Review Summary) — fully dynamic and RHF-driven */}
             <Card className="shadow-sm">
               <CardContent className="pt-6">
-                {isCompleted ? (
+                {isCompleted && currentSection === "review" ? (
                   <div className="py-8 text-center">
                     <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-500" />
                     <h3 className="mt-4 text-xl font-semibold">Intake Complete</h3>
@@ -1125,7 +1132,7 @@ function DynamicSectionForm({
                 : currentSection === "decisionMakers"
                   ? {
                       id: newDecisionMakerId(),
-                      role: "executor",
+                      role: "successor_trustee",
                       person: { firstName: "", lastName: "" },
                     }
                   : { name: "", description: "" };
@@ -1188,12 +1195,11 @@ function DynamicSectionForm({
                       <div>
                         <Label>Role</Label>
                         <select {...register(`${arrayName}.${index}.role`)} className="mt-1 w-full rounded border p-2 text-sm">
-                          <option value="executor">Executor</option>
-                          <option value="successor_trustee">Successor Trustee</option>
-                          <option value="financial_poa">Financial POA Agent</option>
-                          <option value="healthcare_agent">Healthcare Agent</option>
-                          <option value="guardian_minor">Guardian for Minor(s)</option>
-                          <option value="alternate">Alternate</option>
+                          {TRUST_WIZARD_DECISION_MAKER_ROLES.map((role) => (
+                            <option key={role} value={role}>
+                              {role === "successor_trustee" ? "Successor Trustee" : "Alternate"}
+                            </option>
+                          ))}
                         </select>
                         <p className="mt-1 text-[11px] text-muted-foreground">
                           Add a second Successor Trustee, or an Alternate linked to the primary successor, for the second-successor trust blank.

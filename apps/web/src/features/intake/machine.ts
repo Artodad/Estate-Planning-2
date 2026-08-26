@@ -1,6 +1,6 @@
 import { assign, createActor, fromPromise, setup, type Actor, type SnapshotFrom } from 'xstate';
 import * as IntakeSchemas from './schemas/intake';
-import type { FullIntake, PartialIntake, SectionKey } from './schemas/intake';
+import { isTrustVisibleSection, type FullIntake, type PartialIntake, type SectionKey } from './schemas/intake';
 
 /**
  * Production-grade XState v5 machine for the Estate Planning Engine Questionnaire.
@@ -111,6 +111,12 @@ export const SECTIONS_CONFIG: ReadonlyArray<{
 
 const SECTION_KEYS: readonly SectionKey[] = SECTIONS_CONFIG.map((s) => s.key);
 
+/** Live nav/progress/complete walk — same set as getApplicableSections. */
+export function getLiveSectionsConfig(answers: PartialIntake = {}) {
+  const live = new Set<string>(getApplicableSections(answers));
+  return SECTIONS_CONFIG.filter((s) => live.has(s.key));
+}
+
 /** Sync context.currentSection + visitedSections when entering a section state (linear or JUMP_TO). */
 function makeSectionEntry(section: SectionKey) {
   return assign({
@@ -157,12 +163,14 @@ function computePrevSection(current: string): string {
   return SECTION_KEYS[idx - 1];
 }
 
-/** True when every section before `target` in flow order is schema-complete. */
+/** True when every live section before `target` is schema-complete. */
 function canReachSection(target: SectionKey, answers: PartialIntake): boolean {
-  const targetIdx = SECTION_KEYS.indexOf(target);
+  const live = getApplicableSections(answers);
+  const targetIdx = live.indexOf(target);
+  if (targetIdx === -1) return false;
   if (targetIdx <= 0) return true;
   for (let i = 0; i < targetIdx; i++) {
-    const sec = SECTION_KEYS[i];
+    const sec = live[i];
     if (sec === 'review') continue;
     if (!sectionIsComplete(sec, answers)) return false;
   }
@@ -207,8 +215,8 @@ export const guards = {
 
   canJump: ({ context, event }: { context: IntakeContext; event: IntakeEvent }) => {
     const target = (event as any)?.section;
-    if (!target || !SECTION_KEYS.includes(target as SectionKey)) return false;
-    // Punch-list landing: show the section even when priors are incomplete.
+    if (!target || !isTrustVisibleSection(target)) return false;
+    // Punch: skip completeness of live priors. Never open quarantined sections.
     if (event.type === 'JUMP_TO' && event.force) return true;
     if (target === context.currentSection) return true;
 
@@ -224,8 +232,9 @@ export const guards = {
   },
 
   canComplete: ({ context }: { context: IntakeContext }) => {
-    // All non-review sections complete + review visited
-    return SECTION_KEYS.filter((k) => k !== 'review').every((k) => sectionIsComplete(k, context.answers));
+    return getApplicableSections(context.answers)
+      .filter((k) => k !== 'review')
+      .every((k) => sectionIsComplete(k, context.answers));
   },
 };
 
@@ -422,12 +431,12 @@ export const questionnaireMachine = setup({
         SUBMIT_SECTION: {
           guard: 'canSubmitCurrent',
           actions: ['saveAnswer', 'calculateProgress'],
-          target: 'assets',
+          target: 'decisionMakers',
         },
         NEXT: {
           guard: 'canProceed',
           actions: ['saveAnswer', 'calculateProgress'],
-          target: 'assets',
+          target: 'decisionMakers',
         },
         PREV: { target: 'personal' },
         JUMP_TO: jumpTransitions,
@@ -480,14 +489,14 @@ export const questionnaireMachine = setup({
         SUBMIT_SECTION: {
           guard: 'canSubmitCurrent',
           actions: ['saveAnswer', 'calculateProgress'],
-          target: 'gifts',
+          target: 'distribution',
         },
         NEXT: {
           guard: 'canProceed',
           actions: ['saveAnswer', 'calculateProgress'],
-          target: 'gifts',
+          target: 'distribution',
         },
-        PREV: { target: 'liabilities' },
+        PREV: { target: 'family' },
         JUMP_TO: jumpTransitions,
         RESET: { actions: 'reset', target: 'idle' },
       },
@@ -518,14 +527,14 @@ export const questionnaireMachine = setup({
         SUBMIT_SECTION: {
           guard: 'canSubmitCurrent',
           actions: ['saveAnswer', 'calculateProgress'],
-          target: 'charitable',
+          target: 'review',
         },
         NEXT: {
           guard: 'canProceed',
           actions: ['saveAnswer', 'calculateProgress'],
-          target: 'charitable',
+          target: 'review',
         },
-        PREV: { target: 'gifts' },
+        PREV: { target: 'decisionMakers' },
         JUMP_TO: jumpTransitions,
         RESET: { actions: 'reset', target: 'idle' },
       },
@@ -595,17 +604,22 @@ export const questionnaireMachine = setup({
         SAVE_ANSWER: { actions: ['saveAnswer'] }, // allow edits on review
         SUBMIT_SECTION: { guard: 'canComplete', actions: ['calculateProgress'], target: 'completed' },
         COMPLETE: { guard: 'canComplete', actions: ['calculateProgress'], target: 'completed' },
-        PREV: { target: 'priorPlanning' },
+        PREV: { target: 'distribution' },
         JUMP_TO: jumpTransitions,
         RESET: { actions: 'reset', target: 'idle' },
       },
     },
     completed: {
-      type: 'final',
       entry: ['calculateProgress'],
       on: {
-        // Prevent crashes if UI still sends JUMP_TO after completion
-        JUMP_TO: {}, // no-op
+        // Stay completed; punch/force JUMP_TO updates currentSection for field focus.
+        JUMP_TO: {
+          guard: ({ context, event }: { context: IntakeContext; event: IntakeEvent }) => {
+            if (event.type !== 'JUMP_TO') return false;
+            return guards.canJump({ context, event });
+          },
+          actions: ['setCurrentSection', 'markVisited'],
+        },
         RESET: { actions: 'reset', target: 'idle' },
       },
     },
