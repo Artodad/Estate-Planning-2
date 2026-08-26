@@ -215,8 +215,8 @@ export const guards = {
 
   canJump: ({ context, event }: { context: IntakeContext; event: IntakeEvent }) => {
     const target = (event as any)?.section;
-    if (!target || !SECTION_KEYS.includes(target as SectionKey)) return false;
-    // Punch-list landing: show the section even when priors are incomplete.
+    if (!target || !isTrustVisibleSection(target)) return false;
+    // Punch: skip completeness of live priors. Never open quarantined sections.
     if (event.type === 'JUMP_TO' && event.force) return true;
     if (target === context.currentSection) return true;
 
@@ -616,10 +616,7 @@ export const questionnaireMachine = setup({
         JUMP_TO: {
           guard: ({ context, event }: { context: IntakeContext; event: IntakeEvent }) => {
             if (event.type !== 'JUMP_TO') return false;
-            const target = event.section;
-            if (!target || !SECTION_KEYS.includes(target as SectionKey)) return false;
-            if (event.force) return true;
-            return isTrustVisibleSection(target) && guards.canJump({ context, event });
+            return guards.canJump({ context, event });
           },
           actions: ['setCurrentSection', 'markVisited'],
         },

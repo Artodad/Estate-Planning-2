@@ -45,6 +45,8 @@ import {
   resolveFillTagToMapperKey,
   existingFieldIdForMapperKey,
   punchJumpForMapperKey,
+  punchListHref,
+  isWizardSectionKey,
 } from "../dashboard/components/fill-report-punch-list";
 import {
   leftoverCountFromFillReport,
@@ -520,6 +522,42 @@ test("mapper key yields an existing Field id only by name transform, not a key t
   const cutGuardian = punchJumpForMapperKey("guardian_of_minor_full_name");
   assert.equal(cutGuardian.field, null);
   assert.equal(cutGuardian.section, null, "guardian_of_minor is not a DecisionMakerSchema.role");
+});
+
+test("punch href / restore reject quarantined healthcare and assets (unit; not wizard e2e CI)", () => {
+  assert.equal(isWizardSectionKey("healthcare"), false);
+  assert.equal(isWizardSectionKey("assets"), false);
+  assert.equal(isWizardSectionKey("distribution"), true);
+
+  assert.equal(punchListHref("healthcare", "careInstructions"), null);
+  assert.equal(punchListHref("assets", null), null);
+  assert.equal(punchListHref("distribution", "youngPersonRetentionAge"), "?section=distribution&field=youngPersonRetentionAge");
+
+  const hcField = punchJumpForMapperKey("primary_physician");
+  assert.equal(hcField.section, null);
+  assert.equal(hcField.field, null);
+
+  const hcInstr = punchJumpForMapperKey("healthcare_instructions");
+  assert.equal(hcInstr.section, null);
+  assert.equal(hcInstr.field, null);
+
+  const assetsLoop = punchJumpForMapperKey("assets");
+  assert.equal(assetsLoop.section, null);
+  assert.equal(assetsLoop.field, null);
+
+  const rows = punchListFromFillReport(
+    leftoverReport(["healthcare_instructions", "primary_physician", "#assets", "successor_trustee_full_name"]),
+  );
+  const hcRow = rows.find((r) => r.tag === "healthcare_instructions");
+  assert.ok(hcRow);
+  assert.equal(hcRow.href, null);
+  assert.equal(hcRow.section, null);
+  const assetRow = rows.find((r) => r.tag === "#assets");
+  assert.ok(assetRow);
+  assert.equal(assetRow.href, null);
+  const successor = rows.find((r) => r.tag === "successor_trustee_full_name");
+  assert.ok(successor);
+  assert.equal(successor.href, "?section=decisionMakers");
 });
 
 test("punch list comes from a real generate: leftovers + required empties; allowed empties quiet", async () => {

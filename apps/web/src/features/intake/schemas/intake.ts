@@ -308,6 +308,21 @@ export function isTrustVisibleSection(section: string): section is SectionKey {
   return (TRUST_VISIBLE_SECTION_KEYS as readonly string[]).includes(section);
 }
 
+/** Resume / punch JUMP_TO target. Quarantined keys are rejected. */
+export function restoreJumpSection(section: string | undefined | null): SectionKey | null {
+  if (!section || !isTrustVisibleSection(section)) return null;
+  return section;
+}
+
+/**
+ * Roles offered on the Trust wizard picker only.
+ * Schema enum + mapper still accept leftover stored executor / POA / healthcare / guardian.
+ */
+export const TRUST_WIZARD_DECISION_MAKER_ROLES = [
+  'successor_trustee',
+  'alternate',
+] as const;
+
 export type FullIntake = z.infer<typeof FullIntakeSchema>;
 export type PartialIntake = Partial<FullIntake>;
 

@@ -37,7 +37,9 @@ import {
 } from "./machine";
 import {
   getApplicableSections,
+  restoreJumpSection,
   TRUST_VISIBLE_SECTION_KEYS,
+  TRUST_WIZARD_DECISION_MAKER_ROLES,
   type PartialIntake,
 } from "./schemas/intake";
 
@@ -1165,4 +1167,72 @@ test("JUMP_TO after completed is not a no-op (force punch lands; status stays co
   });
   assert.equal(snap.value, "completed", "must not clear completed status");
   assert.equal(snap.context.currentSection, "distribution");
+});
+
+test("JUMP_TO healthcare / assets is rejected (machine + restore); force cannot open quarantined", () => {
+  const liveOnly: PartialIntake = {
+    personal: {
+      client: { firstName: "Done", lastName: "User" },
+      maritalStatus: "single",
+      isCAResident: true,
+    } as any,
+    family: { children: [] } as any,
+    decisionMakers: [],
+    distribution: { residuary: [] },
+  } as any;
+
+  const actor = startActor(makeSeed({ answers: liveOnly }));
+  actor.send({ type: "START" });
+
+  for (const quarantined of ["healthcare", "assets", "liabilities", "gifts", "charitable", "priorPlanning"]) {
+    assert.equal(
+      guards.canJump({
+        context: actor.getSnapshot().context as any,
+        event: { type: "JUMP_TO", section: quarantined, force: true } as any,
+      }),
+      false,
+      `force must not open ${quarantined}`,
+    );
+    const before = actor.getSnapshot();
+    actor.send({ type: "JUMP_TO", section: quarantined, force: true });
+    const after = actor.getSnapshot();
+    assert.equal(after.value, before.value);
+    assert.equal(after.context.currentSection, before.context.currentSection);
+  }
+
+  assert.equal(restoreJumpSection("healthcare"), null);
+  assert.equal(restoreJumpSection("assets"), null);
+  assert.equal(restoreJumpSection("gifts"), null);
+  assert.equal(restoreJumpSection("distribution"), "distribution");
+  assert.equal(restoreJumpSection("personal"), "personal");
+  assert.equal(restoreJumpSection(undefined), null);
+
+  for (const _ of ["family", "decisionMakers", "distribution", "review"]) {
+    actor.send({ type: "NEXT" });
+  }
+  let snap = sendAndGetSnapshot(actor, { type: "COMPLETE" });
+  assert.equal(snap.value, "completed");
+
+  snap = sendAndGetSnapshot(actor, {
+    type: "JUMP_TO",
+    section: "healthcare",
+    force: true,
+  });
+  assert.equal(snap.value, "completed");
+  assert.equal(snap.context.currentSection, "review", "healthcare must not land after complete");
+
+  snap = sendAndGetSnapshot(actor, {
+    type: "JUMP_TO",
+    section: "distribution",
+    force: true,
+  });
+  assert.equal(snap.context.currentSection, "distribution");
+});
+
+test("Trust wizard picker roles are successor_trustee + alternate only", () => {
+  assert.deepEqual([...TRUST_WIZARD_DECISION_MAKER_ROLES], ["successor_trustee", "alternate"]);
+  assert.ok(!(TRUST_WIZARD_DECISION_MAKER_ROLES as readonly string[]).includes("executor"));
+  assert.ok(!(TRUST_WIZARD_DECISION_MAKER_ROLES as readonly string[]).includes("healthcare_agent"));
+  assert.ok(!(TRUST_WIZARD_DECISION_MAKER_ROLES as readonly string[]).includes("financial_poa"));
+  assert.ok(!(TRUST_WIZARD_DECISION_MAKER_ROLES as readonly string[]).includes("guardian_minor"));
 });

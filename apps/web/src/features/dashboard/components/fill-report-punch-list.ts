@@ -22,10 +22,10 @@ import { WIZARD_CONTROL_IDS } from "@/features/intake/components/wizard-control-
 import {
   DecisionMakerSchema,
   PersonalInfoSchema,
-  SECTION_ORDER,
   SECTION_SCHEMAS,
   hasSpouseOrPartner,
   isCAResident,
+  restoreJumpSection,
   type PartialIntake,
   type SectionKey,
 } from "@/features/intake/schemas/intake";
@@ -41,7 +41,7 @@ export type PunchListRow = {
 };
 
 export function isWizardSectionKey(value: string | undefined | null): value is SectionKey {
-  return !!value && (SECTION_ORDER as readonly string[]).includes(value);
+  return restoreJumpSection(value) !== null;
 }
 
 /** Strip leftover `{#name}` / `{^name}` / `{name}` down to the identifier. */
@@ -154,13 +154,15 @@ export function punchJumpForMapperKey(key: string): {
   field: string | null;
 } {
   const field = existingFieldIdForMapperKey(key);
-  if (field) return { section: sectionForFieldId(field), field };
-  return { section: sectionForMapperKey(key), field: null };
+  const section = field ? sectionForFieldId(field) : sectionForMapperKey(key);
+  if (!restoreJumpSection(section)) return { section: null, field: null };
+  return { section, field };
 }
 
 export function punchListHref(section: SectionKey | null, field: string | null): string | null {
-  if (!section) return null;
-  const params = new URLSearchParams({ section });
+  const live = restoreJumpSection(section);
+  if (!live) return null;
+  const params = new URLSearchParams({ section: live });
   if (field) params.set("field", field);
   return `?${params.toString()}`;
 }

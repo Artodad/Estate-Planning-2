@@ -409,7 +409,7 @@ All other tests (unit + any that don't need real Clerk E2E users) will continue 
         .locator('select[name*="decisionMakers.0.role"], select')
         .first();
       if (await roleSel.isVisible().catch(() => false)) {
-        await roleSel.selectOption("executor");
+        await roleSel.selectOption("successor_trustee");
       }
 
       await page

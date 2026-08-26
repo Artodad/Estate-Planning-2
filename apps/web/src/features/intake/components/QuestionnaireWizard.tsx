@@ -18,9 +18,10 @@ import {
 import * as IntakeSchemas from "../schemas/intake";
 import {
   SECTION_SCHEMAS,
-  SECTION_ORDER,
   sectionIsComplete as sectionIsCompleteFn,
   calculateProgress as calculateProgressFn,
+  restoreJumpSection,
+  TRUST_WIZARD_DECISION_MAKER_ROLES,
   type PartialIntake,
   type SectionKey,
 } from "../schemas/intake";
@@ -246,8 +247,9 @@ export function QuestionnaireWizard(props: QuestionnaireWizardProps) {
         currentSection: restoreSection,
         visitedSections: draft?.visitedSections ?? [],
       });
-      if (restoreSection && restoreSection !== "personal") {
-        send({ type: "JUMP_TO", section: restoreSection });
+      const restore = restoreJumpSection(restoreSection);
+      if (restore && restore !== "personal") {
+        send({ type: "JUMP_TO", section: restore });
       }
     } else {
       send({ type: "START" });
@@ -377,10 +379,11 @@ export function QuestionnaireWizard(props: QuestionnaireWizardProps) {
   // After complete, force JUMP_TO still lands (machine stays completed).
   useEffect(() => {
     if (!isHydrated) return;
-    if (!punchSection || !(SECTION_ORDER as readonly string[]).includes(punchSection)) {
+    const livePunch = restoreJumpSection(punchSection);
+    if (!livePunch) {
       return;
     }
-    send({ type: "JUMP_TO", section: punchSection, force: true });
+    send({ type: "JUMP_TO", section: livePunch, force: true });
   }, [isHydrated, punchSection, punchField, send]);
 
   // After the section paints, focus the existing Field id. No id → no focus.
@@ -1129,7 +1132,7 @@ function DynamicSectionForm({
                 : currentSection === "decisionMakers"
                   ? {
                       id: newDecisionMakerId(),
-                      role: "executor",
+                      role: "successor_trustee",
                       person: { firstName: "", lastName: "" },
                     }
                   : { name: "", description: "" };
@@ -1192,12 +1195,11 @@ function DynamicSectionForm({
                       <div>
                         <Label>Role</Label>
                         <select {...register(`${arrayName}.${index}.role`)} className="mt-1 w-full rounded border p-2 text-sm">
-                          <option value="executor">Executor</option>
-                          <option value="successor_trustee">Successor Trustee</option>
-                          <option value="financial_poa">Financial POA Agent</option>
-                          <option value="healthcare_agent">Healthcare Agent</option>
-                          <option value="guardian_minor">Guardian for Minor(s)</option>
-                          <option value="alternate">Alternate</option>
+                          {TRUST_WIZARD_DECISION_MAKER_ROLES.map((role) => (
+                            <option key={role} value={role}>
+                              {role === "successor_trustee" ? "Successor Trustee" : "Alternate"}
+                            </option>
+                          ))}
                         </select>
                         <p className="mt-1 text-[11px] text-muted-foreground">
                           Add a second Successor Trustee, or an Alternate linked to the primary successor, for the second-successor trust blank.
