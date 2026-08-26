@@ -290,10 +290,7 @@ export default async function ClientDetailPage({ params }: ClientDetailPageProps
         clientId={client.id}
         clientDisplayName={client.displayName}
         initialNotes={client.notes ?? ""}
-        onDelete={() => {
-          // Server redirect happens inside the island via the delete action + redirect
-          // This callback is mostly for type completeness; the island performs the redirect.
-        }}
+        onDelete={handleDeleteSuccess}
       />
 
     </div>
