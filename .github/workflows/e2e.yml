@@ -1,0 +1,128 @@
+# Trust-loop Playwright e2e on ephemeral GitHub Actions Postgres.
+# Never use Neon or DATABASE_URL from apps/web/.env.
+#
+# Required GitHub Actions secrets (Settings → Secrets and variables → Actions):
+#   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+#   CLERK_SECRET_KEY
+#   E2E_CLERK_USER_IDENTIFIER
+#   E2E_CLERK_USER_PASSWORD
+#
+# clerkSetup() reads CLERK_PUBLISHABLE_KEY + CLERK_SECRET_KEY; we alias the
+# publishable key from NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY (same secret, not a fifth).
+
+name: e2e
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    # Four Trust-loop files only. Do not run the rest of e2e/ (onboarding, templates, …).
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: estate_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d estate_e2e"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      # Job-level env wins over dotenv / committed apps/web/.env (dotenv does not override).
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/estate_e2e
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+      CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+      CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+      E2E_CLERK_USER_IDENTIFIER: ${{ secrets.E2E_CLERK_USER_IDENTIFIER }}
+      E2E_CLERK_USER_PASSWORD: ${{ secrets.E2E_CLERK_USER_PASSWORD }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Require Clerk e2e secrets
+        run: |
+          missing=()
+          [ -z "${NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY}" ] && missing+=("NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY")
+          [ -z "${CLERK_SECRET_KEY}" ] && missing+=("CLERK_SECRET_KEY")
+          [ -z "${E2E_CLERK_USER_IDENTIFIER}" ] && missing+=("E2E_CLERK_USER_IDENTIFIER")
+          [ -z "${E2E_CLERK_USER_PASSWORD}" ] && missing+=("E2E_CLERK_USER_PASSWORD")
+          if [ ${#missing[@]} -ne 0 ]; then
+            echo "Missing required GitHub Actions secrets: ${missing[*]}"
+            echo "Add them in GitHub → Settings → Secrets and variables → Actions."
+            echo "Refusing to run: Playwright specs skip when E2E Clerk credentials are absent, which would skip-green."
+            exit 1
+          fi
+          case "${DATABASE_URL}" in
+            *localhost*|*127.0.0.1*) ;;
+            *)
+              echo "DATABASE_URL must point at the GitHub Actions Postgres service, not a remote/Neon database."
+              exit 1
+              ;;
+          esac
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.19.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Out-of-order migration folders (P3018): do not rewrite history on this slice.
+      # db push applies the current schema to empty Actions Postgres without walking folders.
+      - name: Push Prisma schema
+        working-directory: apps/web
+        run: pnpm exec prisma db push
+
+      # Empty Actions Postgres has schema but no Firm/User. Local Neon already has
+      # rows linked to the Clerk e2e user; CI must seed that pair or dashboard is /onboarding.
+      - name: Seed Clerk e2e Firm + owner
+        working-directory: apps/web
+        run: pnpm exec tsx scripts/seed-e2e-clerk-firm.ts
+
+      # Seed writes E2E_FIRM_ID to GITHUB_ENV. Leftover/client-detail/documents
+      # skip if they cannot scrape "Firm ID:" from /dashboard; CI must not skip-green.
+      - name: Require seeded E2E_FIRM_ID
+        run: |
+          if [ -z "${E2E_FIRM_ID}" ]; then
+            echo "Seed did not export E2E_FIRM_ID. Leftover/client-detail specs would skip."
+            exit 1
+          fi
+          echo "E2E_FIRM_ID is set (${#E2E_FIRM_ID} chars)"
+
+      - name: Install Playwright Chromium
+        working-directory: apps/web
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run Playwright e2e
+        working-directory: apps/web
+        run: >-
+          pnpm exec playwright test
+          --retries=1
+          --timeout=60000
+          e2e/generate-trust-draft.spec.ts
+          e2e/documents-trust-draft.spec.ts
+          e2e/client-detail-trust-draft.spec.ts
+          e2e/intakes-leftover.spec.ts
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report
+          retention-days: 7

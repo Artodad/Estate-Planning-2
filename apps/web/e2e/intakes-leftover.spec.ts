@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { clerk } from "@clerk/testing/playwright";
+import { resolveE2EFirmId, signInE2E } from "./clerk-e2e-signin";
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -42,17 +42,9 @@ test.describe("Intakes list — leftover N on the existing row", () => {
   test("Trust leftovers paint N; clean is clean; no Trust stays quiet; click opens review", async ({
     page,
   }) => {
-    test.setTimeout(90_000);
+    test.setTimeout(60_000);
 
-    await page.goto("/dashboard", { waitUntil: "domcontentloaded" });
-    await clerk.signIn({
-      page,
-      signInParams: {
-        strategy: "password",
-        identifier: E2E_IDENTIFIER!,
-        password: E2E_PASSWORD!,
-      },
-    });
+    await signInE2E(page);
     await page.waitForLoadState("networkidle", { timeout: 15000 }).catch(() => {});
     await page.goto("/dashboard", { waitUntil: "networkidle" });
 
@@ -62,13 +54,12 @@ test.describe("Intakes list — leftover N on the existing row", () => {
 
     let firmId = "";
     try {
-      await expect(page.getByText(/Firm ID:/i)).toBeVisible({ timeout: 5000 });
-      firmId = ((await page.locator('div:has-text("Firm ID:") code').first().textContent()) || "").trim();
+      firmId = await resolveE2EFirmId(page);
     } catch {
-      test.skip(true, "Could not scrape Firm ID for Intakes leftover test");
+      test.skip(true, "Could not resolve e2e firm id (set E2E_FIRM_ID or map the Clerk org to a Firm).");
     }
     if (!firmId) {
-      test.skip(true, "No Firm ID on dashboard");
+      test.skip(true, "No e2e firm id (E2E_FIRM_ID unset and dashboard has no Firm ID).");
     }
 
     const { prisma, generatedDocumentHelpers } = await import("../src/lib/prisma");
