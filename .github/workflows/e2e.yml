@@ -20,7 +20,8 @@ on:
 jobs:
   e2e:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # 108 tests; once Clerk sign-in works they no longer fail in 2s and need more than 30m.
+    timeout-minutes: 60
 
     services:
       postgres:
@@ -99,3 +100,11 @@ jobs:
 
       - name: Run Playwright e2e
         run: pnpm --filter web test:e2e
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report
+          retention-days: 7
