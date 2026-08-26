@@ -141,11 +141,10 @@ function signInIdentifier(user: ClerkUser, fallback: string): { value: string; k
   return { value: fallback, kind: "fallback" };
 }
 
-function exportSignInIdentifier(value: string): void {
+function exportGithubEnv(name: string, value: string): void {
   const githubEnv = process.env.GITHUB_ENV;
   if (!githubEnv) return;
-  // Playwright specs read E2E_CLERK_USER_IDENTIFIER for clerk.signIn password strategy.
-  appendFileSync(githubEnv, `E2E_CLERK_USER_IDENTIFIER=${value}\n`);
+  appendFileSync(githubEnv, `${name}=${value}\n`);
 }
 
 async function lookupClerkUser(secret: string, identifier: string): Promise<ClerkUser> {
@@ -241,7 +240,7 @@ async function main(): Promise<void> {
 
   const user = await lookupClerkUser(secret, identifier);
   const signIn = signInIdentifier(user, identifier);
-  exportSignInIdentifier(signIn.value);
+  exportGithubEnv("E2E_CLERK_USER_IDENTIFIER", signIn.value);
 
   const memberships = unwrapList<ClerkOrgMembership>(
     await clerkGet(secret, `/users/${user.id}/organization_memberships`),
@@ -273,6 +272,8 @@ async function main(): Promise<void> {
       update: { firmId: firm.id, role: "owner", email },
       create: { clerkId: user.id, email, role: "owner", firmId: firm.id },
     });
+
+    exportGithubEnv("E2E_FIRM_ID", firm.id);
 
     console.log(
       `E2E seed: Firm ${firm.id} + owner User linked to Clerk org and user (signInIdentifierKind=${signIn.kind})`,

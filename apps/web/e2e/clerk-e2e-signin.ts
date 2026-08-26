@@ -1,5 +1,5 @@
 import { clerk } from "@clerk/testing/playwright";
-import type { Page } from "@playwright/test";
+import { expect, type Page } from "@playwright/test";
 
 /**
  * Ticket sign-in for CI. Password strategy is rejected when the secret
@@ -14,4 +14,12 @@ export async function signInE2E(page: Page): Promise<void> {
   }
   await page.goto("/", { waitUntil: "domcontentloaded" });
   await clerk.signIn({ page, emailAddress: email });
+}
+
+/** CI seed writes E2E_FIRM_ID; local leftover/generate still scrape the dashboard. */
+export async function resolveE2EFirmId(page: Page): Promise<string> {
+  const fromEnv = process.env.E2E_FIRM_ID?.trim();
+  if (fromEnv) return fromEnv;
+  await expect(page.getByText(/Firm ID:/i)).toBeVisible({ timeout: 5000 });
+  return ((await page.locator('div:has-text("Firm ID:") code').first().textContent()) || "").trim();
 }

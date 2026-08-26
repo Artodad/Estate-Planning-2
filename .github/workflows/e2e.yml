@@ -94,6 +94,16 @@ jobs:
         working-directory: apps/web
         run: pnpm exec tsx scripts/seed-e2e-clerk-firm.ts
 
+      # Seed writes E2E_FIRM_ID to GITHUB_ENV. Leftover/client-detail/documents
+      # skip if they cannot scrape "Firm ID:" from /dashboard; CI must not skip-green.
+      - name: Require seeded E2E_FIRM_ID
+        run: |
+          if [ -z "${E2E_FIRM_ID}" ]; then
+            echo "Seed did not export E2E_FIRM_ID. Leftover/client-detail specs would skip."
+            exit 1
+          fi
+          echo "E2E_FIRM_ID is set (${#E2E_FIRM_ID} chars)"
+
       - name: Install Playwright Chromium
         working-directory: apps/web
         run: pnpm exec playwright install --with-deps chromium

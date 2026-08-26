@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { signInE2E } from "./clerk-e2e-signin";
+import { resolveE2EFirmId, signInE2E } from "./clerk-e2e-signin";
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -56,13 +56,12 @@ test.describe("Client detail — Trust draft punch list + stamp confirm", () => 
 
     let firmId = "";
     try {
-      await expect(page.getByText(/Firm ID:/i)).toBeVisible({ timeout: 5000 });
-      firmId = ((await page.locator('div:has-text("Firm ID:") code').first().textContent()) || "").trim();
+      firmId = await resolveE2EFirmId(page);
     } catch {
-      test.skip(true, "Could not scrape Firm ID for client-detail Trust-draft test");
+      test.skip(true, "Could not resolve e2e firm id (set E2E_FIRM_ID or map the Clerk org to a Firm).");
     }
     if (!firmId) {
-      test.skip(true, "No Firm ID on dashboard");
+      test.skip(true, "No e2e firm id (E2E_FIRM_ID unset and dashboard has no Firm ID).");
     }
 
     const { prisma, generatedDocumentHelpers } = await import("../src/lib/prisma");
@@ -231,13 +230,12 @@ test.describe("Client detail — Trust draft punch list + stamp confirm", () => 
 
     let firmId = "";
     try {
-      await expect(page.getByText(/Firm ID:/i)).toBeVisible({ timeout: 5000 });
-      firmId = ((await page.locator('div:has-text("Firm ID:") code').first().textContent()) || "").trim();
+      firmId = await resolveE2EFirmId(page);
     } catch {
-      test.skip(true, "Could not scrape Firm ID for client-detail Trust-regenerate test");
+      test.skip(true, "Could not resolve e2e firm id (set E2E_FIRM_ID or map the Clerk org to a Firm).");
     }
     if (!firmId) {
-      test.skip(true, "No Firm ID on dashboard");
+      test.skip(true, "No e2e firm id (E2E_FIRM_ID unset and dashboard has no Firm ID).");
     }
 
     const { prisma, generatedDocumentHelpers } = await import("../src/lib/prisma");
@@ -330,13 +328,12 @@ test.describe("Client detail — Trust draft punch list + stamp confirm", () => 
 
     let firmId = "";
     try {
-      await expect(page.getByText(/Firm ID:/i)).toBeVisible({ timeout: 5000 });
-      firmId = ((await page.locator('div:has-text("Firm ID:") code').first().textContent()) || "").trim();
+      firmId = await resolveE2EFirmId(page);
     } catch {
-      test.skip(true, "Could not scrape Firm ID for client-detail Trust-generate empty-docs test");
+      test.skip(true, "Could not resolve e2e firm id (set E2E_FIRM_ID or map the Clerk org to a Firm).");
     }
     if (!firmId) {
-      test.skip(true, "No Firm ID on dashboard");
+      test.skip(true, "No e2e firm id (E2E_FIRM_ID unset and dashboard has no Firm ID).");
     }
 
     const { prisma } = await import("../src/lib/prisma");
@@ -390,13 +387,12 @@ test.describe("Client detail — Trust draft punch list + stamp confirm", () => 
 
     let firmId = "";
     try {
-      await expect(page.getByText(/Firm ID:/i)).toBeVisible({ timeout: 5000 });
-      firmId = ((await page.locator('div:has-text("Firm ID:") code').first().textContent()) || "").trim();
+      firmId = await resolveE2EFirmId(page);
     } catch {
-      test.skip(true, "Could not scrape Firm ID for client-detail Trust-generate test");
+      test.skip(true, "Could not resolve e2e firm id (set E2E_FIRM_ID or map the Clerk org to a Firm).");
     }
     if (!firmId) {
-      test.skip(true, "No Firm ID on dashboard");
+      test.skip(true, "No e2e firm id (E2E_FIRM_ID unset and dashboard has no Firm ID).");
     }
 
     const { prisma, generatedDocumentHelpers } = await import("../src/lib/prisma");
