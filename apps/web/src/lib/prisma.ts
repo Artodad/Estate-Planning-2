@@ -228,8 +228,8 @@ export const generatedDocumentHelpers = {
   },
 
   /**
-   * Count every GeneratedDocument row for the firm.
-   * Unbounded (Overview previously used listByFirm take 1000). No ZIP hide.
+   * Count product GeneratedDocument rows for the firm (Overview).
+   * Unbounded (was take 1000). Same hide as the Documents table.
    */
   async countByFirm(firmId: string) {
     return prisma.generatedDocument.count({

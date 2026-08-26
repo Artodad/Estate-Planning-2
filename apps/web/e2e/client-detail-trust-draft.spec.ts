@@ -29,7 +29,7 @@ const E2E_PASSWORD = process.env.E2E_CLERK_USER_PASSWORD;
  * then the #37 punch list + stamp confirm once a Trust row exists.
  * Has-trust: same GenerateTrustDraftCta island in the newest Trust row
  * Download cell, labeled Regenerate — not a second card.
- * Other types stay ungated Download DRAFT.
+ * Leftover Will / AHCD / ZIP rows are hidden (files stay in storage).
  */
 test.describe("Client detail — Trust draft punch list + stamp confirm", () => {
   const hasE2ECredentials = Boolean(E2E_IDENTIFIER && E2E_PASSWORD);
@@ -41,7 +41,7 @@ test.describe("Client detail — Trust draft punch list + stamp confirm", () => 
     );
   }
 
-  test("revocable_trust row shows punch list, prefixed JUMP_TO, and stamp confirm; other types stay ungated", async ({
+  test("revocable_trust row shows punch list, prefixed JUMP_TO, and stamp confirm; leftover types are hidden", async ({
     page,
   }) => {
     test.setTimeout(60_000);
@@ -133,13 +133,13 @@ test.describe("Client detail — Trust draft punch list + stamp confirm", () => 
       const cleanDownload = page.locator(
         `[data-testid="trust-draft-download"][data-leftover-count="0"]`,
       );
-      const otherRow = page.locator('[data-document-type="healthcare_directive"]').first();
 
       await expect(leftoverDownload).toBeVisible({ timeout: 15000 });
       await expect(cleanDownload).toBeVisible();
-      await expect(otherRow).toBeVisible();
+      await expect(page.locator('[data-document-type="healthcare_directive"]')).toHaveCount(0);
       await expect(page.getByText(zipKey)).toHaveCount(0);
       await expect(page.locator('[data-document-type="pour_over_will"]')).toHaveCount(0);
+      await expect(page.getByText(otherKey)).toHaveCount(0);
       await expect(page.getByRole("button", { name: /Generate Trust draft/i })).toHaveCount(0);
       await expect(page.getByRole("button", { name: /Generate Full Estate Plan/i })).toHaveCount(0);
       await expect(page.getByRole("link", { name: /Download Full ZIP/i })).toHaveCount(0);
@@ -158,12 +158,6 @@ test.describe("Client detail — Trust draft punch list + stamp confirm", () => 
       await expect(cleanDownload).toHaveAttribute(
         "href",
         `/api/documents/download-trust-draft?fileKey=${encodeURIComponent(cleanKey)}`,
-      );
-
-      const otherDownload = otherRow.getByRole("link", { name: /Download DRAFT/ });
-      await expect(otherDownload).toHaveAttribute(
-        "href",
-        `/api/documents/download?fileKey=${encodeURIComponent(otherKey)}`,
       );
 
       const punch = page.getByTestId("trust-draft-punch-list");
@@ -203,9 +197,8 @@ test.describe("Client detail — Trust draft punch list + stamp confirm", () => 
       await expect(confirm).toHaveCount(0);
 
       await expect(page.getByTestId("trust-draft-fill-report")).toHaveCount(1);
-      await expect(otherRow.getByTestId("trust-draft-fill-report")).toHaveCount(0);
-      await expect(otherRow.getByTestId("trust-draft-download")).toHaveCount(0);
-      await expect(otherRow.getByTestId("trust-draft-generate-cta")).toHaveCount(0);
+      await expect(page.locator('[data-document-type="healthcare_directive"]')).toHaveCount(0);
+      await expect(page.getByRole("link", { name: /^Download DRAFT$/ })).toHaveCount(0);
     } finally {
       await prisma.generatedDocument.deleteMany({
         where: { firmId, fileKey: { in: [leftoverKey, cleanKey, otherKey, zipKey] } },
@@ -440,16 +433,12 @@ test.describe("Client detail — Trust draft punch list + stamp confirm", () => 
       await expect(page.getByRole("button", { name: /Generate Full Estate Plan/i })).toHaveCount(0);
       await expect(page.getByRole("link", { name: /Download Full ZIP/i })).toHaveCount(0);
 
-      const otherRow = page.locator('[data-document-type="healthcare_directive"]').first();
-      await expect(otherRow).toBeVisible();
-      const otherDownload = otherRow.getByRole("link", { name: /Download DRAFT/ });
-      await expect(otherDownload).toHaveAttribute(
-        "href",
-        `/api/documents/download?fileKey=${encodeURIComponent(otherKey)}`,
-      );
+      await expect(page.locator('[data-document-type="healthcare_directive"]')).toHaveCount(0);
+      await expect(page.getByText(otherKey)).toHaveCount(0);
       await expect(page.getByText(zipKey)).toHaveCount(0);
       await expect(page.locator('[data-document-type="pour_over_will"]')).toHaveCount(0);
       await expect(page.getByTestId("trust-draft-punch-list")).toHaveCount(0);
+      await expect(page.getByRole("link", { name: /^Download DRAFT$/ })).toHaveCount(0);
 
       await generateBtn.click();
 
@@ -459,8 +448,8 @@ test.describe("Client detail — Trust draft punch list + stamp confirm", () => 
 
       await expect(page.getByRole("button", { name: /Generate Full Estate Plan/i })).toHaveCount(0);
       await expect(page.getByRole("link", { name: /Download Full ZIP/i })).toHaveCount(0);
-      await expect(otherRow.getByRole("link", { name: /Download DRAFT/ })).toBeVisible();
-      await expect(otherRow.getByTestId("trust-draft-download")).toHaveCount(0);
+      await expect(page.locator('[data-document-type="healthcare_directive"]')).toHaveCount(0);
+      await expect(page.getByRole("link", { name: /^Download DRAFT$/ })).toHaveCount(0);
       await expect(page.getByTestId("trust-draft-punch-list")).toHaveCount(0);
       await expect(page.getByTestId("trust-draft-fill-report")).toHaveCount(0);
       await expect(page.getByText(/SCAFFOLD ACTION/i)).toHaveCount(0);

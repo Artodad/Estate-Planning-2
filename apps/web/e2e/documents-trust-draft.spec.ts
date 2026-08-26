@@ -26,7 +26,7 @@ const E2E_PASSWORD = process.env.E2E_CLERK_USER_PASSWORD;
 
 /**
  * Documents row for revocable_trust: same punch list + stamp confirm as intake.
- * Other types stay on ungated GET /api/documents/download.
+ * Leftover Will / AHCD / ZIP rows are hidden (files stay in storage).
  */
 test.describe("Documents — Trust draft punch list + stamp confirm", () => {
   const hasE2ECredentials = Boolean(E2E_IDENTIFIER && E2E_PASSWORD);
@@ -38,7 +38,7 @@ test.describe("Documents — Trust draft punch list + stamp confirm", () => {
     );
   }
 
-  test("revocable_trust row shows punch list, prefixed JUMP_TO, and stamp confirm; other types stay ungated", async ({
+  test("revocable_trust row shows punch list, prefixed JUMP_TO, and stamp confirm; leftover types are hidden", async ({
     page,
   }) => {
     test.setTimeout(60_000);
@@ -118,10 +118,11 @@ test.describe("Documents — Trust draft punch list + stamp confirm", () => {
       await page.waitForLoadState("networkidle", { timeout: 15000 }).catch(() => {});
 
       const trustRow = page.locator('[data-document-type="revocable_trust"]').first();
-      const otherRow = page.locator('[data-document-type="healthcare_directive"]').first();
       await expect(trustRow).toBeVisible({ timeout: 15000 });
-      await expect(otherRow).toBeVisible();
+      await expect(page.locator('[data-document-type="healthcare_directive"]')).toHaveCount(0);
+      await expect(page.locator('[data-document-type="pour_over_will"]')).toHaveCount(0);
       await expect(page.getByText(zipKey)).toHaveCount(0);
+      await expect(page.getByText(otherKey)).toHaveCount(0);
 
       const punch = trustRow.getByTestId("trust-draft-punch-list");
       await expect(punch).toBeVisible();
@@ -143,12 +144,6 @@ test.describe("Documents — Trust draft punch list + stamp confirm", () => {
         `/api/documents/download-trust-draft?fileKey=${encodeURIComponent(trustKey)}`,
       );
 
-      const otherDownload = otherRow.getByRole("link", { name: /^Download$/ });
-      await expect(otherDownload).toHaveAttribute(
-        "href",
-        `/api/documents/download?fileKey=${encodeURIComponent(otherKey)}`,
-      );
-
       await trustDownload.click();
       const confirm = page.getByTestId("trust-draft-download-confirm");
       await expect(confirm).toBeVisible();
@@ -159,8 +154,8 @@ test.describe("Documents — Trust draft punch list + stamp confirm", () => {
         `/api/documents/download-trust-draft?fileKey=${encodeURIComponent(trustKey)}`,
       );
 
-      await expect(otherRow.getByTestId("trust-draft-fill-report")).toHaveCount(0);
-      await expect(otherRow.getByTestId("trust-draft-download")).toHaveCount(0);
+      await expect(page.locator('[data-document-type="healthcare_directive"]')).toHaveCount(0);
+      await expect(page.getByRole("link", { name: /^Download$/ })).toHaveCount(0);
     } finally {
       await prisma.generatedDocument.deleteMany({
         where: { firmId, fileKey: { in: [trustKey, otherKey, zipKey] } },

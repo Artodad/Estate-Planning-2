@@ -36,8 +36,8 @@ function trustDraftClientName(answers: PartialIntake | null): string | null {
 /**
  * /dashboard/documents
  * Shows real GeneratedDocument rows + secure downloads.
- * Leftover package ZIP / Full-Estate-Plan-Package rows are hidden.
- * revocable_trust rows reuse the intake punch list + stamp confirm.
+ * Leftover ZIP / package / non-Trust rows are hidden (files stay in storage).
+ * Only revocable_trust is a product row (punch list + stamp confirm).
  */
 export default async function DocumentsPage() {
   const authContext = await getCurrentAuthContext();
@@ -62,7 +62,9 @@ export default async function DocumentsPage() {
     realDocs = [];
   }
 
-  const visibleDocs = realDocs.filter((d) => !isHiddenEstatePlanPackageRow(d.fileKey));
+  const visibleDocs = realDocs.filter(
+    (d) => !isHiddenEstatePlanPackageRow(d.fileKey, d.documentType),
+  );
 
   return (
     <div className="space-y-6">
