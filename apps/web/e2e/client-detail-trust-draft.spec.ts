@@ -365,7 +365,7 @@ test.describe("Client detail — Trust draft punch list + stamp confirm", () => 
     }
   });
 
-  test("intake + no Trust: Generate Trust draft (same action errors); leftover .docx stay ungated", async ({
+  test("intake + no Trust: Generate Trust draft (same action errors); leftover types are hidden", async ({
     page,
   }) => {
     test.setTimeout(60_000);
