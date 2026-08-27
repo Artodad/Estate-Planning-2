@@ -38,10 +38,12 @@ export type BlobObjectStore = {
   get: (pathname: string) => Promise<Buffer | null>;
 };
 
+export type DocumentStorageEnv = Record<string, string | undefined>;
+
 export type DocumentStorageOptions = {
   backend?: DocumentStorageBackend;
   blobStore?: BlobObjectStore;
-  env?: NodeJS.ProcessEnv;
+  env?: DocumentStorageEnv;
 };
 
 /**
@@ -49,7 +51,7 @@ export type DocumentStorageOptions = {
  * Explicit DOCUMENT_STORAGE wins except disk cannot be used on read-only Vercel.
  */
 export function resolveDocumentStorageBackend(
-  env: NodeJS.ProcessEnv = process.env,
+  env: DocumentStorageEnv = process.env,
 ): DocumentStorageBackend {
   const readOnlyHost = isReadOnlyVercelFilesystem(env);
 
@@ -72,13 +74,13 @@ export function resolveDocumentStorageBackend(
   return "disk";
 }
 
-function isReadOnlyVercelFilesystem(env: NodeJS.ProcessEnv): boolean {
+function isReadOnlyVercelFilesystem(env: DocumentStorageEnv): boolean {
   // vercel dev sets VERCEL=1 but VERCEL_ENV=development and can write to disk.
   // Production and preview Functions cannot mkdir under /var/task.
   return env.VERCEL === "1" && env.VERCEL_ENV !== "development";
 }
 
-function blobCredentialsAvailable(env: NodeJS.ProcessEnv): boolean {
+function blobCredentialsAvailable(env: DocumentStorageEnv): boolean {
   // Static token (any host) or OIDC on Vercel (store connected → BLOB_STORE_ID + VERCEL_OIDC_TOKEN).
   return Boolean(env.BLOB_READ_WRITE_TOKEN || env.VERCEL === "1");
 }
