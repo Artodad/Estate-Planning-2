@@ -1,32 +1,91 @@
 /**
- * Thin storage abstraction for document generation (Phase 4 Sub-agent B) + template upload (Phase 5+).
+ * Thin storage abstraction for document generation + template upload.
  *
  * Design §3 + §6: template loading via fileKey (from Template records) and upload of generated DRAFTs.
  * Also supports owner-uploaded attorney .docx templates via uploadTemplate / computeTemplateFileKey.
  * Used by generator.ts and the template upload Server Action.
  *
- * Dev implementation: local filesystem under .local-document-storage/ (namespaced by key).
- *   - Stage real attorney .docx templates here for verification (e.g. copy a template to .local-document-storage/templates/seed/austin/revocable_trust_ca_v1.docx).
+ * Local / isolated verify: filesystem under .local-document-storage/ (namespaced by key).
+ *   - Stage real attorney .docx templates here for verification.
  *   - Generated outputs also land here for inspection/download in dev.
  *
- * Production: Replace body with Supabase Storage (or S3) client using service-role key.
- *   - Add `@supabase/supabase-js` (if not present).
- *   - Buckets: private "document-templates", "generated-drafts".
- *   - Use createClient( url, serviceRoleKey, { auth: { persistSession: false } } ).
- *   - get: .storage.from(bucket).download(key) -> Buffer
- *   - upload: .storage.from(bucket).upload(key, buffer, { contentType, upsert: true })
- *   - All server-only after firm RBAC (never expose keys to client).
+ * Production (Vercel): private Vercel Blob. Keys stay the same opaque fileKeys.
+ *   - put/get with access: "private". No public URLs. Server-only after firm RBAC.
+ *   - addRandomSuffix is off so the stored pathname === fileKey (generate can reload by key).
+ *   - Vercel /var/task is read-only; disk mkdir will never be used on that host.
  *
  * Security: Keys are opaque. No public URLs. Access only after checkOwnerOrStaff + firmId scope.
  * File naming follows fidelity.mdc exactly (see computeDraftFileKey + generator).
  *
- * NEVER log file contents. Only keys + metadata.
+ * NEVER log file contents or blob URLs. Only keys + metadata.
  */
 
 import fs from "fs/promises";
 import path from "path";
 
 const LOCAL_ROOT = path.resolve(process.cwd(), ".local-document-storage");
+const DOCX_CONTENT_TYPE =
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+
+export type DocumentStorageBackend = "disk" | "blob";
+
+/**
+ * Injectable Blob adapter for tests. Production uses @vercel/blob (private).
+ * Callers still persist/load by opaque fileKey — never a public URL.
+ */
+export type BlobObjectStore = {
+  put: (pathname: string, body: Buffer, contentType: string) => Promise<void>;
+  get: (pathname: string) => Promise<Buffer | null>;
+};
+
+export type DocumentStorageOptions = {
+  backend?: DocumentStorageBackend;
+  blobStore?: BlobObjectStore;
+  env?: NodeJS.ProcessEnv;
+};
+
+/**
+ * Choose disk (local / verify / unit tests) vs private object storage (Vercel).
+ * Explicit DOCUMENT_STORAGE wins except disk cannot be used on read-only Vercel.
+ */
+export function resolveDocumentStorageBackend(
+  env: NodeJS.ProcessEnv = process.env,
+): DocumentStorageBackend {
+  const readOnlyHost = isReadOnlyVercelFilesystem(env);
+
+  if (env.DOCUMENT_STORAGE === "disk" && !readOnlyHost) {
+    return "disk";
+  }
+  if (env.DOCUMENT_STORAGE === "blob") {
+    return "blob";
+  }
+  // node:test / tsx --test — keep existing disk fixtures even if a token is in the env.
+  if (env.NODE_TEST_CONTEXT && !readOnlyHost) {
+    return "disk";
+  }
+  if (env.BLOB_READ_WRITE_TOKEN) {
+    return "blob";
+  }
+  if (readOnlyHost) {
+    return "blob";
+  }
+  return "disk";
+}
+
+function isReadOnlyVercelFilesystem(env: NodeJS.ProcessEnv): boolean {
+  // vercel dev sets VERCEL=1 but VERCEL_ENV=development and can write to disk.
+  // Production and preview Functions cannot mkdir under /var/task.
+  return env.VERCEL === "1" && env.VERCEL_ENV !== "development";
+}
+
+function blobCredentialsAvailable(env: NodeJS.ProcessEnv): boolean {
+  // Static token (any host) or OIDC on Vercel (store connected → BLOB_STORE_ID + VERCEL_OIDC_TOKEN).
+  return Boolean(env.BLOB_READ_WRITE_TOKEN || env.VERCEL === "1");
+}
+
+function resolveBackend(options?: DocumentStorageOptions): DocumentStorageBackend {
+  return options?.backend ?? resolveDocumentStorageBackend(options?.env ?? process.env);
+}
 
 // Ensure parent dirs exist for a given file path.
 async function ensureParentDir(filePath: string): Promise<void> {
@@ -40,29 +99,176 @@ function resolveLocalPath(fileKey: string): string {
   return path.join(LOCAL_ROOT, safeKey);
 }
 
-/**
- * Load a template (or any stored .docx) by its fileKey.
- * Throws TemplateLoadError (wrapped by caller) or StorageError.
- */
-export async function getFileBuffer(fileKey: string): Promise<Buffer> {
-  if (!fileKey || typeof fileKey !== "string") {
-    throw new Error("[storage] getFileBuffer called with invalid fileKey");
+function safeStorageKey(fileKey: string): string {
+  return fileKey.replace(/\.\./g, "_");
+}
+
+async function readableStreamToBuffer(
+  stream: ReadableStream<Uint8Array> | null | undefined,
+): Promise<Buffer> {
+  if (!stream) {
+    throw new Error("[storage] getFileBuffer received an empty blob stream");
+  }
+  return Buffer.from(await new Response(stream).arrayBuffer());
+}
+
+async function getVercelBlobClient(): Promise<typeof import("@vercel/blob")> {
+  return import("@vercel/blob");
+}
+
+async function getFromBlob(
+  fileKey: string,
+  options?: DocumentStorageOptions,
+): Promise<Buffer> {
+  const safeKey = safeStorageKey(fileKey);
+  const env = options?.env ?? process.env;
+
+  if (options?.blobStore) {
+    const buf = await options.blobStore.get(safeKey);
+    if (!buf) {
+      throw new Error(`[storage] getFileBuffer failed for key="${fileKey}" (blob).`);
+    }
+    return buf;
   }
 
+  if (!blobCredentialsAvailable(env)) {
+    throw new Error(
+      `[storage] getFileBuffer failed for key="${fileKey}". ` +
+        `Object storage is not configured (read-only host cannot use .local-document-storage).`,
+    );
+  }
+
+  try {
+    const { get } = await getVercelBlobClient();
+    const token = env.BLOB_READ_WRITE_TOKEN;
+    const result = await get(safeKey, {
+      access: "private",
+      useCache: false,
+      ...(token ? { token } : {}),
+    });
+    if (!result || result.statusCode !== 200 || !result.stream) {
+      throw new Error(`[storage] getFileBuffer failed for key="${fileKey}" (blob).`);
+    }
+    return await readableStreamToBuffer(result.stream);
+  } catch (cause) {
+    if (cause instanceof Error && cause.message.includes("[storage] getFileBuffer failed")) {
+      throw cause;
+    }
+    throw new Error(
+      `[storage] getFileBuffer failed for key="${fileKey}" (blob). ` +
+        `Original: ${cause instanceof Error ? cause.message : String(cause)}`,
+    );
+  }
+}
+
+async function putToBlob(
+  buffer: Buffer,
+  fileKey: string,
+  contentType: string,
+  options?: DocumentStorageOptions,
+): Promise<void> {
+  const safeKey = safeStorageKey(fileKey);
+  const env = options?.env ?? process.env;
+
+  if (options?.blobStore) {
+    await options.blobStore.put(safeKey, buffer, contentType);
+    return;
+  }
+
+  if (!blobCredentialsAvailable(env)) {
+    throw new Error(
+      `[storage] Object storage is not configured. ` +
+        `Vercel Functions cannot write .local-document-storage under /var/task.`,
+    );
+  }
+
+  const { put } = await getVercelBlobClient();
+  const token = env.BLOB_READ_WRITE_TOKEN;
+  // Discard put() URL/metadata — callers only persist the opaque fileKey.
+  await put(safeKey, buffer, {
+    access: "private",
+    addRandomSuffix: false,
+    allowOverwrite: true,
+    contentType,
+    ...(token ? { token } : {}),
+  });
+}
+
+async function getFromDisk(fileKey: string): Promise<Buffer> {
   const localPath = resolveLocalPath(fileKey);
 
   try {
-    const buf = await fs.readFile(localPath);
-    return buf;
+    return await fs.readFile(localPath);
   } catch (cause) {
-    // In dev this surfaces "file not found" with actionable path.
-    // In real prod this would be the Supabase 404 equivalent.
     throw new Error(
       `[storage] getFileBuffer failed for key="${fileKey}" (local path: ${localPath}). ` +
         `For local dev/testing: place your attorney .docx template at that exact path. ` +
         `Original: ${cause instanceof Error ? cause.message : String(cause)}`,
     );
   }
+}
+
+async function putToDisk(buffer: Buffer, fileKey: string): Promise<void> {
+  const localPath = resolveLocalPath(fileKey);
+  await ensureParentDir(localPath);
+  await fs.writeFile(localPath, buffer);
+}
+
+async function putStoredFile(
+  buffer: Buffer,
+  fileKey: string,
+  contentType: string,
+  options: DocumentStorageOptions | undefined,
+  caller: "uploadGenerated" | "uploadTemplate",
+): Promise<string> {
+  if (!fileKey || typeof fileKey !== "string") {
+    throw new Error(`[storage] ${caller} called with invalid fileKey`);
+  }
+  if (!buffer || buffer.length === 0) {
+    throw new Error(`[storage] ${caller} called with empty buffer`);
+  }
+
+  const backend = resolveBackend(options);
+
+  try {
+    if (backend === "blob") {
+      await putToBlob(buffer, fileKey, contentType, options);
+      return fileKey;
+    }
+    await putToDisk(buffer, fileKey);
+    return fileKey;
+  } catch (cause) {
+    if (
+      cause instanceof Error &&
+      (cause.message.includes("[storage] Object storage") ||
+        cause.message.includes(`[storage] ${caller}`))
+    ) {
+      throw cause;
+    }
+    throw new Error(
+      `[storage] ${caller} failed for key="${fileKey}". ` +
+        `Original: ${cause instanceof Error ? cause.message : String(cause)}`,
+    );
+  }
+}
+
+/**
+ * Load a template (or any stored .docx) by its fileKey.
+ * Throws TemplateLoadError (wrapped by caller) or StorageError.
+ */
+export async function getFileBuffer(
+  fileKey: string,
+  options?: DocumentStorageOptions,
+): Promise<Buffer> {
+  if (!fileKey || typeof fileKey !== "string") {
+    throw new Error("[storage] getFileBuffer called with invalid fileKey");
+  }
+
+  const backend = resolveBackend(options);
+  if (backend === "blob") {
+    return getFromBlob(fileKey, options);
+  }
+  return getFromDisk(fileKey);
 }
 
 /**
@@ -72,28 +278,10 @@ export async function getFileBuffer(fileKey: string): Promise<Buffer> {
 export async function uploadGenerated(
   buffer: Buffer,
   fileKey: string,
-  contentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  contentType = DOCX_CONTENT_TYPE,
+  options?: DocumentStorageOptions,
 ): Promise<string> {
-  if (!fileKey || typeof fileKey !== "string") {
-    throw new Error("[storage] uploadGenerated called with invalid fileKey");
-  }
-  if (!buffer || buffer.length === 0) {
-    throw new Error("[storage] uploadGenerated called with empty buffer");
-  }
-
-  const localPath = resolveLocalPath(fileKey);
-  await ensureParentDir(localPath);
-
-  try {
-    await fs.writeFile(localPath, buffer);
-    // In Supabase impl this would return the key or a signed ref; here we just confirm.
-    return fileKey;
-  } catch (cause) {
-    throw new Error(
-      `[storage] uploadGenerated failed for key="${fileKey}". ` +
-        `Original: ${cause instanceof Error ? cause.message : String(cause)}`,
-    );
-  }
+  return putStoredFile(buffer, fileKey, contentType, options, "uploadGenerated");
 }
 
 /**
@@ -173,28 +361,10 @@ export function computeOriginalTemplateFileKey(normalizedFileKey: string): strin
 export async function uploadTemplate(
   buffer: Buffer,
   fileKey: string,
-  contentType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  contentType = DOCX_CONTENT_TYPE,
+  options?: DocumentStorageOptions,
 ): Promise<string> {
-  if (!fileKey || typeof fileKey !== "string") {
-    throw new Error("[storage] uploadTemplate called with invalid fileKey");
-  }
-  if (!buffer || buffer.length === 0) {
-    throw new Error("[storage] uploadTemplate called with empty buffer");
-  }
-
-  const localPath = resolveLocalPath(fileKey);
-  await ensureParentDir(localPath);
-
-  try {
-    await fs.writeFile(localPath, buffer);
-    // In Supabase impl this would return the key or a signed ref; here we just confirm.
-    return fileKey;
-  } catch (cause) {
-    throw new Error(
-      `[storage] uploadTemplate failed for key="${fileKey}". ` +
-        `Original: ${cause instanceof Error ? cause.message : String(cause)}`,
-    );
-  }
+  return putStoredFile(buffer, fileKey, contentType, options, "uploadTemplate");
 }
 
 // Optional: helper to ensure the dev root exists (call on app boot or in generator if desired).
