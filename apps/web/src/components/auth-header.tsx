@@ -1,10 +1,10 @@
 "use client";
 
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   OrganizationSwitcher,
   Show,
-  SignInButton,
-  SignUpButton,
   UserButton,
 } from "@clerk/nextjs";
 
@@ -13,27 +13,25 @@ import { useFirm, useRole } from "@/features/auth";
 import { Button } from "@/components/ui/button";
 
 export function AuthHeader() {
+  const pathname = usePathname();
+
+  // The signed-out `/` door renders its own paper header. Keep this chrome
+  // for every other route so dashboard / signed-in controls stay untouched.
+  if (pathname === "/") {
+    return null;
+  }
+
   return (
     <header className="fixed top-0 z-50 flex w-full items-center justify-between border-b border-border/60 bg-background/80 px-6 py-3 backdrop-blur-md">
-      <div className="flex flex-col">
-        <span className="text-sm font-semibold tracking-tight">
-          Estate Planning Engine
-        </span>
-        <span className="text-xs text-muted-foreground">
-          Multi-tenant legal intake platform
-        </span>
-      </div>
+      <span className="text-sm font-semibold tracking-tight">
+        Estate Planning Engine
+      </span>
 
       <div className="flex items-center gap-3">
         <Show when="signed-out">
-          <SignInButton mode="modal">
-            <Button variant="ghost" size="sm">
-              Sign in
-            </Button>
-          </SignInButton>
-          <SignUpButton mode="modal">
-            <Button size="sm">Sign up</Button>
-          </SignUpButton>
+          <Button asChild variant="ghost" size="sm">
+            <Link href="/sign-in">Sign in</Link>
+          </Button>
         </Show>
         <Show when="signed-in">
           <OrganizationSwitcher
