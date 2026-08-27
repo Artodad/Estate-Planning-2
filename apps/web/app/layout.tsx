@@ -12,7 +12,7 @@ const geist = Geist({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Estate Planning Engine",
-  description: "Multi-tenant SaaS for estate planning attorneys",
+  description: "Intake and review for estate planning matters.",
 };
 
 export default function RootLayout({
