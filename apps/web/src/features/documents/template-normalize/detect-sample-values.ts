@@ -249,6 +249,15 @@ export const SAMPLE_DETECTION_RULES: SampleDetectionRule[] = [
   },
   // --- High-confidence promotions (iteration-2/3): label-anchored → mapper keys ---
   {
+    id: "blank_first_successor_trustee",
+    mapperKey: "successor_trustee_full_name",
+    confidence: "high",
+    find: findUnderscoreBlank("name of first successor trustee"),
+    replaceWith: "{successor_trustee_full_name}",
+    reason:
+      "Underscore blank [name of first successor trustee] → successor_trustee_full_name",
+  },
+  {
     id: "blank_second_successor_trustee",
     mapperKey: "second_successor_trustee_full_name",
     confidence: "high",
@@ -256,6 +265,16 @@ export const SAMPLE_DETECTION_RULES: SampleDetectionRule[] = [
     replaceWith: "{second_successor_trustee_full_name}",
     reason:
       "Underscore blank [name of second successor trustee] → second_successor_trustee_full_name",
+  },
+  {
+    id: "blank_list_names_and_birthdates",
+    mapperKey: "children",
+    confidence: "high",
+    find: findUnderscoreBlank("List names and birthdates"),
+    // Same inner listing the Trust Family corpus already uses after this sentence.
+    replaceWith: "{#children}{full_name} born {dob};{/children}",
+    reason:
+      "Underscore blank [List names and birthdates] → {#children}{full_name} born {dob};{/children}",
   },
   {
     id: "blank_city_state_marriage",
