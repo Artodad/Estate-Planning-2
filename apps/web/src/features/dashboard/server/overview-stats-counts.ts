@@ -71,7 +71,13 @@ export function matchesOverviewDocumentCountWhere(
  * Prisma where for Intakes In Progress.
  * Do not use `status: "in_progress"` — that would change the card.
  */
-export function overviewIntakesInProgressWhere(firmId: string) {
+export function overviewIntakesInProgressWhere(firmId: string): {
+  firmId: string;
+  OR: [
+    { status: typeof OVERVIEW_DEAD_IN_PROGRESS_STATUS },
+    { progress: { gt: number; lt: number }; completedAt: null },
+  ];
+} {
   return {
     firmId,
     OR: [
