@@ -1,3 +1,4 @@
+/* eslint-disable turbo/no-undeclared-env-vars -- E2E test credentials (loaded from .env, never in builds) */
 import { expect, test } from "@playwright/test";
 
 import { signInE2E } from "./clerk-e2e-signin";
