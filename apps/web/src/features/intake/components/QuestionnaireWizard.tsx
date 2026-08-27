@@ -809,7 +809,7 @@ interface DynamicSectionFormProps {
   onAutoSave: (section: string, data: Record<string, unknown>) => void;
 }
 
-function DynamicSectionForm({
+function DynamicSectionFormImpl({
   currentSection,
   answers,
   onSectionSubmit,
@@ -1443,6 +1443,6 @@ function DynamicSectionForm({
 // Memoize DynamicSectionForm so it doesn't re-render when the parent wizard
 // re-renders for unrelated reasons (save status, banners, etc.).
 // Combined with key={currentSection}, this greatly reduces focus loss on typing.
-DynamicSectionForm = React.memo(DynamicSectionForm, (prev, next) => {
+const DynamicSectionForm = React.memo(DynamicSectionFormImpl, (prev, next) => {
   return prev.currentSection === next.currentSection;
 });

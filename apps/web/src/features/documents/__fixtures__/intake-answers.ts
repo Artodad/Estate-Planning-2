@@ -156,8 +156,10 @@ export const marriedCaRichIntake: PartialIntake = {
     primaryPhysician: "Dr. Chen",
   },
   priorPlanning: {
-    existingDocuments: ["old will 2010"],
-    beneficiaryDesignations: ["401k → Diego"],
+    existingDocuments: [{ type: "will", date: "2010", notes: "old will 2010" }],
+    beneficiaryDesignations: [
+      { accountOrAsset: "401k", beneficiary: "Diego" },
+    ],
     digitalAssets: "Password manager with Isabella",
   },
   meta: {
@@ -306,6 +308,7 @@ export const marriedAlternateSuccessorIntake: PartialIntake = {
     },
   ],
   distribution: {
+    residuary: [],
     youngPersonRetentionAge: "18",
     firstDistributionAge: "21",
     secondDistributionAge: "25",
