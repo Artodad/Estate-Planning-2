@@ -34,14 +34,14 @@ function escapeXmlText(text: string): string {
     .replace(/>/g, "&gt;");
 }
 
-/** Same gray centered header paragraph used by DRAFT and the download sign-off. */
+/** Same gray centered header paragraph used by the DRAFT banner. */
 function headerParagraphXml(text: string): string {
   return `<w:p><w:pPr><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:color w:val="808080"/><w:sz w:val="18"/><w:szCs w:val="18"/><w:b/></w:rPr><w:t>${escapeXmlText(text)}</w:t></w:r></w:p>`;
 }
 
 /**
  * Extra header line (or body fallback). Does not fill tags or call generateDocument.
- * Used by applyDraftWatermark (DRAFT) and applyDownloadConfirmStamp (sign-off only).
+ * Used by applyDraftWatermark (DRAFT banner only).
  */
 function injectHeaderParagraph(zip: PizZip, text: string): void {
   if (!zip || typeof zip !== "object" || !text) return;
@@ -92,23 +92,12 @@ export function applyDraftWatermark(zip: PizZip): void {
 }
 
 /**
- * Sibling of applyDraftWatermark: extra header line with the download confirm phrase only.
- * Do not call applyDraftWatermark here — the stored zip already has DRAFT.
+ * Trust-draft download bytes: stored generate buffer as-is.
+ * Confirm phrases stay in the UI dialog — never stamped onto the .docx.
+ * The stored zip already has the DRAFT banner from generate.
  */
-export function applyDownloadConfirmStamp(zip: PizZip, phrase: string): void {
-  injectHeaderParagraph(zip, phrase);
-}
-
-/**
- * Stamp a stored Trust-draft buffer in memory. Returns new bytes; does not persist.
- */
-export function stampTrustDraftConfirmPhrase(buffer: Buffer, phrase: string): Buffer {
-  const zip = new PizZip(buffer);
-  applyDownloadConfirmStamp(zip, phrase);
-  return zip.generate({
-    type: "nodebuffer",
-    compression: "DEFLATE",
-  }) as Buffer;
+export function trustDraftDownloadBytes(stored: Buffer): Buffer {
+  return stored;
 }
 
 /**

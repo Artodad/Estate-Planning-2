@@ -1,10 +1,11 @@
 /**
- * Trust-draft download with confirm stamp (revocable_trust only).
+ * Trust-draft download (revocable_trust only).
  *
  * GET /api/documents/download streams stored bytes as-is — Documents / client
- * downloads stay on that route. This path loads the stored Trust draft, injects
- * the confirm phrase as an extra header line, and returns those bytes.
- * Does not persist. Never ZIP. Does not call generateDocument.
+ * downloads stay on that route. This path is the Trust-draft-only door: it
+ * loads the stored generate buffer and returns those same bytes (DRAFT banner
+ * already applied at generate). Confirm phrases stay in the UI dialog, not
+ * the .docx. Does not persist. Never ZIP. Does not call generateDocument.
  */
 
 import { NextRequest } from "next/server";
@@ -12,9 +13,9 @@ import { NextRequest } from "next/server";
 import { getCurrentAuthContext } from "@/features/auth/server/get-current-auth";
 import { checkOwnerOrStaff } from "@/features/auth/server/rbac";
 import { logAuditEvent } from "@/features/auth/server/audit";
-import { leftoverCountFromFillReport, trustDraftDownloadConfirmPhrase } from "@/features/dashboard/components/trust-draft-download-confirm";
+import { leftoverCountFromFillReport } from "@/features/dashboard/components/trust-draft-download-confirm";
 import { TRUST_DRAFT_DOCUMENT_TYPE } from "@/features/dashboard/components/generate-trust-draft";
-import { stampTrustDraftConfirmPhrase } from "@/features/documents/draft-watermark-module";
+import { trustDraftDownloadBytes } from "@/features/documents/draft-watermark-module";
 import { parseStoredFillReport } from "@/features/documents/fill-report";
 import { getFileBuffer } from "@/features/documents/storage";
 import type { PartialIntake } from "@/features/intake/schemas/intake";
@@ -74,11 +75,10 @@ export async function GET(request: NextRequest) {
     parseStoredFillReport(record.fillReport),
     (record.intakeSession?.answers ?? null) as PartialIntake | null,
   );
-  const phrase = trustDraftDownloadConfirmPhrase(leftoverCount);
 
   try {
     const stored = await getFileBuffer(fileKey);
-    const stamped = stampTrustDraftConfirmPhrase(stored, phrase);
+    const download = trustDraftDownloadBytes(stored);
 
     const actorClerkId = check.context.userId;
     logAuditEvent({
@@ -92,12 +92,12 @@ export async function GET(request: NextRequest) {
 
     const filename = fileKey.split("/").pop() || "trust-draft.docx";
 
-    return new Response(stamped as any, {
+    return new Response(download as any, {
       status: 200,
       headers: {
         "Content-Type": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         "Content-Disposition": `attachment; filename="${filename}"`,
-        "Content-Length": stamped.length.toString(),
+        "Content-Length": download.length.toString(),
         "Cache-Control": "private, no-store",
       },
     });

@@ -22,7 +22,7 @@ import PizZip from "pizzip";
 import { generateDocument } from "./generator";
 import { generateFullPlanPackage, FULL_PLAN_DOCUMENT_ORDER } from "./package";
 import { generatedDocumentPersistFromGenerate, parseStoredFillReport, wordPlainTextFromDocx } from "./fill-report";
-import { DRAFT_TEXT, stampTrustDraftConfirmPhrase } from "./draft-watermark-module";
+import { DRAFT_TEXT, trustDraftDownloadBytes } from "./draft-watermark-module";
 import { getFileBuffer } from "./storage";
 import { mapIntakeToDocVariables } from "./mapper";
 import { marriedCaRichIntake } from "./__fixtures__/intake-answers";
@@ -1097,9 +1097,9 @@ test("download confirm N is punchListFromFillReport length, not leftoverBraces.l
   );
 });
 
-test("stamp helper adds confirm phrase on a generated buffer without a second generate", async () => {
+test("Trust download bytes are DRAFT banner only — confirm phrases stay off the .docx", async () => {
   const stamp = Date.now();
-  const templateFileKey = `templates/unit-download-stamp-${stamp}/stamp.docx`;
+  const templateFileKey = `templates/unit-download-bytes-${stamp}/draft.docx`;
   const body = [
     paragraphWithRuns(["Client: {client_full_name}"]),
     paragraphWithRuns(["Hole: {unresolved_blank}"]),
@@ -1113,7 +1113,7 @@ test("stamp helper adds confirm phrase on a generated buffer without a second ge
     const result = await generateDocument({
       templateFileKey,
       variables: { client_full_name: "Ada Lovelace" },
-      firmId: "firm_unit_download_stamp",
+      firmId: "firm_unit_download_bytes",
       options: {
         addDraftWatermark: true,
         documentType: "revocable_trust",
@@ -1123,9 +1123,13 @@ test("stamp helper adds confirm phrase on a generated buffer without a second ge
     });
     generatedFileKey = result.fileKey;
 
+    const leftoverPhrase = trustDraftDownloadConfirmPhrase(3);
+    assert.equal(leftoverPhrase, "3 leftovers, download anyway");
+    assert.equal(TRUST_DRAFT_DOWNLOAD_CLEAN_PHRASE, "download clean.");
+
     const generatedText = wordPlainTextFromDocx(result.buffer);
     assert.ok(generatedText.includes(DRAFT_TEXT), "generate stores DRAFT before review");
-    assert.ok(!generatedText.includes("leftovers, download anyway"), "confirm phrase is not written at generate time");
+    assert.ok(!generatedText.includes(leftoverPhrase), "confirm phrase is not written at generate time");
     assert.ok(!generatedText.includes(TRUST_DRAFT_DOWNLOAD_CLEAN_PHRASE));
     assert.equal(
       generatedText.split(DRAFT_TEXT).length - 1,
@@ -1133,24 +1137,30 @@ test("stamp helper adds confirm phrase on a generated buffer without a second ge
       "generate applies DRAFT once — do not call applyDraftWatermark again at download",
     );
 
-    const leftoverPhrase = "3 leftovers, download anyway";
-    const stampedLeftovers = stampTrustDraftConfirmPhrase(result.buffer, leftoverPhrase);
-    const leftoverText = wordPlainTextFromDocx(stampedLeftovers);
-    assert.ok(leftoverText.includes(leftoverPhrase), "leftover confirm phrase sticks on the downloaded bytes");
-    assert.ok(leftoverText.includes(DRAFT_TEXT), "DRAFT remains after stamp");
-    assert.equal(leftoverText.split(DRAFT_TEXT).length - 1, 1, "stamp must not duplicate DRAFT");
+    // Same helper the download route uses — unzip stored XML alone missed the old stamp.
+    const leftoverDownload = trustDraftDownloadBytes(result.buffer);
+    const leftoverText = wordPlainTextFromDocx(leftoverDownload);
+    assert.ok(leftoverText.includes(DRAFT_TEXT), "download keeps DRAFT");
+    assert.ok(!leftoverText.includes(leftoverPhrase), "leftover confirm phrase must not appear in download bytes");
+    assert.ok(!leftoverText.includes("leftovers, download anyway"));
+    assert.equal(leftoverText.split(DRAFT_TEXT).length - 1, 1, "download must not duplicate DRAFT");
 
-    const stampedClean = stampTrustDraftConfirmPhrase(result.buffer, TRUST_DRAFT_DOWNLOAD_CLEAN_PHRASE);
-    const cleanText = wordPlainTextFromDocx(stampedClean);
-    assert.ok(cleanText.includes("download clean."), "clean confirm phrase sticks without a second generate");
+    const cleanDownload = trustDraftDownloadBytes(result.buffer);
+    const cleanText = wordPlainTextFromDocx(cleanDownload);
+    assert.ok(!cleanText.includes("download clean."), "clean confirm phrase must not appear in download bytes");
+    assert.ok(!cleanText.includes(TRUST_DRAFT_DOWNLOAD_CLEAN_PHRASE));
     assert.ok(cleanText.includes(DRAFT_TEXT));
     assert.equal(cleanText.split(DRAFT_TEXT).length - 1, 1);
 
     const stored = await getFileBuffer(result.fileKey);
     const storedText = wordPlainTextFromDocx(stored);
     assert.ok(storedText.includes(DRAFT_TEXT), "stored artifact stays DRAFT");
-    assert.ok(!storedText.includes(leftoverPhrase), "stamped bytes are not persisted");
+    assert.ok(!storedText.includes(leftoverPhrase));
     assert.ok(!storedText.includes(TRUST_DRAFT_DOWNLOAD_CLEAN_PHRASE));
+    assert.ok(
+      leftoverDownload.equals(stored),
+      "download bytes are the stored generate buffer — no extra header line",
+    );
   } finally {
     await cleanupKeys(templateFileKey, generatedFileKey ?? "");
   }
