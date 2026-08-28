@@ -56,6 +56,7 @@ export type TemplateCountAggregateOutputType = {
   fileKey: number
   documentType: number
   isActive: number
+  normalizeReport: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -94,6 +95,7 @@ export type TemplateCountAggregateInputType = {
   fileKey?: true
   documentType?: true
   isActive?: true
+  normalizeReport?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -179,6 +181,7 @@ export type TemplateGroupByOutputType = {
   fileKey: string
   documentType: string
   isActive: boolean
+  normalizeReport: runtime.JsonValue | null
   createdAt: Date
   updatedAt: Date
   _count: TemplateCountAggregateOutputType | null
@@ -212,6 +215,7 @@ export type TemplateWhereInput = {
   fileKey?: Prisma.StringFilter<"Template"> | string
   documentType?: Prisma.StringFilter<"Template"> | string
   isActive?: Prisma.BoolFilter<"Template"> | boolean
+  normalizeReport?: Prisma.JsonNullableFilter<"Template">
   createdAt?: Prisma.DateTimeFilter<"Template"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Template"> | Date | string
   firm?: Prisma.XOR<Prisma.FirmScalarRelationFilter, Prisma.FirmWhereInput>
@@ -226,6 +230,7 @@ export type TemplateOrderByWithRelationInput = {
   fileKey?: Prisma.SortOrder
   documentType?: Prisma.SortOrder
   isActive?: Prisma.SortOrder
+  normalizeReport?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   firm?: Prisma.FirmOrderByWithRelationInput
@@ -243,6 +248,7 @@ export type TemplateWhereUniqueInput = Prisma.AtLeast<{
   fileKey?: Prisma.StringFilter<"Template"> | string
   documentType?: Prisma.StringFilter<"Template"> | string
   isActive?: Prisma.BoolFilter<"Template"> | boolean
+  normalizeReport?: Prisma.JsonNullableFilter<"Template">
   createdAt?: Prisma.DateTimeFilter<"Template"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Template"> | Date | string
   firm?: Prisma.XOR<Prisma.FirmScalarRelationFilter, Prisma.FirmWhereInput>
@@ -257,6 +263,7 @@ export type TemplateOrderByWithAggregationInput = {
   fileKey?: Prisma.SortOrder
   documentType?: Prisma.SortOrder
   isActive?: Prisma.SortOrder
+  normalizeReport?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.TemplateCountOrderByAggregateInput
@@ -275,6 +282,7 @@ export type TemplateScalarWhereWithAggregatesInput = {
   fileKey?: Prisma.StringWithAggregatesFilter<"Template"> | string
   documentType?: Prisma.StringWithAggregatesFilter<"Template"> | string
   isActive?: Prisma.BoolWithAggregatesFilter<"Template"> | boolean
+  normalizeReport?: Prisma.JsonNullableWithAggregatesFilter<"Template">
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Template"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Template"> | Date | string
 }
@@ -286,6 +294,7 @@ export type TemplateCreateInput = {
   fileKey: string
   documentType: string
   isActive?: boolean
+  normalizeReport?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
   firm: Prisma.FirmCreateNestedOneWithoutTemplatesInput
@@ -300,6 +309,7 @@ export type TemplateUncheckedCreateInput = {
   fileKey: string
   documentType: string
   isActive?: boolean
+  normalizeReport?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
   generatedDocuments?: Prisma.GeneratedDocumentUncheckedCreateNestedManyWithoutTemplateInput
@@ -312,6 +322,7 @@ export type TemplateUpdateInput = {
   fileKey?: Prisma.StringFieldUpdateOperationsInput | string
   documentType?: Prisma.StringFieldUpdateOperationsInput | string
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  normalizeReport?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   firm?: Prisma.FirmUpdateOneRequiredWithoutTemplatesNestedInput
@@ -326,6 +337,7 @@ export type TemplateUncheckedUpdateInput = {
   fileKey?: Prisma.StringFieldUpdateOperationsInput | string
   documentType?: Prisma.StringFieldUpdateOperationsInput | string
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  normalizeReport?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   generatedDocuments?: Prisma.GeneratedDocumentUncheckedUpdateManyWithoutTemplateNestedInput
@@ -339,6 +351,7 @@ export type TemplateCreateManyInput = {
   fileKey: string
   documentType: string
   isActive?: boolean
+  normalizeReport?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -350,6 +363,7 @@ export type TemplateUpdateManyMutationInput = {
   fileKey?: Prisma.StringFieldUpdateOperationsInput | string
   documentType?: Prisma.StringFieldUpdateOperationsInput | string
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  normalizeReport?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -362,6 +376,7 @@ export type TemplateUncheckedUpdateManyInput = {
   fileKey?: Prisma.StringFieldUpdateOperationsInput | string
   documentType?: Prisma.StringFieldUpdateOperationsInput | string
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  normalizeReport?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -384,6 +399,7 @@ export type TemplateCountOrderByAggregateInput = {
   fileKey?: Prisma.SortOrder
   documentType?: Prisma.SortOrder
   isActive?: Prisma.SortOrder
+  normalizeReport?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -486,6 +502,7 @@ export type TemplateCreateWithoutFirmInput = {
   fileKey: string
   documentType: string
   isActive?: boolean
+  normalizeReport?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
   generatedDocuments?: Prisma.GeneratedDocumentCreateNestedManyWithoutTemplateInput
@@ -498,6 +515,7 @@ export type TemplateUncheckedCreateWithoutFirmInput = {
   fileKey: string
   documentType: string
   isActive?: boolean
+  normalizeReport?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
   generatedDocuments?: Prisma.GeneratedDocumentUncheckedCreateNestedManyWithoutTemplateInput
@@ -540,6 +558,7 @@ export type TemplateScalarWhereInput = {
   fileKey?: Prisma.StringFilter<"Template"> | string
   documentType?: Prisma.StringFilter<"Template"> | string
   isActive?: Prisma.BoolFilter<"Template"> | boolean
+  normalizeReport?: Prisma.JsonNullableFilter<"Template">
   createdAt?: Prisma.DateTimeFilter<"Template"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Template"> | Date | string
 }
@@ -551,6 +570,7 @@ export type TemplateCreateWithoutGeneratedDocumentsInput = {
   fileKey: string
   documentType: string
   isActive?: boolean
+  normalizeReport?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
   firm: Prisma.FirmCreateNestedOneWithoutTemplatesInput
@@ -564,6 +584,7 @@ export type TemplateUncheckedCreateWithoutGeneratedDocumentsInput = {
   fileKey: string
   documentType: string
   isActive?: boolean
+  normalizeReport?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -591,6 +612,7 @@ export type TemplateUpdateWithoutGeneratedDocumentsInput = {
   fileKey?: Prisma.StringFieldUpdateOperationsInput | string
   documentType?: Prisma.StringFieldUpdateOperationsInput | string
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  normalizeReport?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   firm?: Prisma.FirmUpdateOneRequiredWithoutTemplatesNestedInput
@@ -604,6 +626,7 @@ export type TemplateUncheckedUpdateWithoutGeneratedDocumentsInput = {
   fileKey?: Prisma.StringFieldUpdateOperationsInput | string
   documentType?: Prisma.StringFieldUpdateOperationsInput | string
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  normalizeReport?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -615,6 +638,7 @@ export type TemplateCreateManyFirmInput = {
   fileKey: string
   documentType: string
   isActive?: boolean
+  normalizeReport?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -626,6 +650,7 @@ export type TemplateUpdateWithoutFirmInput = {
   fileKey?: Prisma.StringFieldUpdateOperationsInput | string
   documentType?: Prisma.StringFieldUpdateOperationsInput | string
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  normalizeReport?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   generatedDocuments?: Prisma.GeneratedDocumentUpdateManyWithoutTemplateNestedInput
@@ -638,6 +663,7 @@ export type TemplateUncheckedUpdateWithoutFirmInput = {
   fileKey?: Prisma.StringFieldUpdateOperationsInput | string
   documentType?: Prisma.StringFieldUpdateOperationsInput | string
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  normalizeReport?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   generatedDocuments?: Prisma.GeneratedDocumentUncheckedUpdateManyWithoutTemplateNestedInput
@@ -650,6 +676,7 @@ export type TemplateUncheckedUpdateManyWithoutFirmInput = {
   fileKey?: Prisma.StringFieldUpdateOperationsInput | string
   documentType?: Prisma.StringFieldUpdateOperationsInput | string
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  normalizeReport?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -693,6 +720,7 @@ export type TemplateSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs
   fileKey?: boolean
   documentType?: boolean
   isActive?: boolean
+  normalizeReport?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   firm?: boolean | Prisma.FirmDefaultArgs<ExtArgs>
@@ -708,6 +736,7 @@ export type TemplateSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exte
   fileKey?: boolean
   documentType?: boolean
   isActive?: boolean
+  normalizeReport?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   firm?: boolean | Prisma.FirmDefaultArgs<ExtArgs>
@@ -721,6 +750,7 @@ export type TemplateSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exte
   fileKey?: boolean
   documentType?: boolean
   isActive?: boolean
+  normalizeReport?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   firm?: boolean | Prisma.FirmDefaultArgs<ExtArgs>
@@ -734,11 +764,12 @@ export type TemplateSelectScalar = {
   fileKey?: boolean
   documentType?: boolean
   isActive?: boolean
+  normalizeReport?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type TemplateOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "firmId" | "name" | "description" | "fileKey" | "documentType" | "isActive" | "createdAt" | "updatedAt", ExtArgs["result"]["template"]>
+export type TemplateOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "firmId" | "name" | "description" | "fileKey" | "documentType" | "isActive" | "normalizeReport" | "createdAt" | "updatedAt", ExtArgs["result"]["template"]>
 export type TemplateInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   firm?: boolean | Prisma.FirmDefaultArgs<ExtArgs>
   generatedDocuments?: boolean | Prisma.Template$generatedDocumentsArgs<ExtArgs>
@@ -765,6 +796,7 @@ export type $TemplatePayload<ExtArgs extends runtime.Types.Extensions.InternalAr
     fileKey: string
     documentType: string
     isActive: boolean
+    normalizeReport: runtime.JsonValue | null
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["template"]>
@@ -1199,6 +1231,7 @@ export interface TemplateFieldRefs {
   readonly fileKey: Prisma.FieldRef<"Template", 'String'>
   readonly documentType: Prisma.FieldRef<"Template", 'String'>
   readonly isActive: Prisma.FieldRef<"Template", 'Boolean'>
+  readonly normalizeReport: Prisma.FieldRef<"Template", 'Json'>
   readonly createdAt: Prisma.FieldRef<"Template", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Template", 'DateTime'>
 }

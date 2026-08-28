@@ -63,6 +63,7 @@ export type UploadTemplateActionDeps = {
       fileKey: string;
       documentType: string;
       description?: string;
+      normalizeReport?: TemplateUploadNormalizeSummary;
     },
   ) => Promise<{
     id: string;
@@ -71,6 +72,7 @@ export type UploadTemplateActionDeps = {
     fileKey: string;
     documentType: string;
     description?: string | null;
+    normalizeReport?: unknown;
     [key: string]: unknown;
   }>;
   logAuditEvent: (event: {
@@ -205,6 +207,7 @@ export async function executeUploadTemplateForCurrentFirm(
       description,
       fileKey,
       documentType,
+      normalizeReport: prepared.summary,
     });
 
     deps.logAuditEvent({
@@ -229,6 +232,7 @@ export async function executeUploadTemplateForCurrentFirm(
     });
 
     deps.revalidatePath("/dashboard/templates");
+    deps.revalidatePath(`/dashboard/templates/${created.id}`);
 
     return {
       success: true,

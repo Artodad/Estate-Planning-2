@@ -76,6 +76,14 @@ function emptySkippedReport(): NormalizeReport {
   };
 }
 
+function taggedCountFromReport(
+  report: NormalizeReport,
+  appliedSuggestionCount: number,
+): number {
+  const autoTagged = report.items.filter((i) => i.code === "SAMPLE_VALUE_TAGGED").length;
+  return autoTagged + appliedSuggestionCount;
+}
+
 function toSummary(
   report: NormalizeReport,
   opts?: {
@@ -83,12 +91,14 @@ function toSummary(
     softSuggestions?: TemplateUploadSoftSuggestion[];
     appliedSuggestionCount?: number;
     leftAsSuggestionCount?: number;
+    acceptedSuggestionIds?: readonly string[];
   },
 ): TemplateUploadNormalizeSummary {
   const softSuggestions = opts?.softSuggestions ?? softSuggestionsFromReportItems(report.items);
   const appliedSuggestionCount = opts?.appliedSuggestionCount ?? 0;
   const leftAsSuggestionCount =
     opts?.leftAsSuggestionCount ?? Math.max(0, softSuggestions.length - appliedSuggestionCount);
+  const acceptedSuggestionIds = [...(opts?.acceptedSuggestionIds ?? [])];
 
   const highlightSource = [
     ...report.errors,
@@ -118,6 +128,8 @@ function toSummary(
     softSuggestions,
     appliedSuggestionCount,
     leftAsSuggestionCount,
+    taggedCount: taggedCountFromReport(report, appliedSuggestionCount),
+    acceptedSuggestionIds,
     highlights,
     validation: report.validation
       ? {
@@ -170,6 +182,7 @@ export function prepareTemplateUpload(
         softSuggestions: [],
         appliedSuggestionCount: 0,
         leftAsSuggestionCount: 0,
+        acceptedSuggestionIds: [],
       }),
     };
   }
@@ -183,6 +196,7 @@ export function prepareTemplateUpload(
       softSuggestions,
       appliedSuggestionCount: 0,
       leftAsSuggestionCount: softSuggestions.length,
+      acceptedSuggestionIds: [],
     });
 
     if (!report.ok) {
@@ -258,6 +272,7 @@ export function prepareTemplateUpload(
     softSuggestions,
     appliedSuggestionCount: appliedCount,
     leftAsSuggestionCount: Math.max(0, softSuggestions.length - appliedCount),
+    acceptedSuggestionIds: acceptedIds,
   });
 
   if (!ok) {

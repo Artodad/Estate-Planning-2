@@ -78,6 +78,20 @@ export function createSplitRunFixtureDocx(): Buffer {
   return createDocxFromDocumentXml(wrapDocumentXml(body));
 }
 
+/**
+ * Trust leftover-punch fixture: one high-confidence tag (county venue)
+ * plus low-confidence blanks that stay leftover until the attorney accepts.
+ */
+export function createTrustLeftoverPunchFixtureDocx(): Buffer {
+  const body = [
+    paragraphWithRuns(["_ _[Name of Trust]_ _ Family Trust"]),
+    paragraphWithRuns(["County of San Diego"]),
+    paragraphWithRuns([`and "issue" _ _[do/do not]_ _ include stepchildren`]),
+    paragraphWithRuns(["_[Description of distribution.]_ shall be paid"]),
+  ].join("\n");
+  return createDocxFromDocumentXml(wrapDocumentXml(body));
+}
+
 /** Fixture with deliberately broken loop syntax for validation failures */
 export function createBrokenTemplateFixtureDocx(): Buffer {
   const body = [

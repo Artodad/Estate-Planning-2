@@ -13,21 +13,16 @@ import {
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
-// Shared scaffold primitives (Sub-agent C)
-import { SectionCallout } from "@/features/dashboard/components/shared/SectionCallout";
-
-// Real template upload + list (owner only)
 import { templateHelpers } from "@/lib/prisma";
 import { TemplateUploadForm } from "@/features/dashboard/components/templates/TemplateUploadForm";
+import { templatePunchFromStoredReport } from "@/features/dashboard/components/normalize-report-punch-list";
+import { TemplateNormalizePunch } from "@/features/dashboard/components/templates/TemplateNormalizePunch";
 
 /**
  * /dashboard/templates
  *
- * Owner-only page for uploading and managing the firm's .docx templates.
- * Uploaded templates are immediately available to the generation resolver
- * (getPackageTemplatesForCurrentFirm + single document actions) via documentType matching.
- *
- * Non-negotiable: only owners see this (enforced server-side + nav).
+ * Owner-only Trust .docx upload. Leftover punch (tagged vs still-blank)
+ * is read from the persisted Template.normalizeReport so it survives reload.
  */
 export default async function TemplatesPage() {
   const authContext = await getCurrentAuthContext();
@@ -35,36 +30,28 @@ export default async function TemplatesPage() {
     redirect("/sign-in");
   }
 
-  // Strict owner-only (matches nav item + existing Owner Settings card)
   await requireRole(["owner"], {
     redirectTo: "/dashboard?error=insufficient-permissions",
     errorMessage: "Templates management is restricted to firm owners.",
   });
 
-  let templates: any[] = [];
+  let templates: Awaited<ReturnType<typeof templateHelpers.listActiveByFirm>> = [];
   try {
     if (authContext?.currentFirm?.id) {
       templates = await templateHelpers.listActiveByFirm(authContext.currentFirm.id);
     }
-  } catch (e) {
+  } catch {
     // non-fatal; page still renders the upload form
   }
 
   return (
-    <div className="space-y-6">
-      <SectionCallout>
-        Owner-only. Upload your firm’s actual .docx templates here. They power Trust draft generation
-        (exact fidelity via docxtemplater — zero rewriting of your language). Templates become available
-        immediately after upload.
-      </SectionCallout>
-
-      {/* Upload form (client island) */}
-      <Card>
+    <div className="space-y-6 rounded-lg bg-[#f4f1ea] p-6 text-[#2c3338]">
+      <Card className="bg-white/70 text-[#2c3338] ring-[#2c3338]/10">
         <CardHeader>
-          <CardTitle>Upload New Template</CardTitle>
-          <CardDescription>
-            Upload a firm .docx template. Your original formatting, headers, footers, numbering,
-            and California-specific provisions are preserved exactly.
+          <CardTitle>Upload Trust template</CardTitle>
+          <CardDescription className="text-[#5c6570]">
+            Upload the firm’s Revocable Living Trust .docx. Confirm any soft blanks
+            before it is saved. Leftover punch stays on this page after reload.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -72,53 +59,74 @@ export default async function TemplatesPage() {
         </CardContent>
       </Card>
 
-      {/* Current registered templates */}
-      <Card className="border-amber-200 dark:border-amber-900/50">
+      <Card className="bg-white/70 text-[#2c3338] ring-[#2c3338]/10">
         <CardHeader>
-          <CardTitle>Your Templates</CardTitle>
-          <CardDescription>
-            Active templates for this firm ({templates.length}). These are matched by documentType when
-            generating from any client intake.
+          <CardTitle>Your templates</CardTitle>
+          <CardDescription className="text-[#5c6570]">
+            Active Trust templates for this firm ({templates.length}). Punch is
+            tagged vs still-blank leftover — not “Active • Ready”.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {templates.length > 0 ? (
-            <div className="space-y-2">
-              {templates.map((t: any) => (
-                <div key={t.id} className="flex justify-between rounded border p-3 text-sm">
-                  <div>
-                    <div className="font-medium">{t.name}</div>
-                    <div className="text-xs text-muted-foreground font-mono">{t.documentType}</div>
-                    {t.description && (
-                      <div className="text-xs text-muted-foreground mt-0.5">{t.description}</div>
-                    )}
+            <div className="space-y-3">
+              {templates.map((t) => {
+                const punch = templatePunchFromStoredReport(t.normalizeReport);
+                return (
+                  <div
+                    key={t.id}
+                    data-testid="template-row"
+                    data-template-id={t.id}
+                    data-leftover-count={
+                      punch.report && !punch.report.skipped
+                        ? String(punch.leftoverCount)
+                        : undefined
+                    }
+                    className="rounded border border-[#2c3338]/12 p-3 text-sm"
+                  >
+                    <div className="flex justify-between gap-3">
+                      <div>
+                        <Link
+                          href={`/dashboard/templates/${t.id}`}
+                          className="font-medium text-[#2c3338] underline-offset-2 hover:underline"
+                        >
+                          {t.name}
+                        </Link>
+                        <div className="font-mono text-xs text-[#5c6570]">{t.documentType}</div>
+                        {t.description ? (
+                          <div className="mt-0.5 text-xs text-[#5c6570]">{t.description}</div>
+                        ) : null}
+                      </div>
+                      <div className="text-right text-xs tabular-nums text-[#5c6570]">
+                        {punch.punchLabel ? (
+                          <div data-testid="template-leftover" data-leftover-count={String(punch.leftoverCount)}>
+                            {punch.punchLabel}
+                          </div>
+                        ) : t.fileKey ? (
+                          "Active • Ready"
+                        ) : (
+                          "Missing file"
+                        )}
+                      </div>
+                    </div>
+                    {punch.report && !punch.report.skipped ? (
+                      <div className="mt-3 border-t border-[#2c3338]/10 pt-3">
+                        <TemplateNormalizePunch report={punch.report} />
+                      </div>
+                    ) : null}
                   </div>
-                  <div className="text-right text-xs text-muted-foreground">
-                    Active • {t.fileKey ? "Ready" : "Missing file"}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
-            <div className="text-sm text-muted-foreground">
-              No templates registered yet for this firm. Use the form above to upload your first .docx
-              template. Trust draft generation uses your revocable trust template.
+            <div className="text-sm text-[#5c6570]">
+              No Trust template yet. Upload a Revocable Living Trust .docx above.
             </div>
           )}
 
-          <div className="pt-3 border-t text-[10px] text-muted-foreground">
-            Any templates you upload here become immediately available for Trust draft generation.
-            See the Template Preparation Guide for the exact variable names.
-          </div>
-
-          <div className="flex gap-2">
+          <div className="pt-3">
             <Button asChild variant="outline">
               <Link href="/dashboard">← Back to Overview</Link>
-            </Button>
-            <Button asChild variant="ghost" size="sm">
-              <a href="/docs/template-preparation-guide.md" target="_blank" rel="noopener">
-                Template variable reference ↗
-              </a>
             </Button>
           </div>
         </CardContent>

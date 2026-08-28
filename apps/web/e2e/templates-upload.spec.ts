@@ -139,6 +139,43 @@ function createBrokenDocxForReject(): Buffer {
   return Buffer.from(zip.generate({ type: 'nodebuffer' }));
 }
 
+/** High-confidence tag + leftover blanks so punch N survives persist/reload. */
+function createLeftoverPunchDocxForTest(): Buffer {
+  const zip = new PizZip();
+  zip.file('[Content_Types].xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+  <Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
+</Types>`);
+  zip.file('_rels/.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`);
+  zip.file('word/_rels/document.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`);
+  zip.file('word/styles.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:style w:type="paragraph" w:styleId="Normal" w:default="1">
+    <w:name w:val="Normal"/><w:qFormat/>
+  </w:style>
+</w:styles>`);
+  zip.file('word/document.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:body>
+    <w:p><w:r><w:t>_ _[Name of Trust]_ _ Family Trust</w:t></w:r></w:p>
+    <w:p><w:r><w:t>County of San Diego</w:t></w:r></w:p>
+    <w:p><w:r><w:t>and "issue" _ _[do/do not]_ _ include stepchildren</w:t></w:r></w:p>
+    <w:p><w:r><w:t>_[Description of distribution.]_ shall be paid</w:t></w:r></w:p>
+    <w:sectPr/>
+  </w:body>
+</w:document>`);
+  return Buffer.from(zip.generate({ type: 'nodebuffer' }));
+}
+
 /**
  * ============================================================================
  * TEMPLATE UPLOAD E2E (Major Feature — per AGENTS.md requirement)
@@ -181,7 +218,7 @@ test.describe('Templates upload (owner only)', () => {
     }
 
     // The upload form should be present
-    await expect(page.getByRole('heading', { name: /Upload New Template/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Upload Trust template/i })).toBeVisible();
 
     // Generate an in-memory minimal valid .docx (no fixture file needed)
     const docxBuffer = createMinimalValidDocxForTest();
@@ -195,8 +232,8 @@ test.describe('Templates upload (owner only)', () => {
       buffer: docxBuffer,
     });
 
-    // Choose a document type
-    await page.selectOption('select[name="documentType"]', 'revocable_trust');
+    // Trust-only path: document type is locked (no 8-doc picker)
+    await expect(page.locator('input[name="documentType"]')).toHaveValue('revocable_trust');
 
     // Name (required)
     await page.fill('input[name="name"]', `E2E Test Revocable Trust ${Date.now()}`);
@@ -234,7 +271,7 @@ test.describe('Templates upload (owner only)', () => {
       return;
     }
 
-    await expect(page.getByRole('heading', { name: /Upload New Template/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Upload Trust template/i })).toBeVisible();
 
     const docxBuffer = createMessyDocxForNormalizeReport();
     await page.locator('input[type="file"][name="file"]').setInputFiles({
@@ -242,7 +279,7 @@ test.describe('Templates upload (owner only)', () => {
       mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       buffer: docxBuffer,
     });
-    await page.selectOption('select[name="documentType"]', 'revocable_trust');
+    await expect(page.locator('input[name="documentType"]')).toHaveValue('revocable_trust');
     await page.fill('input[name="name"]', `E2E Messy Normalize ${Date.now()}`);
     await page.getByRole('button', { name: /Upload Template/i }).click();
 
@@ -264,7 +301,7 @@ test.describe('Templates upload (owner only)', () => {
       return;
     }
 
-    await expect(page.getByRole('heading', { name: /Upload New Template/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Upload Trust template/i })).toBeVisible();
 
     const brokenName = `E2E Broken Reject ${Date.now()}`;
     await page.locator('input[type="file"][name="file"]').setInputFiles({
@@ -272,7 +309,7 @@ test.describe('Templates upload (owner only)', () => {
       mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       buffer: createBrokenDocxForReject(),
     });
-    await page.selectOption('select[name="documentType"]', 'revocable_trust');
+    await expect(page.locator('input[name="documentType"]')).toHaveValue('revocable_trust');
     await page.fill('input[name="name"]', brokenName);
     await page.getByRole('button', { name: /Upload Template/i }).click();
 
@@ -282,5 +319,43 @@ test.describe('Templates upload (owner only)', () => {
 
     // Must not appear as a registered template row
     await expect(page.getByText(brokenName)).toHaveCount(0);
+  });
+
+  test('Trust leftover punch is still on the page after reload', async ({ page }) => {
+    await page.goto('/dashboard/templates');
+
+    const insufficient = page.getByText(/Templates management is restricted to firm owners/i);
+    if (await insufficient.isVisible().catch(() => false)) {
+      test.skip(true, 'E2E test user is not an owner of an onboarded firm in this environment.');
+      return;
+    }
+
+    await expect(page.getByRole('heading', { name: /Upload Trust template/i })).toBeVisible();
+
+    const leftoverName = `E2E Leftover Punch ${Date.now()}`;
+    await page.locator('input[type="file"][name="file"]').setInputFiles({
+      name: `e2e-leftover-${Date.now()}.docx`,
+      mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      buffer: createLeftoverPunchDocxForTest(),
+    });
+    await page.fill('input[name="name"]', leftoverName);
+    await page.getByRole('button', { name: /Upload Template/i }).click();
+
+    const confirm = page.getByRole('button', { name: /Confirm upload/i });
+    await expect(confirm).toBeVisible({ timeout: 15000 });
+    await confirm.click();
+
+    await expect(page.getByText(leftoverName)).toBeVisible({ timeout: 15000 });
+    const punch = page.getByTestId('template-leftover').first();
+    await expect(punch).toBeVisible();
+    await expect(punch).toHaveAttribute('data-leftover-count', /[1-9]\d*/);
+    const label = await punch.textContent();
+
+    await page.reload();
+    await expect(page.getByText(leftoverName)).toBeVisible({ timeout: 15000 });
+    const afterReload = page.getByTestId('template-leftover').first();
+    await expect(afterReload).toBeVisible();
+    await expect(afterReload).toHaveText(label ?? '');
+    await expect(page.getByTestId('template-leftover-punch').first()).toBeVisible();
   });
 });

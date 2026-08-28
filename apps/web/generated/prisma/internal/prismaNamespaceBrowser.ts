@@ -170,6 +170,7 @@ export const TemplateScalarFieldEnum = {
   fileKey: 'fileKey',
   documentType: 'documentType',
   isActive: 'isActive',
+  normalizeReport: 'normalizeReport',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const

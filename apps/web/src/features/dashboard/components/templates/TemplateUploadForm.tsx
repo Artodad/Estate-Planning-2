@@ -4,11 +4,11 @@ import { useState, useActionState, useEffect, useRef } from "react";
 import { useFormStatus } from "react-dom";
 
 import { uploadTemplateForCurrentFirm } from "@/features/dashboard/server/actions";
-import type { DocumentType } from "@/features/documents/types";
 import type {
   TemplateUploadNormalizeSummary,
   TemplateUploadSoftSuggestion,
 } from "@/features/documents/template-normalize/types";
+import { TRUST_DRAFT_DOCUMENT_TYPE } from "@/features/dashboard/components/generate-trust-draft";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,17 +35,6 @@ import { toast } from "sonner";
  * then confirms — only accepted patches are applied before final validate + persist.
  */
 
-const DOCUMENT_TYPE_OPTIONS: { value: DocumentType; label: string }[] = [
-  { value: "revocable_trust", label: "Revocable Living Trust" },
-  { value: "pour_over_will", label: "Pour-Over Will" },
-  { value: "durable_poa", label: "Durable Power of Attorney" },
-  { value: "healthcare_directive", label: "Advance Healthcare Directive" },
-  { value: "hipaa", label: "HIPAA Authorization" },
-  { value: "certificate_of_trust", label: "Certificate of Trust" },
-  { value: "personal_property_memo", label: "Personal Property Memorandum" },
-  { value: "trust_funding", label: "Trust Funding Instructions" },
-];
-
 function SubmitButton({
   pendingLabel,
   label,
@@ -55,7 +44,11 @@ function SubmitButton({
 }) {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" disabled={pending} className="w-full sm:w-auto">
+    <Button
+      type="submit"
+      disabled={pending}
+      className="w-full bg-[#9a7b32] text-[#f4f1ea] hover:bg-[#9a7b32]/90 sm:w-auto"
+    >
       {pending ? pendingLabel : label}
     </Button>
   );
@@ -354,25 +347,15 @@ export function TemplateUploadForm() {
 
           <div className="space-y-2">
             <Label htmlFor="documentType">Document type</Label>
-            <select
+            <input type="hidden" name="documentType" value={TRUST_DRAFT_DOCUMENT_TYPE} />
+            <p
               id="documentType"
-              name="documentType"
-              required
-              className="w-full rounded border bg-background px-3 py-2 text-sm"
-              defaultValue=""
-              disabled={showConfirm}
+              className="rounded border border-[#2c3338]/12 bg-white/80 px-3 py-2 text-sm text-[#2c3338]"
             >
-              <option value="" disabled>
-                Select document type…
-              </option>
-              {DOCUMENT_TYPE_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-            <p className="text-[10px] text-muted-foreground">
-              Must match the document type. Trust draft uses Revocable Living Trust.
+              Revocable Living Trust
+            </p>
+            <p className="text-[10px] text-[#5c6570]">
+              This path is Trust-only. Other package documents are not uploaded here.
             </p>
           </div>
         </div>
