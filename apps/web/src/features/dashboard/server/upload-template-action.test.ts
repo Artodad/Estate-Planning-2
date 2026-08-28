@@ -24,7 +24,15 @@ import {
 import {
   createBrokenTemplateFixtureDocx,
   createSplitRunFixtureDocx,
+  createTrustLeftoverPunchFixtureDocx,
 } from "@/features/documents/template-normalize/docx-fixture";
+import { parseStoredNormalizeReport } from "@/features/documents/template-normalize/stored-normalize-report";
+import {
+  leftoverCountFromNormalizeReport,
+  leftoverPunchFromNormalizeReport,
+  taggedCountFromNormalizeReport,
+  templatePunchFromStoredReport,
+} from "@/features/dashboard/components/normalize-report-punch-list";
 import type { AuthContext } from "@/features/auth/types";
 import {
   executeUploadTemplateForCurrentFirm,
@@ -81,6 +89,8 @@ function buildFormData(opts: {
   name?: string;
   documentType?: string;
   skipNormalize?: boolean;
+  confirmSoftSuggestions?: boolean;
+  acceptedSuggestionIds?: string[];
 }): FormData {
   const fd = new FormData();
   const bytes = new Uint8Array(opts.buffer);
@@ -95,6 +105,12 @@ function buildFormData(opts: {
   if (opts.skipNormalize) {
     fd.set("skipNormalize", "on");
   }
+  if (opts.confirmSoftSuggestions) {
+    fd.set("confirmSoftSuggestions", "true");
+  }
+  for (const id of opts.acceptedSuggestionIds ?? []) {
+    fd.append("acceptedSuggestionIds", id);
+  }
   return fd;
 }
 
@@ -104,6 +120,7 @@ function makeDeps(auth: OwnerStaffCheckResult) {
     firmId: string;
     fileKey: string;
     name: string;
+    normalizeReport?: unknown;
   }> = [];
   const audits: Array<{
     action?: string;
@@ -127,6 +144,7 @@ function makeDeps(auth: OwnerStaffCheckResult) {
         documentType: data.documentType,
         description: data.description ?? null,
         isActive: true,
+        normalizeReport: data.normalizeReport ?? null,
       };
       created.push(row);
       return row;
@@ -245,7 +263,10 @@ test("action auth success: normalize path stores primary + *.original.docx + rep
     assert.equal(harness.audits[0]!.action, "template.uploaded");
     assert.equal(harness.audits[0]!.metadata?.normalized, true);
     assert.equal(harness.audits[0]!.metadata?.skipNormalize, false);
-    assert.deepEqual(harness.revalidated, ["/dashboard/templates"]);
+    assert.deepEqual(harness.revalidated, [
+      "/dashboard/templates",
+      `/dashboard/templates/${template.id}`,
+    ]);
   } finally {
     await cleanupKeys(template.fileKey, originalFileKey);
   }
@@ -321,4 +342,66 @@ test("action auth success: syntax-fail normalize rejects with no Template row / 
   assert.equal(harness.created.length, 0);
   assert.equal(harness.audits.length, 0);
   assert.equal(harness.revalidated.length, 0);
+});
+
+// ---------------------------------------------------------------------------
+// Persist leftover punch — reload reads stored report, not toast
+// ---------------------------------------------------------------------------
+
+test("Trust leftover punch persists on Template; reload reads stored report", async () => {
+  const input = createTrustLeftoverPunchFixtureDocx();
+  const preview = await executeUploadTemplateForCurrentFirm(
+    buildFormData({
+      buffer: input,
+      fileName: "trust-leftover.docx",
+      name: "Chase Trust Leftover Punch",
+    }),
+    makeDeps(ownerAuth()).deps,
+  );
+
+  assert.ok("needsConfirmation" in preview && preview.needsConfirmation);
+  assert.ok(preview.normalizeReport.softSuggestions.length >= 1);
+
+  const persistHarness = makeDeps(ownerAuth());
+  const result = await executeUploadTemplateForCurrentFirm(
+    buildFormData({
+      buffer: input,
+      fileName: "trust-leftover.docx",
+      name: "Chase Trust Leftover Punch",
+      confirmSoftSuggestions: true,
+    }),
+    persistHarness.deps,
+  );
+
+  assert.ok("success" in result && result.success, JSON.stringify(result));
+  if (!("success" in result) || !result.success) return;
+
+  try {
+    assert.equal(persistHarness.created.length, 1);
+    const storedRow = persistHarness.created[0]!;
+    assert.ok(storedRow.normalizeReport, "createForFirm must receive normalizeReport");
+
+    // Reload analog: JSON round-trip as Prisma Json would return.
+    const reloaded = parseStoredNormalizeReport(
+      JSON.parse(JSON.stringify(storedRow.normalizeReport)),
+    );
+    assert.ok(reloaded, "reload must parse persisted normalizeReport");
+    assert.notEqual(reloaded, result.normalizeReport, "reload is a new object, not the toast reference");
+
+    const leftover = leftoverCountFromNormalizeReport(reloaded);
+    const tagged = taggedCountFromNormalizeReport(reloaded);
+    assert.ok(leftover >= 1, `expected leftover holes, got ${leftover}`);
+    assert.ok(tagged >= 1, `expected tagged blanks, got ${tagged}`);
+    assert.equal(leftover, leftoverPunchFromNormalizeReport(reloaded).length);
+
+    const punch = templatePunchFromStoredReport(storedRow.normalizeReport);
+    assert.equal(punch.leftoverCount, leftover);
+    assert.equal(punch.taggedCount, tagged);
+    assert.match(punch.punchLabel ?? "", /\d+ leftovers/);
+    assert.ok(!punch.punchLabel?.includes("tagged"));
+    assert.ok(punch.leftovers.some((row) => row.before.includes("do/do not")));
+    assert.ok(!punch.leftovers.some((row) => row.before.includes("{#children}")));
+  } finally {
+    await cleanupKeys(result.template.fileKey, result.originalFileKey);
+  }
 });

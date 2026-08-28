@@ -63,6 +63,7 @@ export type UploadTemplateActionDeps = {
       fileKey: string;
       documentType: string;
       description?: string;
+      normalizeReport?: TemplateUploadNormalizeSummary;
     },
   ) => Promise<{
     id: string;
@@ -71,6 +72,7 @@ export type UploadTemplateActionDeps = {
     fileKey: string;
     documentType: string;
     description?: string | null;
+    normalizeReport?: unknown;
     [key: string]: unknown;
   }>;
   logAuditEvent: (event: {
@@ -200,11 +202,17 @@ export async function executeUploadTemplateForCurrentFirm(
       await persist(prepared.originalBuffer, originalFileKey);
     }
 
+    const normalizeReport = {
+      ...prepared.summary,
+      sourceFileName: file.name,
+    };
+
     const created = await deps.createForFirm(firmId, {
       name,
       description,
       fileKey,
       documentType,
+      normalizeReport,
     });
 
     deps.logAuditEvent({
@@ -229,11 +237,12 @@ export async function executeUploadTemplateForCurrentFirm(
     });
 
     deps.revalidatePath("/dashboard/templates");
+    deps.revalidatePath(`/dashboard/templates/${created.id}`);
 
     return {
       success: true,
       template: created,
-      normalizeReport: prepared.summary,
+      normalizeReport,
       ...(originalFileKey ? { originalFileKey } : {}),
     };
   } catch (err: unknown) {

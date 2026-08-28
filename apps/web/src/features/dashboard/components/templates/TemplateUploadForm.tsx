@@ -4,11 +4,11 @@ import { useState, useActionState, useEffect, useRef } from "react";
 import { useFormStatus } from "react-dom";
 
 import { uploadTemplateForCurrentFirm } from "@/features/dashboard/server/actions";
-import type { DocumentType } from "@/features/documents/types";
 import type {
   TemplateUploadNormalizeSummary,
   TemplateUploadSoftSuggestion,
 } from "@/features/documents/template-normalize/types";
+import { TRUST_DRAFT_DOCUMENT_TYPE } from "@/features/dashboard/components/generate-trust-draft";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -35,17 +35,6 @@ import { toast } from "sonner";
  * then confirms — only accepted patches are applied before final validate + persist.
  */
 
-const DOCUMENT_TYPE_OPTIONS: { value: DocumentType; label: string }[] = [
-  { value: "revocable_trust", label: "Revocable Living Trust" },
-  { value: "pour_over_will", label: "Pour-Over Will" },
-  { value: "durable_poa", label: "Durable Power of Attorney" },
-  { value: "healthcare_directive", label: "Advance Healthcare Directive" },
-  { value: "hipaa", label: "HIPAA Authorization" },
-  { value: "certificate_of_trust", label: "Certificate of Trust" },
-  { value: "personal_property_memo", label: "Personal Property Memorandum" },
-  { value: "trust_funding", label: "Trust Funding Instructions" },
-];
-
 function SubmitButton({
   pendingLabel,
   label,
@@ -55,7 +44,11 @@ function SubmitButton({
 }) {
   const { pending } = useFormStatus();
   return (
-    <Button type="submit" disabled={pending} className="w-full sm:w-auto">
+    <Button
+      type="submit"
+      disabled={pending}
+      className="w-full bg-[#9a7b32] text-[#f4f1ea] hover:bg-[#9a7b32]/90 sm:w-auto"
+    >
       {pending ? pendingLabel : label}
     </Button>
   );
@@ -329,52 +322,23 @@ export function TemplateUploadForm() {
   return (
     <div className="space-y-4">
       <form action={formAction} className="space-y-4">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="file">Template file (.docx)</Label>
-            <Input
-              ref={fileInputRef}
-              id="file"
-              name="file"
-              type="file"
-              accept=".docx"
-              required={!retainedFile}
-              onChange={handleFileChange}
-              className="cursor-pointer"
-              disabled={showConfirm}
-            />
-            {selectedFileName && (
-              <p className="text-xs text-muted-foreground">Selected: {selectedFileName}</p>
-            )}
-            <p className="text-[10px] text-muted-foreground">
-              Max 8MB. On upload we repair split tags, rename known aliases, and validate
-              with docxtemplater. Soft blanks stay suggestions until you accept them.
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="documentType">Document type</Label>
-            <select
-              id="documentType"
-              name="documentType"
-              required
-              className="w-full rounded border bg-background px-3 py-2 text-sm"
-              defaultValue=""
-              disabled={showConfirm}
-            >
-              <option value="" disabled>
-                Select document type…
-              </option>
-              {DOCUMENT_TYPE_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-            <p className="text-[10px] text-muted-foreground">
-              Must match the document type. Trust draft uses Revocable Living Trust.
-            </p>
-          </div>
+        <div className="space-y-2">
+          <Label htmlFor="file">Trust .docx</Label>
+          <Input
+            ref={fileInputRef}
+            id="file"
+            name="file"
+            type="file"
+            accept=".docx"
+            required={!retainedFile}
+            onChange={handleFileChange}
+            className="cursor-pointer"
+            disabled={showConfirm}
+          />
+          {selectedFileName && (
+            <p className="text-xs text-[#5c6570]">Selected: {selectedFileName}</p>
+          )}
+          <input type="hidden" name="documentType" value={TRUST_DRAFT_DOCUMENT_TYPE} />
         </div>
 
         <div className="space-y-2">
@@ -525,10 +489,6 @@ export function TemplateUploadForm() {
         )}
       </form>
 
-      <p className="text-[10px] text-muted-foreground border-t pt-3">
-        After upload, open a completed intake and generate a Trust draft.
-        The resolver will pick up templates by documentType automatically.
-      </p>
     </div>
   );
 }

@@ -3,31 +3,18 @@ import { redirect } from "next/navigation";
 import { getCurrentAuthContext } from "@/features/auth/server/get-current-auth";
 import { requireRole } from "@/features/auth/server/rbac";
 
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import Link from "next/link";
-
-// Shared scaffold primitives (Sub-agent C)
-import { SectionCallout } from "@/features/dashboard/components/shared/SectionCallout";
-
-// Real template upload + list (owner only)
 import { templateHelpers } from "@/lib/prisma";
 import { TemplateUploadForm } from "@/features/dashboard/components/templates/TemplateUploadForm";
+import { TemplateNormalizePunch } from "@/features/dashboard/components/templates/TemplateNormalizePunch";
+import { TRUST_DRAFT_DOCUMENT_TYPE } from "@/features/dashboard/components/generate-trust-draft";
+import { parseStoredNormalizeReport } from "@/features/documents/template-normalize/stored-normalize-report";
+import { templateDisplayFileName } from "@/features/dashboard/components/normalize-report-punch-list";
 
 /**
  * /dashboard/templates
  *
- * Owner-only page for uploading and managing the firm's .docx templates.
- * Uploaded templates are immediately available to the generation resolver
- * (getPackageTemplatesForCurrentFirm + single document actions) via documentType matching.
- *
- * Non-negotiable: only owners see this (enforced server-side + nav).
+ * Owner-only Trust instrument. After persist, leftover punch is read from
+ * Template.normalizeReport so holes survive reload.
  */
 export default async function TemplatesPage() {
   const authContext = await getCurrentAuthContext();
@@ -35,94 +22,49 @@ export default async function TemplatesPage() {
     redirect("/sign-in");
   }
 
-  // Strict owner-only (matches nav item + existing Owner Settings card)
   await requireRole(["owner"], {
     redirectTo: "/dashboard?error=insufficient-permissions",
     errorMessage: "Templates management is restricted to firm owners.",
   });
 
-  let templates: any[] = [];
+  let templates: Awaited<ReturnType<typeof templateHelpers.listActiveByFirm>> = [];
   try {
     if (authContext?.currentFirm?.id) {
       templates = await templateHelpers.listActiveByFirm(authContext.currentFirm.id);
     }
-  } catch (e) {
+  } catch {
     // non-fatal; page still renders the upload form
   }
 
+  const trust = templates.find((t) => t.documentType === TRUST_DRAFT_DOCUMENT_TYPE);
+  const report = trust ? parseStoredNormalizeReport(trust.normalizeReport) : null;
+  const fileName = trust
+    ? templateDisplayFileName(trust.fileKey, report?.sourceFileName)
+    : null;
+
   return (
-    <div className="space-y-6">
-      <SectionCallout>
-        Owner-only. Upload your firm’s actual .docx templates here. They power Trust draft generation
-        (exact fidelity via docxtemplater — zero rewriting of your language). Templates become available
-        immediately after upload.
-      </SectionCallout>
+    <div className="bg-[#f4f1ea] px-2 py-4 text-[#2c3338] sm:px-4">
+      <div className="mx-auto max-w-xl space-y-10">
+        <div>
+          <h1 className="text-4xl font-semibold tracking-tight">Trust template.</h1>
+          {fileName ? <p className="mt-2 text-[#5c6570]">{fileName}</p> : null}
+        </div>
 
-      {/* Upload form (client island) */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Upload New Template</CardTitle>
-          <CardDescription>
-            Upload a firm .docx template. Your original formatting, headers, footers, numbering,
-            and California-specific provisions are preserved exactly.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
+        {trust && report && !report.skipped ? (
+          <TemplateNormalizePunch report={report} />
+        ) : null}
+
+        {trust ? (
+          <details className="text-sm text-[#5c6570]">
+            <summary className="cursor-pointer hover:text-[#2c3338]">Replace Trust .docx</summary>
+            <div className="mt-4">
+              <TemplateUploadForm />
+            </div>
+          </details>
+        ) : (
           <TemplateUploadForm />
-        </CardContent>
-      </Card>
-
-      {/* Current registered templates */}
-      <Card className="border-amber-200 dark:border-amber-900/50">
-        <CardHeader>
-          <CardTitle>Your Templates</CardTitle>
-          <CardDescription>
-            Active templates for this firm ({templates.length}). These are matched by documentType when
-            generating from any client intake.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {templates.length > 0 ? (
-            <div className="space-y-2">
-              {templates.map((t: any) => (
-                <div key={t.id} className="flex justify-between rounded border p-3 text-sm">
-                  <div>
-                    <div className="font-medium">{t.name}</div>
-                    <div className="text-xs text-muted-foreground font-mono">{t.documentType}</div>
-                    {t.description && (
-                      <div className="text-xs text-muted-foreground mt-0.5">{t.description}</div>
-                    )}
-                  </div>
-                  <div className="text-right text-xs text-muted-foreground">
-                    Active • {t.fileKey ? "Ready" : "Missing file"}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-sm text-muted-foreground">
-              No templates registered yet for this firm. Use the form above to upload your first .docx
-              template. Trust draft generation uses your revocable trust template.
-            </div>
-          )}
-
-          <div className="pt-3 border-t text-[10px] text-muted-foreground">
-            Any templates you upload here become immediately available for Trust draft generation.
-            See the Template Preparation Guide for the exact variable names.
-          </div>
-
-          <div className="flex gap-2">
-            <Button asChild variant="outline">
-              <Link href="/dashboard">← Back to Overview</Link>
-            </Button>
-            <Button asChild variant="ghost" size="sm">
-              <a href="/docs/template-preparation-guide.md" target="_blank" rel="noopener">
-                Template variable reference ↗
-              </a>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+        )}
+      </div>
     </div>
   );
 }

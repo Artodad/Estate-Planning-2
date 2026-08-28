@@ -207,10 +207,19 @@ export const templateHelpers = {
       fileKey: string;
       documentType: string;
       description?: string;
+      normalizeReport?: unknown;
     },
   ) {
+    const { normalizeReport, ...rest } = data;
     return prisma.template.create({
-      data: { firmId, isActive: true, ...data },
+      data: {
+        firmId,
+        isActive: true,
+        ...rest,
+        ...(normalizeReport !== undefined
+          ? { normalizeReport: normalizeReport as never }
+          : {}),
+      },
     });
   },
 };

@@ -109,6 +109,17 @@ export interface TemplateUploadNormalizeSummary {
   appliedSuggestionCount: number;
   /** Soft suggestions left unapplied (rejected/ignored or non-applicable). */
   leftAsSuggestionCount: number;
+  /**
+   * High-confidence SAMPLE_VALUE_TAGGED + applied soft suggestions.
+   * Derived at persist time from the full report (not the capped highlights).
+   */
+  taggedCount?: number;
+  /** Accepted soft-suggestion ids at persist. Empty = leftover punch is all softSuggestions. */
+  acceptedSuggestionIds?: string[];
+  /** SAMPLE_VALUE_TAGGED / applied soft rows for the collapsed Tagged disclosure. */
+  taggedPunch?: Array<{ before?: string; after?: string; code: string }>;
+  /** Original .docx filename from upload (display only — not the storage key). */
+  sourceFileName?: string;
   /** Short list for UI (capped). */
   highlights: Array<{
     kind: NormalizeReportItemKind;
