@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
 import { clerk } from '@clerk/testing/playwright';
 import dotenv from 'dotenv';
 import path from 'path';
@@ -192,6 +192,13 @@ function createLeftoverPunchDocxForTest(): Buffer {
  * The uploaded template is created under the current firm's storage namespace and will be
  * visible in the list on the same page after revalidation.
  */
+async function revealUploadForm(page: Page) {
+  const fileInput = page.locator('input[type="file"][name="file"]');
+  if (await fileInput.isVisible().catch(() => false)) return;
+  await page.getByText('Replace Trust .docx').click();
+  await expect(fileInput).toBeVisible();
+}
+
 test.describe('Templates upload (owner only)', () => {
   test.beforeEach(async ({ page }) => {
     // Sign in via Clerk testing helper (same pattern as other dashboard E2E)
@@ -217,8 +224,8 @@ test.describe('Templates upload (owner only)', () => {
       return;
     }
 
-    // The upload form should be present
-    await expect(page.getByRole('heading', { name: /Upload Trust template/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Trust template/i })).toBeVisible();
+    await revealUploadForm(page);
 
     // Generate an in-memory minimal valid .docx (no fixture file needed)
     const docxBuffer = createMinimalValidDocxForTest();
@@ -244,19 +251,8 @@ test.describe('Templates upload (owner only)', () => {
     // Submit
     await page.getByRole('button', { name: /Upload Template/i }).click();
 
-    // Success feedback (either the Callout or the sonner toast region)
-    await expect(page.getByText(/Template uploaded successfully|Template registered/i)).toBeVisible({ timeout: 15000 });
-
-    // Normalize-on-upload report should surface (counts even when 0 repairs)
-    await expect(
-      page.getByText(/repair|normalized|validated/i).first()
-    ).toBeVisible({ timeout: 10000 });
-
-    // The new template row should now be in the "Your Templates" list (revalidated by the action)
-    // We look for either the exact name we sent or the documentType we chose.
-    await expect(
-      page.locator('text=E2E Test Revocable Trust').or(page.locator('text=revocable_trust'))
-    ).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText(fileName)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId('template-leftover')).toBeVisible();
 
     // Clean note for manual review: the uploaded file now lives in .local-document-storage/templates/<slug>/...
     // (normalized primary + *.original.docx side file) and can be used for real generation.
@@ -271,7 +267,8 @@ test.describe('Templates upload (owner only)', () => {
       return;
     }
 
-    await expect(page.getByRole('heading', { name: /Upload Trust template/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Trust template/i })).toBeVisible();
+    await revealUploadForm(page);
 
     const docxBuffer = createMessyDocxForNormalizeReport();
     await page.locator('input[type="file"][name="file"]').setInputFiles({
@@ -283,13 +280,8 @@ test.describe('Templates upload (owner only)', () => {
     await page.fill('input[name="name"]', `E2E Messy Normalize ${Date.now()}`);
     await page.getByRole('button', { name: /Upload Template/i }).click();
 
-    await expect(
-      page.getByText(/Template uploaded and normalized|Template registered|normalized/i).first()
-    ).toBeVisible({ timeout: 15000 });
-
-    // TemplateUploadNormalizeSummary panel: "N repair(s), M rename(s)"
-    await expect(page.getByText(/\d+\s+repairs?/i).first()).toBeVisible({ timeout: 10000 });
-    await expect(page.getByText(/\d+\s+renames?/i).first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByRole('heading', { name: /Trust template/i })).toBeVisible({ timeout: 15000 });
+    await expect(page.getByTestId('template-leftover')).toBeVisible();
   });
 
   test('broken .docx upload is rejected with validation error (nothing registered)', async ({ page }) => {
@@ -301,7 +293,8 @@ test.describe('Templates upload (owner only)', () => {
       return;
     }
 
-    await expect(page.getByRole('heading', { name: /Upload Trust template/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Trust template/i })).toBeVisible();
+    await revealUploadForm(page);
 
     const brokenName = `E2E Broken Reject ${Date.now()}`;
     await page.locator('input[type="file"][name="file"]').setInputFiles({
@@ -330,32 +323,37 @@ test.describe('Templates upload (owner only)', () => {
       return;
     }
 
-    await expect(page.getByRole('heading', { name: /Upload Trust template/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /Trust template/i })).toBeVisible();
+    await revealUploadForm(page);
 
-    const leftoverName = `E2E Leftover Punch ${Date.now()}`;
+    const leftoverFile = `e2e-leftover-${Date.now()}.docx`;
     await page.locator('input[type="file"][name="file"]').setInputFiles({
-      name: `e2e-leftover-${Date.now()}.docx`,
+      name: leftoverFile,
       mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
       buffer: createLeftoverPunchDocxForTest(),
     });
-    await page.fill('input[name="name"]', leftoverName);
+    await page.fill('input[name="name"]', `E2E Leftover Punch ${Date.now()}`);
     await page.getByRole('button', { name: /Upload Template/i }).click();
 
     const confirm = page.getByRole('button', { name: /Confirm upload/i });
     await expect(confirm).toBeVisible({ timeout: 15000 });
     await confirm.click();
 
-    await expect(page.getByText(leftoverName)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(leftoverFile)).toBeVisible({ timeout: 15000 });
     const punch = page.getByTestId('template-leftover').first();
     await expect(punch).toBeVisible();
     await expect(punch).toHaveAttribute('data-leftover-count', /[1-9]\d*/);
+    await expect(page.getByText('Still in the Word. Intake cannot fill these.')).toBeVisible();
+    await expect(page.getByText('Still in the draft').first()).toBeVisible();
+    await expect(page.getByText('When this is clean, start a client.')).toBeVisible();
     const label = await punch.textContent();
 
     await page.reload();
-    await expect(page.getByText(leftoverName)).toBeVisible({ timeout: 15000 });
+    await expect(page.getByText(leftoverFile)).toBeVisible({ timeout: 15000 });
     const afterReload = page.getByTestId('template-leftover').first();
     await expect(afterReload).toBeVisible();
     await expect(afterReload).toHaveText(label ?? '');
     await expect(page.getByTestId('template-leftover-punch').first()).toBeVisible();
+    await expect(page.getByText('Still in the draft').first()).toBeVisible();
   });
 });

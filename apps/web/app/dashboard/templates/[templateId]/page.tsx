@@ -1,18 +1,18 @@
 import { notFound, redirect } from "next/navigation";
-import Link from "next/link";
 
 import { getCurrentAuthContext } from "@/features/auth/server/get-current-auth";
 import { requireRole } from "@/features/auth/server/rbac";
 import { templateHelpers } from "@/lib/prisma";
 import { parseStoredNormalizeReport } from "@/features/documents/template-normalize/stored-normalize-report";
 import { TemplateNormalizePunch } from "@/features/dashboard/components/templates/TemplateNormalizePunch";
-import { Button } from "@/components/ui/button";
+import { TRUST_DRAFT_DOCUMENT_TYPE } from "@/features/dashboard/components/generate-trust-draft";
+import { templateDisplayFileName } from "@/features/dashboard/components/normalize-report-punch-list";
+import { TemplateUploadForm } from "@/features/dashboard/components/templates/TemplateUploadForm";
 
 /**
  * /dashboard/templates/[templateId]
  *
- * Owner-only Trust template detail. Punch reads the persisted normalize report
- * so tagged vs leftover holes survive reload.
+ * Same Trust instrument as the list page. Punch reads persisted normalizeReport.
  */
 export default async function TemplateDetailPage({
   params,
@@ -36,31 +36,30 @@ export default async function TemplateDetailPage({
   }
 
   const template = await templateHelpers.getByIdForFirm(templateId, firmId);
-  if (!template) {
+  if (!template || template.documentType !== TRUST_DRAFT_DOCUMENT_TYPE) {
     notFound();
   }
 
   const report = parseStoredNormalizeReport(template.normalizeReport);
+  const fileName = templateDisplayFileName(template.fileKey, report?.sourceFileName);
 
   return (
-    <div className="space-y-6 rounded-lg bg-[#f4f1ea] p-6 text-[#2c3338]">
-      <div>
-        <p className="text-xs uppercase tracking-wide text-[#5c6570]">Trust template</p>
-        <h1 className="mt-1 text-xl font-semibold tracking-tight">{template.name}</h1>
-        <p className="mt-1 font-mono text-xs text-[#5c6570]">{template.documentType}</p>
-        {template.description ? (
-          <p className="mt-2 text-sm text-[#5c6570]">{template.description}</p>
-        ) : null}
-      </div>
+    <div className="bg-[#f4f1ea] px-2 py-4 text-[#2c3338] sm:px-4">
+      <div className="mx-auto max-w-xl space-y-10">
+        <div>
+          <h1 className="text-4xl font-semibold tracking-tight">Trust template.</h1>
+          <p className="mt-2 text-[#5c6570]">{fileName}</p>
+        </div>
 
-      <div className="rounded-xl bg-white/60 p-4 ring-1 ring-[#2c3338]/10">
-        <h2 className="mb-3 text-sm font-semibold">Leftover punch</h2>
-        <TemplateNormalizePunch report={report} />
-      </div>
+        {report && !report.skipped ? <TemplateNormalizePunch report={report} /> : null}
 
-      <Button asChild variant="outline">
-        <Link href="/dashboard/templates">← Back to templates</Link>
-      </Button>
+        <details className="text-sm text-[#5c6570]">
+          <summary className="cursor-pointer hover:text-[#2c3338]">Replace Trust .docx</summary>
+          <div className="mt-4">
+            <TemplateUploadForm />
+          </div>
+        </details>
+      </div>
     </div>
   );
 }

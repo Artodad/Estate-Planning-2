@@ -117,6 +117,17 @@ function toSummary(
     after: item.after,
   }));
 
+  const taggedPunch = report.items
+    .filter(
+      (i) =>
+        i.code === "SAMPLE_VALUE_TAGGED" || i.code === "SAMPLE_VALUE_SUGGESTION_APPLIED",
+    )
+    .map((i) => ({
+      before: i.before,
+      after: i.after,
+      code: i.code,
+    }));
+
   return {
     ok: report.ok,
     skipped: opts?.skipped === true ? true : undefined,
@@ -130,6 +141,7 @@ function toSummary(
     leftAsSuggestionCount,
     taggedCount: taggedCountFromReport(report, appliedSuggestionCount),
     acceptedSuggestionIds,
+    taggedPunch,
     highlights,
     validation: report.validation
       ? {

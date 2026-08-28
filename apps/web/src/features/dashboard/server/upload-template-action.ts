@@ -202,12 +202,17 @@ export async function executeUploadTemplateForCurrentFirm(
       await persist(prepared.originalBuffer, originalFileKey);
     }
 
+    const normalizeReport = {
+      ...prepared.summary,
+      sourceFileName: file.name,
+    };
+
     const created = await deps.createForFirm(firmId, {
       name,
       description,
       fileKey,
       documentType,
-      normalizeReport: prepared.summary,
+      normalizeReport,
     });
 
     deps.logAuditEvent({
@@ -237,7 +242,7 @@ export async function executeUploadTemplateForCurrentFirm(
     return {
       success: true,
       template: created,
-      normalizeReport: prepared.summary,
+      normalizeReport,
       ...(originalFileKey ? { originalFileKey } : {}),
     };
   } catch (err: unknown) {

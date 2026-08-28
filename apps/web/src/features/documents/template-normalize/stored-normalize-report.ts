@@ -31,6 +31,16 @@ export const templateUploadNormalizeSummarySchema = z.object({
   leftAsSuggestionCount: z.number(),
   taggedCount: z.number().optional(),
   acceptedSuggestionIds: z.array(z.string()).optional(),
+  taggedPunch: z
+    .array(
+      z.object({
+        before: z.string().optional(),
+        after: z.string().optional(),
+        code: z.string(),
+      }),
+    )
+    .optional(),
+  sourceFileName: z.string().optional(),
   highlights: z.array(
     z.object({
       kind: z.string(),

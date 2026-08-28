@@ -397,8 +397,10 @@ test("Trust leftover punch persists on Template; reload reads stored report", as
     const punch = templatePunchFromStoredReport(storedRow.normalizeReport);
     assert.equal(punch.leftoverCount, leftover);
     assert.equal(punch.taggedCount, tagged);
-    assert.match(punch.punchLabel ?? "", /\d+ tagged • \d+ leftovers/);
+    assert.match(punch.punchLabel ?? "", /\d+ leftovers/);
+    assert.ok(!punch.punchLabel?.includes("tagged"));
     assert.ok(punch.leftovers.some((row) => row.before.includes("do/do not")));
+    assert.ok(!punch.leftovers.some((row) => row.before.includes("{#children}")));
   } finally {
     await cleanupKeys(result.template.fileKey, result.originalFileKey);
   }

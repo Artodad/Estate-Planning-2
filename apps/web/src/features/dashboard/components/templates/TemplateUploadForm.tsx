@@ -322,42 +322,23 @@ export function TemplateUploadForm() {
   return (
     <div className="space-y-4">
       <form action={formAction} className="space-y-4">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="file">Template file (.docx)</Label>
-            <Input
-              ref={fileInputRef}
-              id="file"
-              name="file"
-              type="file"
-              accept=".docx"
-              required={!retainedFile}
-              onChange={handleFileChange}
-              className="cursor-pointer"
-              disabled={showConfirm}
-            />
-            {selectedFileName && (
-              <p className="text-xs text-muted-foreground">Selected: {selectedFileName}</p>
-            )}
-            <p className="text-[10px] text-muted-foreground">
-              Max 8MB. On upload we repair split tags, rename known aliases, and validate
-              with docxtemplater. Soft blanks stay suggestions until you accept them.
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="documentType">Document type</Label>
-            <input type="hidden" name="documentType" value={TRUST_DRAFT_DOCUMENT_TYPE} />
-            <p
-              id="documentType"
-              className="rounded border border-[#2c3338]/12 bg-white/80 px-3 py-2 text-sm text-[#2c3338]"
-            >
-              Revocable Living Trust
-            </p>
-            <p className="text-[10px] text-[#5c6570]">
-              This path is Trust-only. Other package documents are not uploaded here.
-            </p>
-          </div>
+        <div className="space-y-2">
+          <Label htmlFor="file">Trust .docx</Label>
+          <Input
+            ref={fileInputRef}
+            id="file"
+            name="file"
+            type="file"
+            accept=".docx"
+            required={!retainedFile}
+            onChange={handleFileChange}
+            className="cursor-pointer"
+            disabled={showConfirm}
+          />
+          {selectedFileName && (
+            <p className="text-xs text-[#5c6570]">Selected: {selectedFileName}</p>
+          )}
+          <input type="hidden" name="documentType" value={TRUST_DRAFT_DOCUMENT_TYPE} />
         </div>
 
         <div className="space-y-2">
@@ -508,10 +489,6 @@ export function TemplateUploadForm() {
         )}
       </form>
 
-      <p className="text-[10px] text-muted-foreground border-t pt-3">
-        After upload, open a completed intake and generate a Trust draft.
-        The resolver will pick up templates by documentType automatically.
-      </p>
     </div>
   );
 }
